@@ -38,4 +38,38 @@ class AdminController
             ->withHeader('Content-Type', 'application/json')
             ->withStatus(200);
     }
+
+    public function addEmail(Request $request, Response $response, array $args): Response
+    {
+        $adminId = (int)$args['id'];
+        $data = json_decode((string)$request->getBody(), true);
+        $email = trim(strtolower($data['email'] ?? ''));
+
+        // Blind Index
+        $blindIndexKey = $_ENV['EMAIL_BLIND_INDEX_KEY'] ?? '';
+        $blindIndex = hash_hmac('sha256', $email, $blindIndexKey);
+
+        // Encryption
+        $encryptionKey = $_ENV['EMAIL_ENCRYPTION_KEY'] ?? '';
+        
+        $cipher = 'aes-256-gcm';
+        $ivLen = openssl_cipher_iv_length($cipher);
+        $iv = random_bytes($ivLen);
+        $tag = '';
+        $ciphertext = openssl_encrypt($email, $cipher, $encryptionKey, OPENSSL_RAW_DATA, $iv, $tag);
+        $encryptedEmail = base64_encode($iv . $tag . $ciphertext);
+
+        $stmt = $this->pdo->prepare("INSERT INTO admin_emails (admin_id, email_blind_index, email_encrypted) VALUES (?, ?, ?)");
+        $stmt->execute([$adminId, $blindIndex, $encryptedEmail]);
+
+        $payload = json_encode([
+            'admin_id' => $adminId,
+            'email_added' => true
+        ]);
+
+        $response->getBody()->write($payload);
+        return $response
+            ->withHeader('Content-Type', 'application/json')
+            ->withStatus(200);
+    }
 }
