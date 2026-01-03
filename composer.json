@@ -10,7 +10,8 @@
     "slim/slim": "^4.15",
     "slim/psr7": "^1.8",
     "php-di/php-di": "^7.0",
-    "vlucas/phpdotenv": "^5.5"
+    "vlucas/phpdotenv": "^5.5",
+    "ext-openssl": "*"
   },
 
   "require-dev": {
