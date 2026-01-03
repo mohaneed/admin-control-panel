@@ -72,4 +72,33 @@ class AdminController
             ->withHeader('Content-Type', 'application/json')
             ->withStatus(200);
     }
+
+    public function lookupEmail(Request $request, Response $response): Response
+    {
+        $data = json_decode((string)$request->getBody(), true);
+        $email = trim(strtolower($data['email']));
+
+        $blindIndexKey = $_ENV['EMAIL_BLIND_INDEX_KEY'];
+        $blindIndex = hash_hmac('sha256', $email, $blindIndexKey);
+
+        $stmt = $this->pdo->prepare("SELECT admin_id FROM admin_emails WHERE email_blind_index = ?");
+        $stmt->execute([$blindIndex]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($result) {
+            $payload = json_encode([
+                'exists' => true,
+                'admin_id' => $result['admin_id']
+            ]);
+        } else {
+            $payload = json_encode([
+                'exists' => false
+            ]);
+        }
+
+        $response->getBody()->write($payload);
+        return $response
+            ->withHeader('Content-Type', 'application/json')
+            ->withStatus(200);
+    }
 }

@@ -18,4 +18,5 @@ return function (App $app) {
 
     $app->post('/admins', [AdminController::class, 'create']);
     $app->post('/admins/{id}/emails', [AdminController::class, 'addEmail']);
+    $app->post('/admin-identifiers/email/lookup', [AdminController::class, 'lookupEmail']);
 };
