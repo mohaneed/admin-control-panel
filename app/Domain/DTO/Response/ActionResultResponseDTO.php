@@ -19,6 +19,7 @@ class ActionResultResponseDTO implements JsonSerializable
     public function jsonSerialize(): array
     {
         $data = [];
+
         if ($this->exists !== null) {
             $data['exists'] = $this->exists;
         }
@@ -31,6 +32,7 @@ class ActionResultResponseDTO implements JsonSerializable
         if ($this->emailAdded !== null) {
             $data['email_added'] = $this->emailAdded;
         }
+
         return $data;
     }
 }

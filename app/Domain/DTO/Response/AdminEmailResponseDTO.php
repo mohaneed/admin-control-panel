@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\DTO\Response;
 
+use App\Domain\Enum\IdentifierType;
 use JsonSerializable;
 
 class AdminEmailResponseDTO implements JsonSerializable
@@ -17,7 +18,7 @@ class AdminEmailResponseDTO implements JsonSerializable
     {
         return [
             'admin_id' => $this->adminId,
-            'email' => $this->email,
+            IdentifierType::EMAIL->value => $this->email,
         ];
     }
 }

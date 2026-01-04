@@ -8,10 +8,12 @@ use App\Domain\DTO\Request\CreateAdminEmailRequestDTO;
 use App\Domain\DTO\Request\VerifyAdminEmailRequestDTO;
 use App\Domain\DTO\Response\ActionResultResponseDTO;
 use App\Domain\DTO\Response\AdminEmailResponseDTO;
+use App\Domain\Enum\IdentifierType;
 use App\Infrastructure\Repository\AdminEmailRepository;
 use App\Infrastructure\Repository\AdminRepository;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
+use Random\RandomException;
 
 class AdminController
 {
@@ -40,12 +42,15 @@ class AdminController
             ->withStatus(200);
     }
 
+    /**
+     * @throws RandomException
+     */
     public function addEmail(Request $request, Response $response, array $args): Response
     {
         $adminId = (int)$args['id'];
         $data = json_decode((string)$request->getBody(), true);
         
-        $requestDto = new CreateAdminEmailRequestDTO($data['email'] ?? '');
+        $requestDto = new CreateAdminEmailRequestDTO($data[IdentifierType::EMAIL->value] ?? '');
         $email = $requestDto->email;
 
         // Blind Index
@@ -66,7 +71,7 @@ class AdminController
 
         $responseDto = new ActionResultResponseDTO(
             adminId: $adminId,
-            emailAdded: true
+            emailAdded: true,
         );
 
         $response->getBody()->write(json_encode($responseDto->jsonSerialize()));
@@ -79,7 +84,7 @@ class AdminController
     {
         $data = json_decode((string)$request->getBody(), true);
         
-        $requestDto = new VerifyAdminEmailRequestDTO($data['email'] ?? '');
+        $requestDto = new VerifyAdminEmailRequestDTO($data[IdentifierType::EMAIL->value] ?? '');
         $email = $requestDto->email;
 
         $blindIndexKey = $_ENV['EMAIL_BLIND_INDEX_KEY'];
@@ -90,11 +95,11 @@ class AdminController
         if ($adminId !== null) {
             $responseDto = new ActionResultResponseDTO(
                 adminId: $adminId,
-                exists: true
+                exists: true,
             );
         } else {
             $responseDto = new ActionResultResponseDTO(
-                exists: false
+                exists: false,
             );
         }
 
