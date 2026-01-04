@@ -9,6 +9,7 @@ use App\Domain\Contracts\AdminIdentifierLookupInterface;
 use App\Domain\Contracts\AdminPasswordRepositoryInterface;
 use App\Domain\Contracts\AdminSessionRepositoryInterface;
 use App\Domain\Contracts\AdminSessionValidationRepositoryInterface;
+use App\Domain\Service\AdminAuthenticationService;
 use App\Http\Controllers\AuthController;
 use App\Infrastructure\Database\PDOFactory;
 use App\Infrastructure\Repository\AdminEmailRepository;
@@ -16,11 +17,15 @@ use App\Infrastructure\Repository\AdminPasswordRepository;
 use App\Infrastructure\Repository\AdminRepository;
 use App\Infrastructure\Repository\AdminSessionRepository;
 use DI\ContainerBuilder;
+use Exception;
 use PDO;
 use Psr\Container\ContainerInterface;
 
 class Container
 {
+    /**
+     * @throws Exception
+     */
     public static function create(): ContainerInterface
     {
         $containerBuilder = new ContainerBuilder();
@@ -66,8 +71,8 @@ class Container
                 return $c->get(AdminSessionRepositoryInterface::class);
             },
             AuthController::class => function (ContainerInterface $c) {
-                $authService = $c->get(\App\Domain\Service\AdminAuthenticationService::class);
-                assert($authService instanceof \App\Domain\Service\AdminAuthenticationService);
+                $authService = $c->get(AdminAuthenticationService::class);
+                assert($authService instanceof AdminAuthenticationService);
                 $blindIndexKey = $_ENV['EMAIL_BLIND_INDEX_KEY'] ?? '';
                 return new AuthController($authService, $blindIndexKey);
             },

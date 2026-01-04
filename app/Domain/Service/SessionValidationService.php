@@ -9,6 +9,7 @@ use App\Domain\Exception\ExpiredSessionException;
 use App\Domain\Exception\InvalidSessionException;
 use App\Domain\Exception\RevokedSessionException;
 use DateTimeImmutable;
+use Exception;
 
 class SessionValidationService
 {
@@ -23,6 +24,7 @@ class SessionValidationService
      * @throws InvalidSessionException
      * @throws ExpiredSessionException
      * @throws RevokedSessionException
+     * @throws Exception
      */
     public function validate(string $token): int
     {

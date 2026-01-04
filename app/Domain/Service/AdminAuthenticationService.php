@@ -12,19 +12,19 @@ use App\Domain\Enum\VerificationStatus;
 use App\Domain\Exception\AuthStateException;
 use App\Domain\Exception\InvalidCredentialsException;
 
-class AdminAuthenticationService
+readonly class AdminAuthenticationService
 {
     public function __construct(
-        private readonly AdminIdentifierLookupInterface $lookupRepository,
-        private readonly AdminEmailVerificationRepositoryInterface $verificationRepository,
-        private readonly AdminPasswordRepositoryInterface $passwordRepository,
-        private readonly AdminSessionRepositoryInterface $sessionRepository
+        private AdminIdentifierLookupInterface $lookupRepository,
+        private AdminEmailVerificationRepositoryInterface $verificationRepository,
+        private AdminPasswordRepositoryInterface $passwordRepository,
+        private AdminSessionRepositoryInterface $sessionRepository
     ) {
     }
 
     public function login(string $blindIndex, string $password): string
     {
-        // 1. Lookup Admin ID by Blind Index
+        // 1. Look up Admin ID by Blind Index
         $adminId = $this->lookupRepository->findByBlindIndex($blindIndex);
         if ($adminId === null) {
             // Defensive: Do not reveal user existence

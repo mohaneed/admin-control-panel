@@ -6,9 +6,9 @@ namespace App\Domain\DTO\Request;
 
 use App\Domain\Exception\InvalidIdentifierFormatException;
 
-class CreateAdminEmailRequestDTO
+readonly class CreateAdminEmailRequestDTO
 {
-    public readonly string $email;
+    public string $email;
 
     public function __construct(string $email)
     {

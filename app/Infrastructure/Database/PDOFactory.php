@@ -16,6 +16,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Database;
 
 use PDO;
+use PDOException;
 use RuntimeException;
 
 class PDOFactory
@@ -43,7 +44,7 @@ class PDOFactory
             $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 
             return $pdo;
-        } catch (\PDOException $e) {
+        } catch (PDOException $e) {
             // In a real app we might log this or handle it differently.
             // For now we just rethrow or let it bubble up.
             throw new RuntimeException('Database connection failed: ' . $e->getMessage(), (int)$e->getCode(), $e);

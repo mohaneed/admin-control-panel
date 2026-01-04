@@ -12,18 +12,18 @@ use App\Domain\Service\AdminAuthenticationService;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 
-class AuthController
+readonly class AuthController
 {
     public function __construct(
-        private readonly AdminAuthenticationService $authService,
-        private readonly string $blindIndexKey
+        private AdminAuthenticationService $authService,
+        private string $blindIndexKey
     ) {
     }
 
     public function login(Request $request, Response $response): Response
     {
         $data = $request->getParsedBody();
-        // Assuming $data is array. In a real app we'd validate this.
+        // Assuming $data is an array. In a real app we'd validate this.
         if (!is_array($data) || !isset($data['email']) || !isset($data['password'])) {
             $response->getBody()->write((string)json_encode(['error' => 'Invalid request']));
             return $response->withStatus(400)->withHeader('Content-Type', 'application/json');

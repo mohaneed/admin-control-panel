@@ -10,11 +10,11 @@ use App\Infrastructure\Repository\AdminEmailRepository;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
-class AdminEmailVerificationController
+readonly class AdminEmailVerificationController
 {
     public function __construct(
-        private readonly AdminEmailVerificationService $service,
-        private readonly AdminEmailRepository $repository
+        private AdminEmailVerificationService $service,
+        private AdminEmailRepository $repository
     ) {
     }
 

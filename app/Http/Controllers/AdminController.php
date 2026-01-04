@@ -15,15 +15,10 @@ use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Random\RandomException;
 
-class AdminController
+readonly class AdminController
 {
-    private AdminRepository $adminRepository;
-    private AdminEmailRepository $adminEmailRepository;
-
-    public function __construct(AdminRepository $adminRepository, AdminEmailRepository $adminEmailRepository)
+    public function __construct(private AdminRepository $adminRepository, private AdminEmailRepository $adminEmailRepository)
     {
-        $this->adminRepository = $adminRepository;
-        $this->adminEmailRepository = $adminEmailRepository;
     }
 
     public function create(Request $request, Response $response): Response

@@ -9,10 +9,10 @@ use App\Domain\Enum\VerificationStatus;
 use App\Domain\Exception\InvalidIdentifierStateException;
 use DateTimeImmutable;
 
-class AdminEmailVerificationService
+readonly class AdminEmailVerificationService
 {
     public function __construct(
-        private readonly AdminEmailVerificationRepositoryInterface $repository
+        private AdminEmailVerificationRepositoryInterface $repository
     ) {
     }
 
