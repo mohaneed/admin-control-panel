@@ -8,16 +8,13 @@ use App\Domain\Contracts\AdminDirectPermissionRepositoryInterface;
 use App\Domain\Contracts\AdminRoleRepositoryInterface;
 use App\Domain\Contracts\TelemetryAuditLoggerInterface;
 use App\Domain\Contracts\ClientInfoProviderInterface;
-use App\Domain\Contracts\AuthoritativeSecurityAuditWriterInterface;
 use App\Domain\Contracts\RolePermissionRepositoryInterface;
 use App\Domain\Contracts\SecurityEventLoggerInterface;
-use App\Domain\DTO\AuditEventDTO;
 use App\Domain\DTO\LegacyAuditEventDTO;
 use App\Domain\DTO\SecurityEventDTO;
 use App\Domain\Exception\PermissionDeniedException;
 use App\Domain\Exception\UnauthorizedException;
 use DateTimeImmutable;
-use PDO;
 
 readonly class AuthorizationService
 {
@@ -27,10 +24,7 @@ readonly class AuthorizationService
         private AdminDirectPermissionRepositoryInterface $directPermissionRepository,
         private TelemetryAuditLoggerInterface $auditLogger,
         private SecurityEventLoggerInterface $securityLogger,
-        private ClientInfoProviderInterface $clientInfoProvider,
-        private AuthoritativeSecurityAuditWriterInterface $outboxWriter,
-        private RecoveryStateService $recoveryState,
-        private PDO $pdo
+        private ClientInfoProviderInterface $clientInfoProvider
     ) {
     }
 
@@ -109,31 +103,5 @@ readonly class AuthorizationService
             new DateTimeImmutable()
         ));
         throw new PermissionDeniedException("Admin $adminId lacks permission '$permission'.");
-    }
-
-    public function assignRole(int $adminId, int $roleId): void
-    {
-        $this->recoveryState->check();
-
-        $this->pdo->beginTransaction();
-        try {
-            $this->adminRoleRepository->assign($adminId, $roleId);
-
-            $this->outboxWriter->write(new AuditEventDTO(
-                $adminId,
-                'role_assigned',
-                'admin',
-                $adminId,
-                'HIGH',
-                ['role_id' => $roleId],
-                bin2hex(random_bytes(16)),
-                new DateTimeImmutable()
-            ));
-
-            $this->pdo->commit();
-        } catch (\Throwable $e) {
-            $this->pdo->rollBack();
-            throw $e;
-        }
     }
 }
