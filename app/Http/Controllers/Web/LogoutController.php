@@ -8,6 +8,7 @@ use App\Domain\Contracts\AdminSessionValidationRepositoryInterface;
 use App\Domain\Contracts\ClientInfoProviderInterface;
 use App\Domain\Contracts\SecurityEventLoggerInterface;
 use App\Domain\DTO\SecurityEventDTO;
+use App\Domain\Service\RememberMeService;
 use DateTimeImmutable;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
@@ -16,6 +17,7 @@ readonly class LogoutController
 {
     public function __construct(
         private AdminSessionValidationRepositoryInterface $sessionRepository,
+        private RememberMeService $rememberMeService,
         private SecurityEventLoggerInterface $securityEventLogger,
         private ClientInfoProviderInterface $clientInfoProvider
     ) {
@@ -51,6 +53,14 @@ readonly class LogoutController
                     $this->sessionRepository->revokeSession($token);
                 }
             }
+
+            // Revoke Remember-Me tokens for this admin
+            if (isset($cookies['remember_me'])) {
+                $parts = explode(':', (string)$cookies['remember_me']);
+                if (count($parts) === 2) {
+                    $this->rememberMeService->revokeBySelector($parts[0]);
+                }
+            }
         }
 
         // Always clear the cookie (Idempotency)
@@ -64,8 +74,14 @@ readonly class LogoutController
         );
         $cookieHeader = trim($cookieHeader, '; ');
 
+        $rememberMeClear = sprintf(
+            "remember_me=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0; %s",
+            $secureFlag
+        );
+
         return $response
-            ->withHeader('Set-Cookie', $cookieHeader)
+            ->withAddedHeader('Set-Cookie', $cookieHeader)
+            ->withAddedHeader('Set-Cookie', $rememberMeClear)
             ->withHeader('Location', '/login')
             ->withStatus(302);
     }
