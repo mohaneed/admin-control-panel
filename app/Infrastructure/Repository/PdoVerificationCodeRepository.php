@@ -6,7 +6,9 @@ namespace App\Infrastructure\Repository;
 
 use App\Domain\Contracts\VerificationCodeRepositoryInterface;
 use App\Domain\DTO\VerificationCode;
+use App\Domain\Enum\IdentityTypeEnum;
 use App\Domain\Enum\VerificationCodeStatus;
+use App\Domain\Enum\VerificationPurposeEnum;
 use DateTimeImmutable;
 use PDO;
 
@@ -30,9 +32,9 @@ class PdoVerificationCodeRepository implements VerificationCodeRepositoryInterfa
         ");
 
         $stmt->execute([
-            'identity_type' => $code->subjectType,
-            'identity_id' => $code->subjectIdentifier,
-            'purpose' => $code->purpose,
+            'identity_type' => $code->identityType->value,
+            'identity_id' => $code->identityId,
+            'purpose' => $code->purpose->value,
             'code_hash' => $code->codeHash,
             'status' => $code->status->value,
             'attempts' => $code->attempts,
@@ -42,20 +44,8 @@ class PdoVerificationCodeRepository implements VerificationCodeRepositoryInterfa
         ]);
     }
 
-    public function findActive(string $subjectType, string $subjectIdentifier, string $purpose): ?VerificationCode
+    public function findActive(IdentityTypeEnum $identityType, string $identityId, VerificationPurposeEnum $purpose): ?VerificationCode
     {
-        // Status must be active AND not expired.
-        // Although the query could filter expiry, the prompt implies "Find active" and validator checks expiry?
-        // But the schema rules say "Expired / used codes must never validate".
-        // It's safer to filter by status='active' AND expires_at > NOW() in the query to avoid race conditions or returning stale data.
-        // However, the Validator usually wants to know WHY it failed (expired vs invalid).
-        // If I filter it out here, `validate` will think "Code not found".
-        // If I return it, `validate` can say "Expired".
-        // The prompt: "Find active code" (in Validator section).
-        // I will return the record if status is 'active', regardless of expiry, so the Validator can check expiry and return specific error if needed?
-        // Actually, generic failure is required: "No distinction between expired, invalid, wrong".
-        // So finding only valid active codes is fine.
-
         $stmt = $this->pdo->prepare("
             SELECT * FROM verification_codes
             WHERE identity_type = :identity_type
@@ -67,10 +57,29 @@ class PdoVerificationCodeRepository implements VerificationCodeRepositoryInterfa
         ");
 
         $stmt->execute([
-            'identity_type' => $subjectType,
-            'identity_id' => $subjectIdentifier,
-            'purpose' => $purpose,
+            'identity_type' => $identityType->value,
+            'identity_id' => $identityId,
+            'purpose' => $purpose->value,
         ]);
+
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($row === false || !is_array($row)) {
+            return null;
+        }
+
+        return $this->mapRowToDto($row);
+    }
+
+    public function findByCodeHash(string $codeHash): ?VerificationCode
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT * FROM verification_codes
+            WHERE code_hash = :code_hash
+            LIMIT 1
+        ");
+
+        $stmt->execute(['code_hash' => $codeHash]);
 
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -111,7 +120,7 @@ class PdoVerificationCodeRepository implements VerificationCodeRepositoryInterfa
         $stmt->execute(['id' => $codeId]);
     }
 
-    public function expireAllFor(string $subjectType, string $subjectIdentifier, string $purpose): void
+    public function expireAllFor(IdentityTypeEnum $identityType, string $identityId, VerificationPurposeEnum $purpose): void
     {
         $stmt = $this->pdo->prepare("
             UPDATE verification_codes
@@ -122,9 +131,9 @@ class PdoVerificationCodeRepository implements VerificationCodeRepositoryInterfa
             AND status = 'active'
         ");
         $stmt->execute([
-            'identity_type' => $subjectType,
-            'identity_id' => $subjectIdentifier,
-            'purpose' => $purpose,
+            'identity_type' => $identityType->value,
+            'identity_id' => $identityId,
+            'purpose' => $purpose->value,
         ]);
     }
 
@@ -135,10 +144,10 @@ class PdoVerificationCodeRepository implements VerificationCodeRepositoryInterfa
     {
         /** @var int $id */
         $id = $row['id'];
-        /** @var string $subjectType */
-        $subjectType = $row['identity_type'];
-        /** @var string $subjectIdentifier */
-        $subjectIdentifier = $row['identity_id'];
+        /** @var string $identityType */
+        $identityType = $row['identity_type'];
+        /** @var string $identityId */
+        $identityId = $row['identity_id'];
         /** @var string $purpose */
         $purpose = $row['purpose'];
         /** @var string $codeHash */
@@ -156,9 +165,9 @@ class PdoVerificationCodeRepository implements VerificationCodeRepositoryInterfa
 
         return new VerificationCode(
             (int)$id,
-            $subjectType,
-            $subjectIdentifier,
-            $purpose,
+            IdentityTypeEnum::from($identityType),
+            $identityId,
+            VerificationPurposeEnum::from($purpose),
             $codeHash,
             VerificationCodeStatus::from($statusStr),
             (int)$attempts,

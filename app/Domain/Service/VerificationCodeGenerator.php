@@ -9,7 +9,9 @@ use App\Domain\Contracts\VerificationCodePolicyResolverInterface;
 use App\Domain\Contracts\VerificationCodeRepositoryInterface;
 use App\Domain\DTO\GeneratedVerificationCode;
 use App\Domain\DTO\VerificationCode;
+use App\Domain\Enum\IdentityTypeEnum;
 use App\Domain\Enum\VerificationCodeStatus;
+use App\Domain\Enum\VerificationPurposeEnum;
 use DateTimeImmutable;
 use Exception;
 use RuntimeException;
@@ -22,13 +24,13 @@ class VerificationCodeGenerator implements VerificationCodeGeneratorInterface
     ) {
     }
 
-    public function generate(string $subjectType, string $subjectIdentifier, string $purpose): GeneratedVerificationCode
+    public function generate(IdentityTypeEnum $identityType, string $identityId, VerificationPurposeEnum $purpose): GeneratedVerificationCode
     {
         // 1. Resolve Policy
         $policy = $this->policyResolver->resolve($purpose);
 
         // 2. Invalidate previous active codes (Lifecycle Rule)
-        $this->repository->expireAllFor($subjectType, $subjectIdentifier, $purpose);
+        $this->repository->expireAllFor($identityType, $identityId, $purpose);
 
         // 3. Generate random numeric OTP
         try {
@@ -38,7 +40,6 @@ class VerificationCodeGenerator implements VerificationCodeGeneratorInterface
         }
 
         // 4. Hash
-        // Using SHA-256 as requested in rules.
         $codeHash = hash('sha256', $plainCode);
 
         // 5. Create Entity
@@ -47,8 +48,8 @@ class VerificationCodeGenerator implements VerificationCodeGeneratorInterface
 
         $entity = new VerificationCode(
             0, // ID not yet assigned
-            $subjectType,
-            $subjectIdentifier,
+            $identityType,
+            $identityId,
             $purpose,
             $codeHash,
             VerificationCodeStatus::ACTIVE,

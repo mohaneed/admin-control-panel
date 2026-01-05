@@ -76,4 +76,44 @@ class AdminNotificationChannelRepository implements AdminNotificationChannelRepo
         /** @var array<string, scalar> $config */
         return $config;
     }
+
+    public function registerChannel(int $adminId, string $channelType, array $config): void
+    {
+        // Enforce uniqueness for Telegram chat_id
+        if ($channelType === 'telegram' || $channelType === NotificationChannelType::TELEGRAM->value) {
+            $chatId = $config['chat_id'] ?? null;
+            if ($chatId !== null) {
+                $sql = "
+                    SELECT id FROM admin_notification_channels
+                    WHERE channel_type = ?
+                    AND JSON_UNQUOTE(JSON_EXTRACT(config, '$.chat_id')) = ?
+                    AND admin_id != ?
+                ";
+                $checkStmt = $this->pdo->prepare($sql);
+                $checkStmt->execute([$channelType, (string)$chatId, $adminId]);
+                if ($checkStmt->fetch()) {
+                    throw new RuntimeException("Telegram chat_id already linked to another admin.");
+                }
+            }
+        }
+
+        $stmt = $this->pdo->prepare("SELECT id FROM admin_notification_channels WHERE admin_id = ? AND channel_type = ?");
+        $stmt->execute([$adminId, $channelType]);
+        $id = $stmt->fetchColumn();
+
+        $configJson = json_encode($config);
+        if ($configJson === false) {
+            throw new RuntimeException("Invalid config JSON");
+        }
+
+        if ($id !== false) {
+            // Update
+            $stmt = $this->pdo->prepare("UPDATE admin_notification_channels SET config = ?, is_enabled = 1 WHERE id = ?");
+            $stmt->execute([$configJson, $id]);
+        } else {
+            // Insert
+            $stmt = $this->pdo->prepare("INSERT INTO admin_notification_channels (admin_id, channel_type, config, is_enabled) VALUES (?, ?, ?, 1)");
+            $stmt->execute([$adminId, $channelType, $configJson]);
+        }
+    }
 }
