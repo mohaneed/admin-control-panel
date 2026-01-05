@@ -30,8 +30,8 @@ readonly class TelegramHandler
         if (!$result->success) {
             return $this->fail(VerificationFailureReasonEnum::INVALID_OTP, [
                 'chat_id' => $chatId,
-                'purpose' => $result->purpose->value,
-                'identity_type' => $result->identityType->value,
+                'purpose' => $result->purpose?->value,
+                'identity_type' => $result->identityType?->value,
                 'identity_id' => $result->identityId,
             ]);
         }
@@ -40,8 +40,8 @@ readonly class TelegramHandler
         if ($result->purpose !== VerificationPurposeEnum::TelegramChannelLink) {
             return $this->fail(VerificationFailureReasonEnum::OTP_WRONG_PURPOSE, [
                 'chat_id' => $chatId,
-                'purpose' => $result->purpose->value,
-                'identity_type' => $result->identityType->value,
+                'purpose' => $result->purpose?->value,
+                'identity_type' => $result->identityType?->value,
                 'identity_id' => $result->identityId,
             ]);
         }
@@ -51,7 +51,7 @@ readonly class TelegramHandler
             return $this->fail(VerificationFailureReasonEnum::IDENTITY_MISMATCH, [
                 'chat_id' => $chatId,
                 'purpose' => $result->purpose->value,
-                'identity_type' => $result->identityType->value,
+                'identity_type' => $result->identityType?->value,
                 'identity_id' => $result->identityId,
             ]);
         }
