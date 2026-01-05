@@ -1,89 +1,76 @@
-تمام 👍
-معاك حق، ودي **نقطة تشغيلية أساسية** لازم تبقى واضحة 100% لأي فريق يبدأ.
+# Onboarding Guide
 
-تحت ده **الملف كامل بعد التحديث** مع **إضافة قسمين واضحين وصريحين**:
-
-* ✔️ **استيراد قاعدة البيانات (SQL Import)**
-* ✔️ **إنشاء أول Admin عمليًا (خطوة بخطوة بدون كسر الأمن)**
-
-والصياغة ما زالت **Security-First** ومفيهاش أي Backdoor أو افتراضات غلط.
+**Project:** Admin Control Panel
+**Status:** Current State — Infrastructure-First
+**Stack:** PHP 8.2 (Slim Framework) + Twig + MySQL
+**Audience:** Backend Developers & Frontend (Twig) Developers
 
 ---
 
-```
-docs/ONBOARDING.md
-```
+## 1️⃣ Executive Overview
+
+This project is a **backend-heavy administrative system** built with a
+**Security-First / Zero-Trust** architecture.
+
+It is **not** a UI-first or feature-first project.
+
+### What is this project?
+
+A centralized admin system designed for sensitive environments
+(financial, enterprise, internal systems), based on:
+
+* Zero-Trust (no implicit trust after login)
+* Multi-layer middleware pipeline
+* Server-side session authority
+* Step-up authentication for sensitive actions
+* Mandatory audit logging for critical operations
+
+### ⚠️ Important Warning
+
+> Any change made without fully understanding this document
+> introduces **high security risk**.
+>
+> The complexity in this system is **intentional**.
+> Do not attempt to “simplify” or bypass it.
 
 ---
 
-# دليل بدء العمل (Onboarding Guide)
+## 2️⃣ GitHub Workflow
 
-**المشروع:** لوحة تحكم الإدارة (Admin Control Panel)
-**الحالة:** Current State — Infrastructure-First
-**التقنية:** PHP 8.2 (Slim Framework) + Slim + Twig + MySQL
-**الجمهور:** Backend Developers + Frontend (Twig) Developers
-
----
-
-## 1️⃣ مقدمة سريعة (Executive Overview)
-
-هذا المشروع هو **Backend-Heavy Admin System** مبني وفق مبدأ
-**Security-First / Zero-Trust Architecture**.
-
-هذا **ليس** مشروع Features-First ولا UI-First.
-
-### ما هو هذا المشروع؟
-
-نظام إدارة مركزي مصمم ليعمل في بيئات حساسة (مالية / مؤسسية)، ويعتمد على:
-
-* Zero-Trust (لا ثقة ضمنية بعد تسجيل الدخول)
-* Middleware Pipeline متعدد الطبقات
-* Sessions Server-Side Authority
-* Step-Up Authentication للعمليات الحساسة
-* Audit إلزامي لكل فعل إداري مهم
-
-### تحذير هام ❗
-
-> **أي تعديل بدون فهم كامل لهذه الوثيقة = مخاطرة أمنية عالية.**
-> التعقيد الموجود في الكود **مقصود** وليس صدفة.
-> لا تحاول الالتفاف عليه أو “تبسيطه”.
-
----
-
-## 2️⃣ طريقة العمل مع GitHub (Workflow)
+To keep the codebase stable and auditable, follow these rules strictly.
 
 1. **Clone**
 
-   ```bash
-   git clone <repository-url>
-   ```
+```bash
+git clone <repository-url>
+```
 
 2. **Branching Strategy**
 
-    * Features: `feature/your-feature-name`
-    * Fixes: `fix/issue-description`
+* Features: `feature/your-feature-name`
+* Fixes: `fix/issue-description`
 
 3. **Pull Safety**
 
-   ```bash
-   git pull origin main --rebase
-   ```
+```bash
+git pull origin main --rebase
+```
 
-4. **ممنوع نهائيًا**
+4. **Strictly Forbidden**
 
-    * ❌ Push مباشر على `main`
-    * ❌ Merge بدون Review
+* ❌ Direct push to `main`
+* ❌ Merge without review
 
 5. **Clean History**
 
-    * Squash قبل الدمج
-    * Git history نظيف = Debug أسهل + Audit أوضح
+* Squash commits before merge
+* Clean git history = easier debugging & auditing
 
 ---
 
-## 3️⃣ تشغيل المشروع محليًا (Local Setup)
+## 3️⃣ Local Setup
 
-### المتطلبات
+### Requirements
 
 * PHP 8.2+
 * Extensions:
@@ -96,173 +83,177 @@ docs/ONBOARDING.md
 
 ---
 
-### خطوات التشغيل
+### Setup Steps
 
-#### 1️⃣ تثبيت الحزم
+#### 1️⃣ Install Dependencies
 
 ```bash
 composer install
 ```
 
-#### 2️⃣ إعداد البيئة
+#### 2️⃣ Environment Configuration
 
-* انسخ:
+* Copy:
 
   ```
   .env.example → .env
   ```
-* عدّل بيانات الاتصال بقاعدة البيانات.
+* Configure database connection values.
 
-⚠️ **ملاحظة أمنية بخصوص المفاتيح**
+### 🔐 Security Note About Keys
 
-```md
-يجب توليد مفاتيح التشفير باستخدام CSPRNG.
-❌ ممنوع استخدام كلمات مرور أو نصوص يدوية.
-في حال الشك، اسأل الفريق الأساسي.
+```
+All cryptographic keys must be generated using a secure random source (CSPRNG).
+❌ Do NOT use passwords or manual strings.
+If unsure, ask the core team.
 ```
 
 ---
 
-## 4️⃣ إعداد قاعدة البيانات (SQL Import) — **REQUIRED**
+## 4️⃣ Database Setup (SQL Import) — **REQUIRED**
 
-قبل أي تشغيل فعلي، يجب **إنشاء قاعدة البيانات واستيراد الـ Schema**.
+Before running the system, the database **must be created and initialized**.
 
-### ملف الـ SQL
+### SQL Schema File
 
-* يوجد داخل المشروع ملف SQL رسمي (Schema only)
-* الملف يحتوي:
+* The project includes an official SQL schema file
+* It contains:
 
-    * الجداول
-    * القيود
-    * المفاتيح
-* ❌ لا يحتوي أي:
+    * Tables
+    * Constraints
+    * Indexes
+* It does NOT contain:
 
-    * Admin افتراضي
-    * بيانات Seed
-    * حسابات جاهزة
+    * Default admins
+    * Seed data
+    * Demo accounts
 
-### طريقة الاستيراد
+---
 
-#### عبر phpMyAdmin
+### Import Methods
 
-1. أنشئ Database فارغة (مثلاً: `admin_control_panel`)
-2. افتح phpMyAdmin
-3. اختر قاعدة البيانات
-4. Import → اختر ملف الـ `.sql`
-5. Execute
+#### Using phpMyAdmin
 
-#### أو عبر CLI (اختياري)
+1. Create an empty database (e.g. `admin_control_panel`)
+2. Open phpMyAdmin
+3. Select the database
+4. Click **Import**
+5. Choose the `.sql` file
+6. Execute
+
+#### Using CLI (optional)
 
 ```bash
 mysql -u USER -p DB_NAME < schema.sql
 ```
 
-📌 **مهم جدًا**
+### 📌 Important
 
-> بعد الاستيراد:
->
-> * قاعدة البيانات ستكون **فارغة من أي Admin**
-> * النظام سيبقى في وضع **LOCKED**
-> * هذا السلوك طبيعي ومتوقع، وليس خطأ في التشغيل.
+After import:
+
+* The database will contain **no admin users**
+* The system will remain **LOCKED**
+* This behavior is **expected and correct**
 
 ---
 
-## 5️⃣ إنشاء أول Admin (BOOTSTRAP) — **CRITICAL**
+## 5️⃣ First Admin Creation (Bootstrap) — **CRITICAL**
 
-> ⚠️ **أهم جزء في النظام كله**
+> ⚠️ This is the most important step in the entire system.
 
-النظام يبدأ دائمًا في وضع:
+The system always starts in:
 
 ```
 BOOTSTRAP_REQUIRED
 ```
 
-* ❌ لا يوجد Admin افتراضي
-* ❌ لا يوجد Register API
-* ❌ لا يجوز إضافة Admin عبر SQL
+* ❌ No default admin exists
+* ❌ No registration endpoint exists
+* ❌ Admins must NOT be created via SQL
 
 ---
 
-### الطريقة الصحيحة الوحيدة
+### The Only Correct Method
 
-#### 1️⃣ توليد Bootstrap Token (CLI)
+#### 1️⃣ Generate Bootstrap Token (CLI)
 
-* يتم تنفيذ **أمر CLI مخصص داخل المشروع**
-* الأمر:
+* A **dedicated CLI command** exists in the project
+* The command:
 
-    * يولد Token لمرة واحدة
-    * له TTL
-    * محفوظ Hash فقط في DB
+    * Generates a one-time token
+    * Applies a TTL
+    * Stores only a hashed version in the database
 
-> لا تحاول تخمين الأمر أو إعادة تنفيذه بدون الرجوع للفريق الأساسي.
-كمطور واجهات:
-لست مطالبًا بتنفيذ هذه الخطوة بنفسك.
-يكفي أن تعرف أنها تُنفذ مرة واحدة فقط.
+> Do not guess or repeat this command without consulting the core team.
+
+**Frontend developers:**
+You are NOT required to execute this step.
+You only need to understand that it happens once.
 
 ---
 
-#### 2️⃣ استخدام التوكن عبر الواجهة
+#### 2️⃣ Use the Token in the Browser
 
-1. افتح النظام في المتصفح:
+1. Open:
 
    ```
    http://localhost:8080
    ```
-2. ستظهر صفحة تطلب **Bootstrap Token**
-3. أدخل التوكن الذي تم توليده من CLI
+2. A page requesting a **Bootstrap Token** will appear
+3. Enter the token generated via CLI
 
 ---
 
-#### 3️⃣ إنشاء أول Admin
+#### 3️⃣ Create the First Admin
 
-بعد قبول التوكن:
+After token validation:
 
-* إدخال Email + Password
-* تعيين Role صريح (`system.owner`)
-* تفعيل TOTP **إجباري**
+* Enter email and password
+* A fixed role is assigned (`system.owner`)
+* TOTP (2FA) setup is **mandatory**
 
-📌 بعد الإكمال:
+After completion:
 
-* التوكن يُبطل نهائيًا
-* النظام ينتقل من:
+* The token is invalidated permanently
+* The system transitions:
 
-  ```
-  LOCKED → ACTIVE
-  ```
+```
+LOCKED → ACTIVE
+```
 
-❌ **تحذير**
+### ❌ Warning
 
-```md
-إضافة Admin يدويًا في DB = Backdoor
-وسيتم اكتشافه عبر Audit + Guards
+```
+Creating admins directly in the database is considered a backdoor
+and will be detected by audit and security guards.
 ```
 
 ---
 
-## 6️⃣ الدخول على قاعدة البيانات (phpMyAdmin)
+## 6️⃣ Database Access (phpMyAdmin)
 
-### الجداول المهمة
+### Important Tables
 
 * `admins`
 * `identifiers`
 * `sessions`
 * `audit_outbox`
 
-❌ **قاعدة ذهبية**
+### ❌ Golden Rule
 
-```md
-أي تعديل يدوي على الجداول الأمنية يُعتبر Tampering.
-النظام قد:
-- يُسقط الجلسات
-- يُبطل الوصول
-- يسجل Audit حدث أمني حرج
+```
+Manual modification of security tables is considered tampering.
+The system may:
+- Invalidate sessions
+- Block access
+- Record a critical security audit event
 ```
 
 ---
 
-## 7️⃣ خريطة الـ Endpoints الحالية (CURRENT ONLY)
+## 7️⃣ Current API Endpoints (ONLY THESE)
 
-### Auth
+### Authentication
 
 ```
 POST /auth/login
@@ -285,83 +276,84 @@ GET  /sessions
 POST /sessions/{id}/revoke
 ```
 
-📌
+📌 Notes:
 
-* أي Endpoint غير مذكور هنا = غير متاح
-* ليست Contract نهائي للـ UI
+* Any endpoint not listed here is unavailable
+* This is NOT a final UI contract
 
 ---
 
-## 8️⃣ Frontend & Twig — HOW TO WORK SAFELY
+## 8️⃣ Frontend & Twig — Safe Usage Rules
 
-### مكان الواجهات
+### Templates Location
 
 ```
 templates/
 ```
 
-### قواعد صارمة
+### Strict Rules
 
 1. Controller ≠ View
-2. ❌ لا Logic أمني في Twig
-3. Escape دائمًا:
+2. ❌ No security logic in Twig
+3. Always escape output:
 
    ```twig
    {{ value|e }}
    ```
-4. Translation Keys فقط
-5. لا تفترض وجود أو ترتيب الحقول داخل DTOs
+4. Use translation keys only
+5. Do not assume DTO field order or presence
 
 ---
 
-## 9️⃣ قواعد ذهبية للفريقين
+## 9️⃣ Golden Rules for All Developers
 
-1. ❌ لا Auth Logic يدوي
-2. ❌ لا تغيير Permission Semantics
+1. ❌ No manual auth logic
+2. ❌ Do not change permission semantics
 3. ❌ Session ≠ Identity
-4. ❌ لا تعرض `admin_id` في UI
-5. ✅ أي شك = اسأل
+4. ❌ Do not expose `admin_id` in UI
+5. ✅ When in doubt — ask
 
 ---
 
-## 🔟 حدود المرحلة الحالية (Phase Boundary)
-
-نحن في مرحلة:
+## 🔟 Current Phase Boundary
 
 ### **Infrastructure & Core Security**
 
-**مكتمل**
+**Completed**
 
 * Login
 * Sessions
-* TOTP / Step-Up
-* Audit (Transactional Outbox)
+* TOTP / Step-Up Authentication
+* Transactional Audit Outbox
 
-**غير مسموح**
+**Not Allowed Yet**
 
-* Business Logic
-* Features خاصة بالمنتج النهائي
-
----
-## ⚠️ ملاحظة مهمة لمطوري الواجهات بخصوص .env
-ملف .env يحتوي على إعدادات حساسة.
-كمطور واجهات:
-- عدّل إعدادات قاعدة البيانات فقط
-- لا تغيّر أي مفاتيح تشفير
-- لا تفعّل أي Recovery أو Security Flags
-
-في حال توقف النظام، اسأل الفريق الأساسي.
-
+* Business logic
+* Product-specific features
 
 ---
 
-## 🔚 خاتمة
+## ⚠️ Important Note for Frontend Developers (.env)
 
-هذا الملف هو **المرجع الوحيد للتشغيل**.
+The `.env` file contains sensitive settings.
 
-* أي تعارض → هذا الملف هو الصحيح
-* أي اقتراح تطوير → خارج هذا الدليل
+Frontend developers must:
 
-**اشتغل بحذر، والنظام هيشتغل معاك 🔒**
+* Change database connection values only
+* NOT modify encryption keys
+* NOT enable recovery or security flags
+
+If something breaks — contact the core team.
+
+---
+
+## 🔚 Final Notes
+
+This document is the **single source of truth** for running the project.
+
+* Any conflict → this document is correct
+* Any feature request → outside this guide
+
+**Work carefully — the system will work with you 🔒**
 
 ---
