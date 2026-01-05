@@ -4,17 +4,21 @@ declare(strict_types=1);
 
 namespace App\Domain\Service;
 
-use App\Domain\Contracts\AuditLoggerInterface;
+use App\Domain\Contracts\TelemetryAuditLoggerInterface;
+use App\Domain\Contracts\AuthoritativeSecurityAuditWriterInterface;
+use App\Domain\Contracts\ClientInfoProviderInterface;
 use App\Domain\Contracts\StepUpGrantRepositoryInterface;
 use App\Domain\Contracts\TotpSecretRepositoryInterface;
 use App\Domain\Contracts\TotpServiceInterface;
 use App\Domain\DTO\AuditEventDTO;
+use App\Domain\DTO\LegacyAuditEventDTO;
 use App\Domain\DTO\SecurityEventDTO;
 use App\Domain\DTO\StepUpGrant;
 use App\Domain\DTO\TotpVerificationResultDTO;
 use App\Domain\Enum\Scope;
 use App\Domain\Enum\SessionState;
 use DateTimeImmutable;
+use PDO;
 
 readonly class StepUpService
 {
@@ -22,12 +26,18 @@ readonly class StepUpService
         private StepUpGrantRepositoryInterface $grantRepository,
         private TotpSecretRepositoryInterface $totpSecretRepository,
         private TotpServiceInterface $totpService,
-        private AuditLoggerInterface $auditLogger
+        private TelemetryAuditLoggerInterface $auditLogger,
+        private AuthoritativeSecurityAuditWriterInterface $outboxWriter,
+        private ClientInfoProviderInterface $clientInfoProvider,
+        private RecoveryStateService $recoveryState,
+        private PDO $pdo
     ) {
     }
 
     public function verifyTotp(int $adminId, string $sessionId, string $code, ?Scope $requestedScope = null): TotpVerificationResultDTO
     {
+        $this->recoveryState->check();
+
         $secret = $this->totpSecretRepository->get($adminId);
         if ($secret === null) {
              $this->logSecurityEvent($adminId, $sessionId, 'stepup_primary_failed', ['reason' => 'no_totp_enrolled']);
@@ -39,11 +49,18 @@ readonly class StepUpService
             return new TotpVerificationResultDTO(false, 'Invalid code');
         }
 
-        if ($requestedScope !== null && $requestedScope !== Scope::LOGIN) {
-            $this->issueScopedGrant($adminId, $sessionId, $requestedScope);
-        } else {
-            // Issue Primary Grant
-            $this->issuePrimaryGrant($adminId, $sessionId);
+        $this->pdo->beginTransaction();
+        try {
+            if ($requestedScope !== null && $requestedScope !== Scope::LOGIN) {
+                $this->issueScopedGrant($adminId, $sessionId, $requestedScope);
+            } else {
+                // Issue Primary Grant
+                $this->issuePrimaryGrant($adminId, $sessionId);
+            }
+            $this->pdo->commit();
+        } catch (\Throwable $e) {
+            $this->pdo->rollBack();
+            throw $e;
         }
 
         return new TotpVerificationResultDTO(true);
@@ -51,24 +68,46 @@ readonly class StepUpService
 
     public function enableTotp(int $adminId, string $sessionId, string $secret, string $code): bool
     {
+        $this->recoveryState->check();
+
         if (!$this->totpService->verify($secret, $code)) {
             $this->logSecurityEvent($adminId, $sessionId, 'stepup_enroll_failed', ['reason' => 'invalid_code']);
             return false;
         }
 
         $this->totpSecretRepository->save($adminId, $secret);
-        $this->issuePrimaryGrant($adminId, $sessionId);
 
-        $this->auditLogger->log(new AuditEventDTO(
-            $adminId,
-            'system',
-            $adminId,
-            'stepup_enrolled',
-            ['session_id' => $sessionId],
-            '0.0.0.0',
-            'system',
-            new DateTimeImmutable()
-        ));
+        $this->pdo->beginTransaction();
+        try {
+            $this->issuePrimaryGrant($adminId, $sessionId);
+
+            $this->auditLogger->log(new LegacyAuditEventDTO(
+                $adminId,
+                'system',
+                $adminId,
+                'stepup_enrolled',
+                ['session_id' => $sessionId],
+                '0.0.0.0',
+                'system',
+                new DateTimeImmutable()
+            ));
+
+            $this->outboxWriter->write(new AuditEventDTO(
+                $adminId,
+                'stepup_enrolled',
+                'admin',
+                $adminId,
+                'HIGH',
+                ['session_id' => $sessionId],
+                bin2hex(random_bytes(16)),
+                new DateTimeImmutable()
+            ));
+
+            $this->pdo->commit();
+        } catch (\Throwable $e) {
+            $this->pdo->rollBack();
+            throw $e;
+        }
 
         return true;
     }
@@ -79,6 +118,7 @@ readonly class StepUpService
             $adminId,
             $sessionId,
             Scope::LOGIN, // Primary Scope
+            $this->getRiskHash(),
             new DateTimeImmutable(),
             new DateTimeImmutable('+2 hours'), // Match session expiry usually
             false
@@ -86,7 +126,7 @@ readonly class StepUpService
 
         $this->grantRepository->save($grant);
 
-        $this->auditLogger->log(new AuditEventDTO(
+        $this->auditLogger->log(new LegacyAuditEventDTO(
             $adminId,
             'system',
             $adminId,
@@ -94,6 +134,17 @@ readonly class StepUpService
             ['session_id' => $sessionId],
             '0.0.0.0', // Context not available here easily without request stack
             'system',
+            new DateTimeImmutable()
+        ));
+
+        $this->outboxWriter->write(new AuditEventDTO(
+            $adminId,
+            'stepup_primary_issued',
+            'grant',
+            $adminId,
+            'MEDIUM',
+            ['session_id' => $sessionId, 'scope' => Scope::LOGIN->value],
+            bin2hex(random_bytes(16)),
             new DateTimeImmutable()
         ));
     }
@@ -104,6 +155,7 @@ readonly class StepUpService
             $adminId,
             $sessionId,
             $scope,
+            $this->getRiskHash(),
             new DateTimeImmutable(),
             new DateTimeImmutable('+15 minutes'), // Scoped grants are short-lived
             false
@@ -111,7 +163,7 @@ readonly class StepUpService
 
         $this->grantRepository->save($grant);
 
-        $this->auditLogger->log(new AuditEventDTO(
+        $this->auditLogger->log(new LegacyAuditEventDTO(
             $adminId,
             'system',
             $adminId,
@@ -121,11 +173,22 @@ readonly class StepUpService
             'system',
             new DateTimeImmutable()
         ));
+
+        $this->outboxWriter->write(new AuditEventDTO(
+            $adminId,
+            'stepup_scoped_issued',
+            'grant',
+            $adminId,
+            'MEDIUM',
+            ['session_id' => $sessionId, 'scope' => $scope->value],
+            bin2hex(random_bytes(16)),
+            new DateTimeImmutable()
+        ));
     }
 
     public function logDenial(int $adminId, string $sessionId, Scope $requiredScope): void
     {
-        $this->auditLogger->log(new AuditEventDTO(
+        $this->auditLogger->log(new LegacyAuditEventDTO(
             $adminId,
             'system',
             $adminId,
@@ -139,6 +202,24 @@ readonly class StepUpService
             'system',
             new DateTimeImmutable()
         ));
+
+        $this->pdo->beginTransaction();
+        try {
+            $this->outboxWriter->write(new AuditEventDTO(
+                $adminId,
+                'stepup_denied',
+                'grant',
+                $adminId,
+                'LOW',
+                ['session_id' => $sessionId, 'required_scope' => $requiredScope->value],
+                bin2hex(random_bytes(16)),
+                new DateTimeImmutable()
+            ));
+            $this->pdo->commit();
+        } catch (\Throwable $e) {
+            $this->pdo->rollBack();
+            throw $e;
+        }
     }
 
     public function hasGrant(int $adminId, string $sessionId, Scope $scope): bool
@@ -148,24 +229,68 @@ readonly class StepUpService
             return false;
         }
 
+        // Verify Risk Context
+        if (!hash_equals($grant->riskContextHash, $this->getRiskHash())) {
+            $this->logSecurityEvent($adminId, $sessionId, 'stepup_risk_mismatch', ['reason' => 'context_changed']);
+            // Invalidate strictly
+            $this->pdo->beginTransaction();
+            try {
+                $this->grantRepository->revoke($adminId, $sessionId, $scope);
+                $this->outboxWriter->write(new AuditEventDTO(
+                    $adminId,
+                    'stepup_revoked_risk',
+                    'grant',
+                    $adminId,
+                    'HIGH',
+                    ['session_id' => $sessionId, 'scope' => $scope->value],
+                    bin2hex(random_bytes(16)),
+                    new DateTimeImmutable()
+                ));
+                $this->pdo->commit();
+            } catch (\Throwable $e) {
+                $this->pdo->rollBack();
+            }
+            return false;
+        }
+
         if ($grant->expiresAt < new DateTimeImmutable()) {
             return false;
         }
 
         // Check single use?
         if ($grant->singleUse) {
-            // Consume grant
-            $this->grantRepository->revoke($adminId, $sessionId, $scope);
-             $this->auditLogger->log(new AuditEventDTO(
-                $adminId,
-                'system',
-                $adminId,
-                'stepup_grant_consumed',
-                ['scope' => $scope->value],
-                '0.0.0.0',
-                'system',
-                new DateTimeImmutable()
-            ));
+            $this->pdo->beginTransaction();
+            try {
+                // Consume grant
+                $this->grantRepository->revoke($adminId, $sessionId, $scope);
+
+                 $this->auditLogger->log(new LegacyAuditEventDTO(
+                    $adminId,
+                    'system',
+                    $adminId,
+                    'stepup_grant_consumed',
+                    ['scope' => $scope->value],
+                    '0.0.0.0',
+                    'system',
+                    new DateTimeImmutable()
+                ));
+
+                $this->outboxWriter->write(new AuditEventDTO(
+                    $adminId,
+                    'stepup_grant_consumed',
+                    'grant',
+                    $adminId,
+                    'MEDIUM',
+                    ['session_id' => $sessionId, 'scope' => $scope->value],
+                    bin2hex(random_bytes(16)),
+                    new DateTimeImmutable()
+                ));
+
+                $this->pdo->commit();
+            } catch (\Throwable $e) {
+                $this->pdo->rollBack();
+                return false;
+            }
         }
 
         return true;
@@ -173,23 +298,21 @@ readonly class StepUpService
 
     public function getSessionState(int $adminId, string $sessionId): SessionState
     {
-        // Session existence check is assumed to be done by SessionGuard (database check).
-        // If we are here, DB session is valid.
-
         // Check for Primary Grant (Scope::LOGIN)
-        // We reuse logic but avoid consuming if it was single use (Primary is likely not single use, but checking finds it)
-        // Actually, Primary Grant is NOT single use.
         $primaryGrant = $this->grantRepository->find($adminId, $sessionId, Scope::LOGIN);
 
         if ($primaryGrant !== null && $primaryGrant->expiresAt > new DateTimeImmutable()) {
-            return SessionState::ACTIVE;
+            // Verify Risk Context for Primary Grant too
+            if (hash_equals($primaryGrant->riskContextHash, $this->getRiskHash())) {
+                return SessionState::ACTIVE;
+            }
         }
 
         return SessionState::PENDING_STEP_UP;
     }
 
     /**
-     * @param array<string, mixed> $details
+     * @param array<string, scalar> $details
      */
     private function logSecurityEvent(int $adminId, string $sessionId, string $event, array $details): void
     {
@@ -200,7 +323,7 @@ readonly class StepUpService
         /** @var array<string, scalar> $context */
         $context = $details;
 
-        $this->auditLogger->log(new AuditEventDTO(
+        $this->auditLogger->log(new LegacyAuditEventDTO(
             $adminId,
             'security',
             $adminId,
@@ -210,5 +333,12 @@ readonly class StepUpService
             'system',
             new DateTimeImmutable()
         ));
+    }
+
+    private function getRiskHash(): string
+    {
+        $ip = $this->clientInfoProvider->getIpAddress();
+        $ua = $this->clientInfoProvider->getUserAgent();
+        return hash('sha256', $ip . '|' . $ua);
     }
 }

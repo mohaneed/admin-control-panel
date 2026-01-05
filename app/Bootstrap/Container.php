@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Bootstrap;
 
 use App\Domain\Contracts\AdminActivityQueryInterface;
+use App\Domain\Contracts\AdminDirectPermissionRepositoryInterface;
 use App\Domain\Contracts\AdminEmailVerificationRepositoryInterface;
 use App\Domain\Contracts\AdminIdentifierLookupInterface;
 use App\Domain\Contracts\AdminNotificationChannelRepositoryInterface;
@@ -21,7 +22,7 @@ use App\Domain\Contracts\AdminSessionRepositoryInterface;
 use App\Domain\Contracts\AdminRoleRepositoryInterface;
 use App\Domain\Contracts\AdminSessionValidationRepositoryInterface;
 use App\Domain\Contracts\AdminTargetedAuditReaderInterface;
-use App\Domain\Contracts\AuditLoggerInterface;
+use App\Domain\Contracts\TelemetryAuditLoggerInterface;
 use App\Domain\Contracts\RememberMeRepositoryInterface;
 use App\Domain\Contracts\ClientInfoProviderInterface;
 use App\Domain\Contracts\FailedNotificationRepositoryInterface;
@@ -42,6 +43,7 @@ use App\Domain\Service\AdminAuthenticationService;
 use App\Domain\Service\AdminEmailVerificationService;
 use App\Domain\Service\AdminNotificationRoutingService;
 use App\Domain\Service\NotificationFailureHandler;
+use App\Domain\Service\RecoveryStateService;
 use App\Domain\Service\RememberMeService;
 use App\Domain\Service\StepUpService;
 use App\Domain\Service\VerificationCodeGenerator;
@@ -63,9 +65,11 @@ use App\Http\Controllers\Web\TwoFactorController;
 use App\Http\Middleware\RememberMeMiddleware;
 use App\Http\Middleware\ScopeGuardMiddleware;
 use App\Http\Middleware\SessionStateGuardMiddleware;
+use App\Domain\Contracts\AuthoritativeSecurityAuditWriterInterface;
 use App\Infrastructure\Audit\PdoAdminSecurityEventReader;
 use App\Infrastructure\Audit\PdoAdminSelfAuditReader;
 use App\Infrastructure\Audit\PdoAdminTargetedAuditReader;
+use App\Infrastructure\Audit\PdoAuthoritativeAuditWriter;
 use App\Infrastructure\Database\PDOFactory;
 use App\Infrastructure\Notification\TelegramHandler;
 use App\Infrastructure\Repository\AdminActivityQueryRepository;
@@ -79,13 +83,15 @@ use App\Infrastructure\Repository\PdoAdminNotificationPersistenceRepository;
 use App\Infrastructure\Repository\PdoAdminNotificationPreferenceRepository;
 use App\Infrastructure\Repository\PdoRememberMeRepository;
 use App\Infrastructure\Repository\AdminRepository;
+use App\Infrastructure\Repository\PdoAdminDirectPermissionRepository;
 use App\Infrastructure\Repository\AdminRoleRepository;
 use App\Infrastructure\Repository\AdminSessionRepository;
-use App\Infrastructure\Repository\AuditLogRepository;
+use App\Infrastructure\Audit\PdoTelemetryAuditLogger;
 use App\Infrastructure\Repository\FailedNotificationRepository;
 use App\Infrastructure\Repository\NotificationReadRepository;
 use App\Infrastructure\Notifications\NullNotificationDispatcher;
 use App\Infrastructure\Repository\PdoAdminNotificationReadMarker;
+use App\Infrastructure\Repository\PdoStepUpGrantRepository;
 use App\Infrastructure\Repository\PdoVerificationCodeRepository;
 use App\Infrastructure\Repository\RedisStepUpGrantRepository;
 use App\Infrastructure\Repository\RolePermissionRepository;
@@ -208,6 +214,11 @@ class Container
                 assert($pdo instanceof PDO);
                 return new AdminRoleRepository($pdo);
             },
+            AdminDirectPermissionRepositoryInterface::class => function (ContainerInterface $c) {
+                $pdo = $c->get(PDO::class);
+                assert($pdo instanceof PDO);
+                return new PdoAdminDirectPermissionRepository($pdo);
+            },
             RolePermissionRepositoryInterface::class => function (ContainerInterface $c) {
                 $pdo = $c->get(PDO::class);
                 assert($pdo instanceof PDO);
@@ -244,10 +255,15 @@ class Container
                     }
                 };
             },
-            AuditLoggerInterface::class => function (ContainerInterface $c) {
+            TelemetryAuditLoggerInterface::class => function (ContainerInterface $c) {
                 $pdo = $c->get(PDO::class);
                 assert($pdo instanceof PDO);
-                return new AuditLogRepository($pdo);
+                return new PdoTelemetryAuditLogger($pdo);
+            },
+            AuthoritativeSecurityAuditWriterInterface::class => function (ContainerInterface $c) {
+                $pdo = $c->get(PDO::class);
+                assert($pdo instanceof PDO);
+                return new PdoAuthoritativeAuditWriter($pdo);
             },
             SecurityEventLoggerInterface::class => function (ContainerInterface $c) {
                 $pdo = $c->get(PDO::class);
@@ -342,17 +358,20 @@ class Container
                 $rememberMeService = $c->get(RememberMeService::class);
                 $logger = $c->get(SecurityEventLoggerInterface::class);
                 $clientInfo = $c->get(ClientInfoProviderInterface::class);
+                $authService = $c->get(AdminAuthenticationService::class);
 
                 assert($sessionRepo instanceof AdminSessionValidationRepositoryInterface);
                 assert($rememberMeService instanceof RememberMeService);
                 assert($logger instanceof SecurityEventLoggerInterface);
                 assert($clientInfo instanceof ClientInfoProviderInterface);
+                assert($authService instanceof AdminAuthenticationService);
 
                 return new \App\Http\Controllers\Web\LogoutController(
                     $sessionRepo,
                     $rememberMeService,
                     $logger,
-                    $clientInfo
+                    $clientInfo,
+                    $authService
                 );
             },
             EmailVerificationController::class => function (ContainerInterface $c) {
@@ -461,10 +480,9 @@ class Container
 
             // Phase 12
             StepUpGrantRepositoryInterface::class => function (ContainerInterface $c) {
-                return new RedisStepUpGrantRepository(
-                    $_ENV['REDIS_HOST'] ?? '127.0.0.1',
-                    (int)($_ENV['REDIS_PORT'] ?? 6379)
-                );
+                $pdo = $c->get(PDO::class);
+                assert($pdo instanceof PDO);
+                return new PdoStepUpGrantRepository($pdo);
             },
             TotpSecretRepositoryInterface::class => function (ContainerInterface $c) {
                 $storagePath = __DIR__ . '/../../storage/totp';
@@ -477,18 +495,30 @@ class Container
                  $grantRepo = $c->get(StepUpGrantRepositoryInterface::class);
                  $secretRepo = $c->get(TotpSecretRepositoryInterface::class);
                  $totpService = $c->get(TotpServiceInterface::class);
-                 $auditLogger = $c->get(AuditLoggerInterface::class);
+                 $auditLogger = $c->get(TelemetryAuditLoggerInterface::class);
+                 $outboxWriter = $c->get(AuthoritativeSecurityAuditWriterInterface::class);
+                 $clientInfo = $c->get(ClientInfoProviderInterface::class);
+                 $recoveryState = $c->get(RecoveryStateService::class);
+                 $pdo = $c->get(PDO::class);
 
                  assert($grantRepo instanceof StepUpGrantRepositoryInterface);
                  assert($secretRepo instanceof TotpSecretRepositoryInterface);
                  assert($totpService instanceof TotpServiceInterface);
-                 assert($auditLogger instanceof AuditLoggerInterface);
+                 assert($auditLogger instanceof TelemetryAuditLoggerInterface);
+                 assert($outboxWriter instanceof AuthoritativeSecurityAuditWriterInterface);
+                 assert($clientInfo instanceof ClientInfoProviderInterface);
+                 assert($recoveryState instanceof RecoveryStateService);
+                 assert($pdo instanceof PDO);
 
                  return new StepUpService(
                      $grantRepo,
                      $secretRepo,
                      $totpService,
-                     $auditLogger
+                     $auditLogger,
+                     $outboxWriter,
+                     $clientInfo,
+                     $recoveryState,
+                     $pdo
                  );
             },
             SessionStateGuardMiddleware::class => function (ContainerInterface $c) {
@@ -529,6 +559,9 @@ class Container
                 $repo = $c->get(VerificationCodeRepositoryInterface::class);
                 assert($repo instanceof VerificationCodeRepositoryInterface);
                 return new VerificationCodeValidator($repo);
+            },
+            RecoveryStateService::class => function (ContainerInterface $c) {
+                return new RecoveryStateService();
             },
             RememberMeService::class => function (ContainerInterface $c) {
                 $rememberMeRepo = $c->get(RememberMeRepositoryInterface::class);
