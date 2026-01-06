@@ -12,6 +12,7 @@ use App\Domain\Contracts\TotpServiceInterface;
 use App\Domain\Contracts\AuthoritativeSecurityAuditWriterInterface;
 use App\Domain\DTO\AuditEventDTO;
 use App\Domain\Service\PasswordService;
+use App\Domain\Ownership\SystemOwnershipRepositoryInterface;
 
 // Load Env
 $dotenv = Dotenv::createImmutable(__DIR__ . '/../');
@@ -87,7 +88,11 @@ try {
     $totpRepo = $container->get(TotpSecretRepositoryInterface::class);
     $totpRepo->save($adminId, $secret);
 
-    // 5. Audit
+    // 5. System Ownership
+    $ownershipRepo = $container->get(SystemOwnershipRepositoryInterface::class);
+    $ownershipRepo->assignOwner($adminId);
+
+    // 6. Audit
     $writer = $container->get(AuthoritativeSecurityAuditWriterInterface::class);
     $writer->write(new AuditEventDTO(
         $adminId,
