@@ -111,6 +111,7 @@ POST /api/{resource}/{id}/delete
 * DataTable (LIST)
 * Form (CREATE / EDIT)
 * Read-only blocks (VIEW)
+* Any JS required by the page must be injected via the scripts block in the base layout.
 
 ## 🔹 Footer
 
@@ -240,6 +241,8 @@ POST /api/{resource}/{id}/update
 * Pagination behavior
 * Filters behavior
 * Edge cases
+
+All JS-driven pages require a scripts block in the base layout.
 
 ---
 
