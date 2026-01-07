@@ -98,6 +98,7 @@ Entries MUST NOT be rewritten or reordered.
 - docs(security): add canonical authentication architecture specification
 - docs(security): document canonical auth model and future session hardening options
 - docs(history): add full chronological commit history and generation reference
+- refactor(config): lock env handling via AdminConfig DTO and clean bootstrap artifacts
 
 ---
 
