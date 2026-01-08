@@ -104,6 +104,8 @@ Entries MUST NOT be rewritten or reordered.
 - docs(project): add canonical project context and execution task checklist
 - docs(audit): add Phase 14 readiness optimization & refactor audit
 - feat(admins): finalize Admins List (pagination, search, UI/JS parity)
+- feat(crypto): add reversible crypto engine (fail-closed, library-grade)
+- feat(crypto): introduce key rotation module with strict policy and tests
 
 ---
 
