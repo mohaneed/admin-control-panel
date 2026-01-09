@@ -110,6 +110,7 @@ Entries MUST NOT be rewritten or reordered.
 - feat(crypto/password): introduce DI-based Argon2id + pepper password hashing module
 - feat(crypto-dx): introduce DX orchestration layer with factories, facade, docs, and smoke tests
 - docs(crypto): add consolidated README and HOW_TO_USE for library extraction
+- feat(validation): finalize validation module with strict semantics and library-grade structure
 
 ---
 

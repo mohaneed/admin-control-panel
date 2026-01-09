@@ -1,7 +1,7 @@
 # Admin Control Panel — Canonical Context
 
-> **Status:** Draft / Living Document
-> **Source:** Repository Analysis (AS-IS) + `docs/ADMIN_PANEL_CANONICAL_TEMPLATE.md` (TARGET)
+> **Status:** Draft / Living Document  
+> **Source:** Repository Analysis (AS-IS) + `docs/ADMIN_PANEL_CANONICAL_TEMPLATE.md` (TARGET)  
 > **Context Owner:** Project Architects
 
 ---
@@ -122,9 +122,10 @@ Defined by `SessionQueryController` implementation.
     "search": "..."
   }
 }
-```
+````
 
 ### Response (JSON)
+
 ```json
 {
   "data": [ ... ],
@@ -136,35 +137,39 @@ Defined by `SessionQueryController` implementation.
 }
 ```
 
-*   **Implementation**: Server-side only. `LIMIT :limit OFFSET :offset`.
+* **Implementation**: Server-side only. `LIMIT :limit OFFSET :offset`.
 
 ---
 
 ## 🎨 G) UI/Twig Contract
 
 ### 1. Controller Pattern (Observed)
-*   **UI Controllers** (`App\Http\Controllers\Ui\`): Render Twig templates. No DB access observed.
-*   **Base Layout**: `templates/layouts/base.twig`.
-*   **Scripts**: Injected via `{% block scripts %}`.
+
+* **UI Controllers** (`App\Http\Controllers\Ui\`): Render Twig templates. No DB access observed.
+* **Base Layout**: `templates/layouts/base.twig`.
+* **Scripts**: Injected via `{% block scripts %}`.
 
 ### 2. Data Flow (Target Pattern)
-*   **Page Load**: Renders skeleton (HTML).
-*   **Data Fetch**: Client-side JS calls `POST /api/{resource}/query`.
-*   **Actions**: Client-side JS calls `POST /api/{resource}/{action}`.
+
+* **Page Load**: Renders skeleton (HTML).
+* **Data Fetch**: Client-side JS calls `POST /api/{resource}/query`.
+* **Actions**: Client-side JS calls `POST /api/{resource}/{action}`.
 
 ---
 
 ## 🗄️ H) Database & Repositories Contract
 
 ### 1. Architecture
-*   **Access**: `PDO` only. No ORM observed.
-*   **Injection**: Repositories injected via Interface into Services.
-*   **Strictness**: `declare(strict_types=1)`. Explicit return types.
+
+* **Access**: `PDO` only. No ORM observed.
+* **Injection**: Repositories injected via Interface into Services.
+* **Strictness**: `declare(strict_types=1)`. Explicit return types.
 
 ### 2. Repositories
-*   **Location**: `app/Infrastructure/Repository/`.
-*   **Pattern**: Methods return Domain Objects or DTOs.
-*   **Transactions**: Services manage transactions, Repositories accept `PDO` in constructor (shared connection).
+
+* **Location**: `app/Infrastructure/Repository/`.
+* **Pattern**: Methods return Domain Objects or DTOs.
+* **Transactions**: Services manage transactions, Repositories accept `PDO` in constructor (shared connection).
 
 ---
 
@@ -173,60 +178,110 @@ Defined by `SessionQueryController` implementation.
 **Reference**: `docs/ADMIN_PANEL_CANONICAL_TEMPLATE.md`
 
 ### Target State (Phase 14+)
-*   **Page Types**: LIST, CREATE, EDIT, VIEW.
-*   **Routing**: strict `GET /{resource}` (UI) and `POST /api/{resource}/query` (API).
-*   **Permissions**: 1:1 mapping with routes.
+
+* **Page Types**: LIST, CREATE, EDIT, VIEW.
+* **Routing**: strict `GET /{resource}` (UI) and `POST /api/{resource}/query` (API).
+* **Permissions**: 1:1 mapping with routes.
 
 ### CURRENT STATE vs CANONICAL GAP ANALYSIS
-*   **Compliance**:
-    *   `Sessions` (Phase 14.3) is fully compliant.
-*   **Gaps (Observed)**:
-    *   `Admins`, `Roles`, `Permissions` pages are currently placeholders (`coming soon`). They do not yet implement the Canonical API-First pattern.
-    *   Legacy `Web\*Controller` classes (e.g., `LogoutController`) exist alongside `Ui*Controller` wrappers.
+
+* **Compliance**:
+
+    * `Sessions` (Phase 14.3) is fully compliant.
+* **Gaps (Observed)**:
+
+    * `Admins`, `Roles`, `Permissions` pages are currently placeholders (`coming soon`). They do not yet implement the Canonical API-First pattern.
+    * Legacy `Web\*Controller` classes (e.g., `LogoutController`) exist alongside `Ui*Controller` wrappers.
 
 ---
 
 ## 📝 J) Task Playbook
 
 ### 1. Add New Admin Panel Page (UI)
-*   **Files**:
-    *   Create `app/Http/Controllers/Ui/Ui{Resource}Controller.php`.
-    *   Create `templates/pages/{resource}.twig`.
-    *   Update `routes/web.php` (Group: Protected UI).
-*   **Target**: Follow the Canonical Template pattern (View -> API).
+
+* **Files**:
+
+    * Create `app/Http/Controllers/Ui/Ui{Resource}Controller.php`.
+    * Create `templates/pages/{resource}.twig`.
+    * Update `routes/web.php` (Group: Protected UI).
+* **Target**: Follow the Canonical Template pattern (View -> API).
 
 ### 2. Add New Protected API Endpoint
-*   **Files**:
-    *   Create `app/Http/Controllers/Api/{Resource}{Action}Controller.php`.
-    *   Create `App/Domain/DTO/{Resource}/{Action}RequestDTO.php`.
-    *   Update `routes/web.php` (Group: `/api`, Middleware: `AuthorizationGuardMiddleware`).
-*   **Security**: Ensure `AuthorizationGuardMiddleware` and proper Permission name.
+
+* **Files**:
+
+    * Create `app/Http/Controllers/Api/{Resource}{Action}Controller.php`.
+    * Create `App/Domain/DTO/{Resource}/{Action}RequestDTO.php`.
+    * Update `routes/web.php` (Group: `/api`, Middleware: `AuthorizationGuardMiddleware`).
+* **Security**: Ensure `AuthorizationGuardMiddleware` and proper Permission name.
 
 ### 3. Add New DB Table
-*   **Files**:
-    *   Update `database/schema.sql` (Canonical Schema).
-    *   Create `scripts/migrations/xxx_add_table.sql` (if strict migration required).
-*   **Code**: Create `app/Infrastructure/Repository/Pdo{Resource}Repository.php` and Interface in `app/Domain/Contracts/`.
+
+* **Files**:
+
+    * Update `database/schema.sql` (Canonical Schema).
+    * Create `scripts/migrations/xxx_add_table.sql` (if strict migration required).
+* **Code**: Create `app/Infrastructure/Repository/Pdo{Resource}Repository.php` and Interface in `app/Domain/Contracts/`.
 
 ---
 
 ## ⚔️ K) CONFLICTS
-*   **Web vs Ui Controllers**: `app/Http/Controllers/Web/` contains legacy logic. `app/Http/Controllers/Ui/` is the new standard.
-    *   *Conflict*: `LoginController` is in `Web` but wrapped by `UiLoginController`.
-    *   *Resolution*: Prefer `Ui` controllers for all new UI routes. Keep `Web` only for legacy support until fully migrated.
+
+* **Web vs Ui Controllers**: `app/Http/Controllers/Web/` contains legacy logic. `app/Http/Controllers/Ui/` is the new standard.
+
+    * *Conflict*: `LoginController` is in `Web` but wrapped by `UiLoginController`.
+    * *Resolution*: Prefer `Ui` controllers for all new UI routes. Keep `Web` only for legacy support until fully migrated.
 
 ---
 
 ## ❓ L) OPEN QUESTIONS
-*   **Asset Management**: How are frontend assets (JS/CSS) specifically for `sessions.twig` managed? The file content is not visible, but `SessionListController` exists. It implies inline scripts or a pattern not yet fully documented.
-*   **Legacy Data Loading**: Do the legacy "Web" controllers handle data loading inside the controller (server-side)? Verification needed before refactoring.
+
+* **Asset Management**: How are frontend assets (JS/CSS) specifically for `sessions.twig` managed? The file content is not visible, but `SessionListController` exists. It implies inline scripts or a pattern not yet fully documented.
+* **Legacy Data Loading**: Do the legacy "Web" controllers handle data loading inside the controller (server-side)? Verification needed before refactoring.
+
+---
+
+## 🧩 M) Cross-Cutting Concerns (Canonical)
+
+The system defines several modules that cross application boundaries and affect multiple layers.
+
+### **1. Input Validation (NEW)**
+
+**Status:** ARCHITECTURE-APPROVED / ACTIVE
+**Canonical Spec:** `docs/architecture/input-validation.md`
+
+**Rules:**
+
+* Validation occurs **before** authentication & authorization
+* Validation failures return UI-friendly structured errors
+* Validation uses **library-assisted rule sets**
+* DTO defines **shape**, Validation defines **rules**
+* Validation is **not** responsible for domain invariants
+
+**Error Semantics:**
+
+* Validation Error → `400 INPUT_INVALID`
+* Auth Error → `401 AUTH_REQUIRED`
+* Step-Up Error → `403 STEP_UP_REQUIRED`
+* Permission Error → `403 NOT_AUTHORIZED`
+
+**Integration Points:**
+
+* Controllers map validation to UI/API responses
+* Guards only run after validation passes
+* No audit/security events emitted on validation failure
+
+**Library Decision:**
+
+> `respect/validation` selected to implement rule sets
 
 ---
 
 ## 🔎 Evidence Index
-*   **Routing**: `routes/web.php`
-*   **DI/Config**: `app/Bootstrap/Container.php`
-*   **Session List Pattern**: `app/Http/Controllers/Ui/SessionListController.php`, `app/Http/Controllers/Api/SessionQueryController.php`
-*   **Audit Model**: `docs/architecture/audit-model.md`, `app/Domain/Contracts/AuthoritativeSecurityAuditWriterInterface.php`
-*   **Canonical Template**: `docs/ADMIN_PANEL_CANONICAL_TEMPLATE.md`
-*   **Placeholders**: `templates/pages/admins.twig`, `templates/pages/roles.twig`
+
+* **Routing**: `routes/web.php`
+* **DI/Config**: `app/Bootstrap/Container.php`
+* **Session List Pattern**: `app/Http/Controllers/Ui/SessionListController.php`, `app/Http/Controllers/Api/SessionQueryController.php`
+* **Audit Model**: `docs/architecture/audit-model.md`, `app/Domain/Contracts/AuthoritativeSecurityAuditWriterInterface.php`
+* **Canonical Template**: `docs/ADMIN_PANEL_CANONICAL_TEMPLATE.md`
+* **Placeholders**: `templates/pages/admins.twig`, `templates/pages/roles.twig`
