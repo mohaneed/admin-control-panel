@@ -112,7 +112,47 @@ The system enforces a strict separation between "What Changed" (Audit) and "What
 
 Defined by `SessionQueryController` implementation.
 
+### 0. Pagination Contract — Architectural Decision (LOCKED)
+
+**Status:** LOCKED / MANDATORY  
+**Applies to:** All LIST APIs (Sessions, Admins, Roles, and future resources)
+
+The Admin Control Panel enforces a **single canonical pagination model**
+shared across all list-based APIs.
+
+Pagination is an architectural concern and **MUST NOT** be implemented
+using anonymous or inline arrays.
+
+#### Canonical DTO
+
+Pagination MUST be represented using the shared Domain DTO:
+
+```
+
+App\Domain\DTO\Common\PaginationDTO
+
+````
+
+This DTO is the **only allowed representation** of pagination data
+inside the application.
+
+#### Hard Rules
+
+* Pagination MUST NOT be represented as anonymous arrays
+* All LIST responses MUST expose pagination via `PaginationDTO`
+* `PaginationDTO`:
+  * Lives in the Domain layer
+  * Implements `JsonSerializable`
+  * Defines an explicit array shape in `jsonSerialize()`
+* Infrastructure Readers (PDO / Infra layer) are responsible for constructing `PaginationDTO`
+* Controllers MUST NOT assemble or mutate pagination structures
+
+Any deviation from this contract is considered a **Canonical Violation**.
+
+---
+
 ### Request (JSON)
+
 ```json
 {
   "page": 1,
@@ -123,6 +163,8 @@ Defined by `SessionQueryController` implementation.
   }
 }
 ````
+
+---
 
 ### Response (JSON)
 
@@ -136,6 +178,9 @@ Defined by `SessionQueryController` implementation.
   }
 }
 ```
+
+> Internally, `pagination` is always represented as `PaginationDTO`
+> and converted to JSON only via `jsonSerialize()`.
 
 * **Implementation**: Server-side only. `LIMIT :limit OFFSET :offset`.
 

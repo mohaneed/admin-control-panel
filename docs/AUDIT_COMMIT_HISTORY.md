@@ -118,6 +118,7 @@ Entries MUST NOT be rewritten or reordered.
 - feat(validation): phase1 foundation (schemas, rules, guard)
 - chore(ui): add protected Twig sandbox page for UI experimentation
 - refactor(pagination): introduce PaginationDTO and unify list pagination across admin and session lists
+- docs(canonical): lock PaginationDTO usage in canonical pagination contract
 
 ---
 
