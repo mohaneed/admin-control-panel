@@ -115,6 +115,7 @@ Entries MUST NOT be rewritten or reordered.
 - fix(validation): map DTO semantic validation errors to explicit HTTP 4xx responses
 - fix(http): align client and resource error semantics across controllers
 - feat(validation): introduce explicit ValidationGuard with fail-closed enforcement
+- feat(validation): phase1 foundation (schemas, rules, guard)
 
 ---
 
