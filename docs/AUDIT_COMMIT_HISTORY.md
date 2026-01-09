@@ -116,6 +116,7 @@ Entries MUST NOT be rewritten or reordered.
 - fix(http): align client and resource error semantics across controllers
 - feat(validation): introduce explicit ValidationGuard with fail-closed enforcement
 - feat(validation): phase1 foundation (schemas, rules, guard)
+- chore(ui): add protected Twig sandbox page for UI experimentation
 
 ---
 

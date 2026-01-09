@@ -69,6 +69,9 @@ return function (App $app) {
             $protectedGroup->get('/permissions', [\App\Http\Controllers\Ui\UiPermissionsController::class, 'index']);
             $protectedGroup->get('/settings', [\App\Http\Controllers\Ui\UiSettingsController::class, 'index']);
 
+            // UI sandbox for Twig/layout experimentation (non-canonical page)
+            $protectedGroup->get('/examples', [\App\Http\Controllers\Ui\UiExamplesController::class, 'index']);
+
             // Phase 14.3: Sessions LIST
             $protectedGroup->get('/sessions', [\App\Http\Controllers\Ui\SessionListController::class, '__invoke'])
                 ->setName('sessions.list')
