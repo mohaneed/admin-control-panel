@@ -163,6 +163,7 @@ Entries MUST NOT be rewritten or reordered.
 - fix(notification): make delivery worker query compatible with sqlite tests
 - feat(email): complete phase 3 rendering and smtp transport adapter
 - docs(notification): add ADR for scope and admin-coupled history
+- docs(adr): consolidate and formalize architectural decisions
 
 ---
 
