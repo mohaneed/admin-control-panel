@@ -58,8 +58,8 @@ and enforced via a global middleware.
 ```text
 page
 per_page
-from_date
-to_date
+date.from
+date.to
 ````
 
 ### Legacy Compatibility (Backward-Safe)
@@ -67,8 +67,8 @@ to_date
 | Legacy Key | Canonical Key |
 |------------|---------------|
 | limit      | per_page      |
-| from       | from_date     |
-| to         | to_date       |
+| from       | date.from     |
+| to         | date.to       |
 
 ### Precedence Rule (LOCKED)
 

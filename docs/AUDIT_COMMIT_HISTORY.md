@@ -139,6 +139,7 @@ Entries MUST NOT be rewritten or reordered.
 - chore(crypto): enable key rotation via bootstrap wiring
 - docs(architecture): add ADR for crypto key rotation via bootstrap wiring
 - docs(api): isolate legacy endpoints and scope canonical LIST / QUERY contract
+- docs(adr): align input normalization date keys with canonical LIST contract
 
 ---
 
