@@ -590,7 +590,7 @@ function TableComponent(data = tableData, columns = headers, rowNames = rows, pa
             </style>
         </head>
         <body>
-            <img width="150" style="margin-left:calc(50% - 75px)" src="../img/logo.png">
+            <img width="150" style="margin-left:calc(50% - 75px)" src="./assets/images/pdf_logo.png">
             <h2>Exported ${document.querySelector('head title').textContent} Of Data Table </h2>
             ${tableHTML}
         </body>

@@ -147,6 +147,7 @@ Entries MUST NOT be rewritten or reordered.
 - feat(sessions): enable admin_id search (global numeric + column alias)
 - feat(ui): implement modern Tailwind-based dashboard layout
 - feat(sessions): support status in global search using derived logic
+- feat(ui): enhance dashboard layout and add async widgets fetch logic
 
 ---
 
