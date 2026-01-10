@@ -197,7 +197,20 @@ class Container
             dbName: $_ENV['DB_NAME'],
             dbUser: $_ENV['DB_USER'],
             dbPass: $_ENV['DB_PASS'],
-            isRecoveryMode: ($_ENV['RECOVERY_MODE'] ?? 'false') === 'true'
+            isRecoveryMode: ($_ENV['RECOVERY_MODE'] ?? 'false') === 'true',
+            cryptoKeys: (function (): array {
+                if (empty($_ENV['CRYPTO_KEYS'])) {
+                    return [];
+                }
+                /** @var mixed $keys */
+                $keys = json_decode($_ENV['CRYPTO_KEYS'], true, 512, JSON_THROW_ON_ERROR);
+                if (!is_array($keys)) {
+                    throw new \Exception('CRYPTO_KEYS must be a JSON array');
+                }
+                /** @var array<int, array{id: string, key: string}> $keys */
+                return $keys;
+            })(),
+            activeKeyId: $_ENV['CRYPTO_ACTIVE_KEY_ID'] ?? null
         );
 
         // Enforce Timezone
@@ -1027,24 +1040,70 @@ class Container
                 $config = $c->get(AdminConfigDTO::class);
                 assert($config instanceof AdminConfigDTO);
 
-                // Check if key is hex or raw.
-                // Assuming it's hex if it looks like hex, otherwise raw.
-                // Actually, standard is usually hex for ENV keys.
-                // Let's assume hex and try to convert, or raw.
-                // Safest: try hex2bin if ctype_xdigit, else use raw.
-                $rawKey = $config->emailEncryptionKey;
-                if (ctype_xdigit($rawKey)) {
-                    $rawKey = hex2bin($rawKey);
+                $activeKeyId = $config->activeKeyId;
+                if ($activeKeyId === null || $activeKeyId === '') {
+                    throw new \Exception('CRYPTO_ACTIVE_KEY_ID is strictly required.');
                 }
 
-                $keys = [
-                    new CryptoKeyDTO(
-                        'v1',
+                $keys = [];
+
+                if (!empty($config->cryptoKeys)) {
+                    foreach ($config->cryptoKeys as $keyData) {
+                        if ($keyData['id'] === '' || $keyData['key'] === '') {
+                            throw new \Exception('Invalid crypto key structure. "id" and "key" must be non-empty.');
+                        }
+
+                        $rawKey = (string) $keyData['key'];
+                        if (ctype_xdigit($rawKey)) {
+                            $rawKey = hex2bin($rawKey);
+                        }
+
+                        if ($rawKey === false) {
+                            throw new \Exception('Failed to decode hex key for ID: ' . $keyData['id']);
+                        }
+
+                        $status = ($keyData['id'] === $activeKeyId)
+                            ? KeyStatusEnum::ACTIVE
+                            : KeyStatusEnum::INACTIVE;
+
+                        $keys[] = new CryptoKeyDTO(
+                            (string) $keyData['id'],
+                            (string) $rawKey,
+                            $status,
+                            new \DateTimeImmutable()
+                        );
+                    }
+                } else {
+                    // Legacy fallback using EMAIL_ENCRYPTION_KEY but utilizing configured ID
+                    $rawKey = $config->emailEncryptionKey;
+                    if (ctype_xdigit($rawKey)) {
+                        $rawKey = hex2bin($rawKey);
+                    }
+
+                    if ($rawKey === false) {
+                        throw new \Exception('Failed to decode legacy EMAIL_ENCRYPTION_KEY');
+                    }
+
+                    // Enforce using the configured activeKeyId, NEVER a default 'v1'
+                    $keys[] = new CryptoKeyDTO(
+                        $activeKeyId,
                         (string) $rawKey,
                         KeyStatusEnum::ACTIVE,
                         new \DateTimeImmutable()
-                    ),
-                ];
+                    );
+                }
+
+                // Strict Status Enforcement
+                $activeCount = 0;
+                foreach ($keys as $key) {
+                    if ($key->status() === KeyStatusEnum::ACTIVE) {
+                        $activeCount++;
+                    }
+                }
+
+                if ($activeCount !== 1) {
+                    throw new \Exception("Crypto Configuration Error: Exactly ONE active key is required. Found: {$activeCount}");
+                }
 
                 $provider = new InMemoryKeyProvider($keys);
                 $policy = new StrictSingleActiveKeyPolicy();
