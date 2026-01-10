@@ -154,6 +154,7 @@ Entries MUST NOT be rewritten or reordered.
 - test(admins): add canonical LIST / QUERY contract tests
 - feat(notification): add unified delivery queue schema and channel enum
 - feat(notification): add core DTOs for notification intent and delivery
+- feat(notification): add queue writer contract for delivery enqueueing
 
 ---
 
