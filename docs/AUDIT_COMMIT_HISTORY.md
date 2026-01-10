@@ -137,6 +137,7 @@ Entries MUST NOT be rewritten or reordered.
 - docs(api): finalize and lock canonical LIST / QUERY contract
 - fix(input-normalization): remove empty conditional bodies and make precedence explicit
 - chore(crypto): enable key rotation via bootstrap wiring
+- docs(architecture): add ADR for crypto key rotation via bootstrap wiring
 
 ---
 
