@@ -134,6 +134,7 @@ Entries MUST NOT be rewritten or reordered.
 - feat(input-normalization): introduce canonical input normalization middleware
 - fix(validation,list): align error and input shapes with DTO contracts
 - docs(architecture): lock input normalization as canonical boundary and ADR
+- docs(api): finalize and lock canonical LIST / QUERY contract
 
 ---
 
