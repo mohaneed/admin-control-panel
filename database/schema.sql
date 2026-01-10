@@ -295,3 +295,61 @@ CREATE TABLE `email_queue` (
   COLLATE=utf8mb4_unicode_ci
     COMMENT='Encrypted async email delivery queue';
 
+
+CREATE TABLE `notification_delivery_queue` (
+                                               `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+
+    /* ===== Intent / Trace ===== */
+                                               `intent_id` VARCHAR(64) NOT NULL COMMENT 'Notification intent correlation id',
+
+    /* ===== Channel ===== */
+                                               `channel_type` ENUM('email','telegram','sms','push') NOT NULL,
+
+    /* ===== Entity Binding ===== */
+                                               `entity_type` VARCHAR(32) NOT NULL COMMENT 'admin (locked for now)',
+                                               `entity_id` VARCHAR(64) NOT NULL COMMENT 'Admin ID (string-safe)',
+
+    /* ===== Recipient (Encrypted) ===== */
+                                               `recipient_encrypted` VARBINARY(512) NOT NULL,
+                                               `recipient_iv` VARBINARY(16) NOT NULL,
+                                               `recipient_tag` VARBINARY(16) NOT NULL,
+                                               `recipient_key_id` VARCHAR(64) NOT NULL,
+
+    /* ===== Payload (Encrypted rendered output) ===== */
+                                               `payload_encrypted` LONGBLOB NOT NULL,
+                                               `payload_iv` VARBINARY(16) NOT NULL,
+                                               `payload_tag` VARBINARY(16) NOT NULL,
+                                               `payload_key_id` VARCHAR(64) NOT NULL,
+
+    /* ===== Channel Metadata ===== */
+                                               `channel_meta` JSON NOT NULL COMMENT 'Channel-specific delivery options',
+
+    /* ===== Delivery State ===== */
+                                               `status` ENUM('pending','processing','sent','failed','skipped')
+                                                   NOT NULL DEFAULT 'pending',
+                                               `attempts` TINYINT UNSIGNED NOT NULL DEFAULT 0,
+                                               `last_error` VARCHAR(128) NOT NULL DEFAULT '',
+
+    /* ===== Scheduling ===== */
+                                               `scheduled_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                               `sent_at` DATETIME DEFAULT NULL,
+
+    /* ===== Timestamps ===== */
+                                               `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                               `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                                   ON UPDATE CURRENT_TIMESTAMP,
+
+                                               PRIMARY KEY (`id`),
+
+    /* ===== Indexes ===== */
+                                               KEY `idx_queue_status_schedule` (`status`, `scheduled_at`),
+                                               KEY `idx_queue_channel` (`channel_type`),
+                                               KEY `idx_queue_entity` (`entity_type`, `entity_id`),
+                                               KEY `idx_queue_intent` (`intent_id`)
+
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci
+    COMMENT='Unified multi-channel notification delivery queue';
+
+

@@ -152,6 +152,7 @@ Entries MUST NOT be rewritten or reordered.
 - fix(schema): enforce canonical SharedListQuerySchema validation rules
 - test(canonical-sessions): add full contract test suite + docs alignment
 - test(admins): add canonical LIST / QUERY contract tests
+- feat(notification): add unified delivery queue schema and channel enum
 
 ---
 
