@@ -135,6 +135,7 @@ Entries MUST NOT be rewritten or reordered.
 - fix(validation,list): align error and input shapes with DTO contracts
 - docs(architecture): lock input normalization as canonical boundary and ADR
 - docs(api): finalize and lock canonical LIST / QUERY contract
+- fix(input-normalization): remove empty conditional bodies and make precedence explicit
 
 ---
 
