@@ -4,17 +4,23 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
-use App\Domain\DTO\Session\SessionListQueryDTO;
+use App\Domain\List\ListCapabilities;
+use App\Domain\List\ListQueryDTO;
 use App\Domain\Session\Reader\SessionListReaderInterface;
 use App\Domain\Service\AuthorizationService;
+use App\Infrastructure\Query\ListFilterResolver;
+use App\Modules\Validation\Guard\ValidationGuard;
+use App\Modules\Validation\Schemas\SharedListQuerySchema;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 
-class SessionQueryController
+final readonly class SessionQueryController
 {
     public function __construct(
         private SessionListReaderInterface $reader,
-        private AuthorizationService $authorizationService
+        private AuthorizationService $authorizationService,
+        private ValidationGuard $validationGuard,
+        private ListFilterResolver $filterResolver
     ) {
     }
 
@@ -23,38 +29,62 @@ class SessionQueryController
         $adminId = $request->getAttribute('admin_id');
         assert(is_int($adminId));
 
-        $body = $request->getParsedBody();
-        if (!is_array($body)) {
-            $body = [];
-        }
+        /** @var array<string,mixed> $body */
+        $body = (array) $request->getParsedBody();
 
-        $page = isset($body['page']) ? (int)$body['page'] : 1;
-        $perPage = isset($body['per_page']) ? (int)$body['per_page'] : 20;
-        $filters = isset($body['filters']) && is_array($body['filters']) ? $body['filters'] : [];
+        // 1️⃣ Validate canonical list/query request
+        $this->validationGuard->check(new SharedListQuerySchema(), $body);
 
-        // Permission-based Admin Filter Logic
-        if ($this->authorizationService->hasPermission($adminId, 'sessions.view_all')) {
-            // Allowed to filter by any admin
-            $adminIdFilter = isset($filters['admin_id']) && $filters['admin_id'] !== '' ? (int)$filters['admin_id'] : null;
-        } else {
-            // Restricted to self
-            $adminIdFilter = $adminId;
-        }
+        // 2️⃣ Build canonical DTO
+        /** @var array{
+         *   page?: int,
+         *   per_page?: int,
+         *   search?: array{global?: string, columns?: array<string, string>},
+         *   date?: array{from?: string, to?: string}
+         * } $canonicalInput
+         */
+        $canonicalInput = $body;
+        $query = ListQueryDTO::fromArray($canonicalInput);
 
-        // Fetch Current Session Hash
+        // 3️⃣ Authorization scope (HARD RULE)
+        $adminIdFilter = $this->authorizationService->hasPermission($adminId, 'sessions.view_all')
+            ? null
+            : $adminId;
+
+        // 4️⃣ Current session hash
         $cookies = $request->getCookieParams();
-        $token = isset($cookies['auth_token']) ? (string)$cookies['auth_token'] : '';
+        $token = isset($cookies['auth_token']) ? (string) $cookies['auth_token'] : '';
         $currentSessionHash = $token !== '' ? hash('sha256', $token) : '';
 
-        $query = new SessionListQueryDTO(
-            page: $page,
-            per_page: $perPage,
-            filters: $filters,
-            current_session_id: $currentSessionHash,
-            admin_id: $adminIdFilter
+        // 5️⃣ Declare LIST capabilities (ALIASES ONLY)
+        $capabilities = new ListCapabilities(
+            supportsGlobalSearch: true,
+            searchableColumns: [
+                'session_id',
+                'admin_id',
+            ],
+
+            supportsColumnFilters: true,
+            filterableColumns: [
+                'session_id' => 'session_id',
+                'status'     => 'status',
+                'admin_id'   => 'admin_id',
+            ],
+
+            supportsDateFilter: true,
+            dateColumn: 'created_at'
         );
 
-        $result = $this->reader->getSessions($query);
+        // 6️⃣ Resolve allowed filters only
+        $resolvedFilters = $this->filterResolver->resolve($query, $capabilities);
+
+        // 7️⃣ Execute reader (Reader enforces SQL + scope)
+        $result = $this->reader->getSessions(
+            query: $query,
+            filters: $resolvedFilters,
+            adminIdFilter: $adminIdFilter,
+            currentSessionHash: $currentSessionHash
+        );
 
         $response->getBody()->write(json_encode($result, JSON_THROW_ON_ERROR));
         return $response->withHeader('Content-Type', 'application/json');

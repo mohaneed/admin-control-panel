@@ -35,6 +35,79 @@ Common HTTP Status Codes:
 
 ---
 
+## 🔒 Canonical LIST / QUERY Contract (LOCKED)
+
+This section defines the **ONLY VALID contract** for
+POST-based `/api/{resource}/query` endpoints
+implemented via the Canonical Query pipeline
+(DTO + Capabilities + Reader).
+
+It does NOT apply to legacy GET list endpoints
+or helper / selector APIs.
+
+### Canonical Request Model
+```json
+{
+  "page": 1,
+  "per_page": 20,
+  "search": {
+    "global": "text",
+    "columns": {
+      "alias": "value"
+    }
+  },
+  "date": {
+    "from": "YYYY-MM-DD",
+    "to": "YYYY-MM-DD"
+  }
+}
+```
+
+### Mandatory Rules
+*   **page**: Integer, ≥ 1.
+*   **per_page**: Integer, default = 20.
+*   **search** and **date**: OPTIONAL and MUST be omitted if empty.
+*   **search.columns**: Uses ALIASES ONLY.
+*   **No dynamic filters**: Clients must not send arbitrary SQL columns.
+*   **No client-side pagination or filtering**: All filtering happens on the server.
+
+### Explicitly Forbidden (NON-NEGOTIABLE)
+
+The following request or response shapes are **STRICTLY FORBIDDEN**:
+
+- ❌ `filters`
+- ❌ `limit`
+- ❌ `items` / `meta`
+- ❌ `from_date` / `to_date`
+- ❌ client-side pagination
+- ❌ client-side filtering
+- ❌ undocumented or dynamic keys
+
+Any usage of the above is considered a **Canonical Violation**.
+
+### Canonical Pagination Semantics
+*   **LIMIT**: `:per_page`
+*   **OFFSET**: `(:page - 1) * :per_page`
+*   **total**: Filtered total count.
+
+Pagination is **SERVER-SIDE ONLY** and mandatory for Canonical Query endpoints.
+
+Pagination is **SERVER-SIDE ONLY** and applies to **ALL LIST / QUERY endpoints**.
+
+### Canonical Response Envelope
+```json
+{
+  "data": [],
+  "pagination": {
+    "page": 1,
+    "per_page": 20,
+    "total": 0
+  }
+}
+```
+
+---
+
 ## 🔐 Authentication
 
 ### Web Login (Form)
@@ -245,6 +318,17 @@ Retrieves notification history for the authenticated admin.
 **Endpoint:** `GET /admins/{admin_id}/notifications`
 **Auth Required:** Yes (Strictly scoped to `{admin_id}`)
 
+### ⚠️ Legacy / Non-Canonical Endpoint
+
+This endpoint predates the Canonical LIST / QUERY Contract.
+
+- Uses legacy pagination and filtering keys (`limit`, `from_date`, `to_date`)
+- Returns legacy response shape (`items`, `meta`)
+- Does NOT use the Canonical Query pipeline
+
+This endpoint MUST NOT be used as a reference
+for implementing new LIST / QUERY APIs.
+
 **Query Parameters:**
 *   `page` (int, default 1)
 *   `limit` (int, default 20)
@@ -304,6 +388,33 @@ Simple status check.
 
 ---
 
+## 👥 Admins
+
+### List Admins (Query)
+Retrieves a paginated list of admins using the Canonical LIST / QUERY Contract.
+
+**Endpoint:** `POST /api/admins/query`
+**Permission:** `admins.list`
+
+This endpoint strictly uses the **Canonical LIST / QUERY Contract (LOCKED)**
+defined in this document.
+
+**Request Model:**
+> Uses **Canonical LIST / QUERY Contract**.
+
+**Allowed Search Aliases:**
+*   `id` (Integer)
+*   `email` (String)
+
+**Notes:**
+*   **Email Search:** Uses Blind Index (exact match or prefix depending on backend implementation).
+*   **Decryption:** Email addresses are decrypted only in the response.
+
+**Response Model:**
+> Uses **Canonical Response Envelope**.
+
+---
+
 ## 📅 Sessions
 
 ### Sessions Page (Web)
@@ -316,48 +427,36 @@ Renders the sessions management UI with filtering and bulk actions.
 Server-side pagination and filtering for sessions list.
 
 **Endpoint:** `POST /api/sessions/query`
-**Auth Required:** Yes (Permission `sessions.list`)
+**Permission:** `sessions.list`
+
+This endpoint strictly uses the **Canonical LIST / QUERY Contract (LOCKED)**
+defined in this document.
 
 **Request Model:**
-```json
-{
-  "page": 1,
-  "per_page": 20,
-  "filters": {
-    "session_id": "optional_id_fragment",
-    "admin_id": 123, // Optional (Requires sessions.view_all)
-    "status": "active|revoked|expired|all"
-  }
-}
-```
+> Uses **Canonical LIST / QUERY Contract**.
 
-**Response Model:**
-```json
-{
-  "data": [
-    {
-      "session_id": "abc123hash...",
-      "admin_id": 123,
-      "admin_identifier": "admin@example.com",
-      "created_at": "2024-01-01 10:00:00",
-      "expires_at": "2024-01-02 10:00:00",
-      "status": "active",
-      "is_current": true
-    }
-  ],
-  "pagination": {
-    "page": 1,
-    "per_page": 20,
-    "total": 50
-  }
-}
-```
+**Allowed Search Aliases:**
+*   `session_id`
+*   `status` (active | revoked | expired)
 
 **Notes:**
-*   Pagination is mandatory.
-*   Status is derived on backend.
-*   `admin_id` filter is permission-gated (ignored if user lacks `sessions.view_all`).
-*   `is_current` indicates the session executing the request.
+*   **Date Filter:** Applies to `created_at`.
+*   **Admin Scope:** Enforced server-side.
+
+**Response Model:**
+> Uses **Canonical Response Envelope**.
+> Data items contain:
+```json
+{
+  "session_id": "abc123hash...",
+  "admin_id": 123,
+  "admin_identifier": "admin@example.com",
+  "created_at": "2024-01-01 10:00:00",
+  "expires_at": "2024-01-02 10:00:00",
+  "status": "active",
+  "is_current": true
+}
+```
 
 ### Revoke Session (Single)
 Revokes a specific session by ID (Hash).
@@ -390,11 +489,17 @@ Revokes multiple sessions in a single transaction.
 *   **Success (200):** JSON confirmation.
 *   **Error (400):** If current session is included in the list.
 
-### List Admins (Filter Helper)
+### Select Admins (Helper / Non-Canonical)
 Retrieves a list of admins for UI filtering.
 
 **Endpoint:** `GET /api/admins/list`
 **Auth Required:** Yes (Permission `sessions.view_all`)
+
+This endpoint is a lightweight selector helper and is
+explicitly **EXEMPT** from the Canonical LIST / QUERY Contract.
+
+It is NOT paginated and MUST NOT be treated
+as a standard LIST or QUERY API.
 
 **Response:**
 *   **Success (200):**

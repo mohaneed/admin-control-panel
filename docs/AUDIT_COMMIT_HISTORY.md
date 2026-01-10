@@ -115,6 +115,36 @@ Entries MUST NOT be rewritten or reordered.
 - fix(validation): map DTO semantic validation errors to explicit HTTP 4xx responses
 - fix(http): align client and resource error semantics across controllers
 - feat(validation): introduce explicit ValidationGuard with fail-closed enforcement
+- feat(validation): phase1 foundation (schemas, rules, guard)
+- chore(ui): add protected Twig sandbox page for UI experimentation
+- refactor(pagination): introduce PaginationDTO and unify list pagination across admin and session lists
+- docs(canonical): lock PaginationDTO usage in canonical pagination contract
+- docs(security): formalize explicit non-hierarchical permission model
+- feat(email): add canonical email payload DTOs and twig templates
+- feat(email): add canonical email_queue schema and document email messaging system
+- feat(crypto): introduce canonical crypto facade, context registry, and lock crypto usage
+- fix(auth): harden login input validation and remove legacy LoginSchema
+- docs(validation): analyze schema contracts and inconsistencies
+- docs(canonical): lock pagination, search, and optional date filtering contract for LIST APIs
+- docs(canonical): lock pagination, filtering, and reusable LIST infrastructure
+- feat(list): introduce canonical reusable LIST infrastructure
+- refactor(list-query): replace legacy admin/session lists with canonical query pipeline
+- fix(query): enforce canonical list validation, filtering, and session status handling
+- fix(admin-query): remove invalid LIMIT backticks causing SQL syntax error
+- feat(input-normalization): introduce canonical input normalization middleware
+- fix(validation,list): align error and input shapes with DTO contracts
+- docs(architecture): lock input normalization as canonical boundary and ADR
+- docs(api): finalize and lock canonical LIST / QUERY contract
+- fix(input-normalization): remove empty conditional bodies and make precedence explicit
+- chore(crypto): enable key rotation via bootstrap wiring
+- docs(architecture): add ADR for crypto key rotation via bootstrap wiring
+- docs(api): isolate legacy endpoints and scope canonical LIST / QUERY contract
+- docs(adr): align input normalization date keys with canonical LIST contract
+- docs(context): clarify scope of canonical LIST / QUERY pagination contract
+- fix(input-normalization): map legacy date keys into canonical nested date shape
+- docs(canonical): align ListQueryDTO namespace with implemented domain structure
+- docs(tests): document AS-IS state of canonical vs legacy list/query patterns
+- feat(sessions): enable admin_id search (global numeric + column alias)
 
 ---
 
