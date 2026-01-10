@@ -150,6 +150,7 @@ Entries MUST NOT be rewritten or reordered.
 - feat(ui): enhance dashboard layout and add async widgets fetch logic
 - docs(ui): move front-end markdown docs into docs/ui structure
 - fix(schema): enforce canonical SharedListQuerySchema validation rules
+- test(canonical-sessions): add full contract test suite + docs alignment
 
 ---
 

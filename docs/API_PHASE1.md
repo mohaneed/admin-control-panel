@@ -61,40 +61,106 @@ or helper / selector APIs.
     "to": "YYYY-MM-DD"
   }
 }
+````
+
+### Field Semantics (Authoritative)
+
+| Field      | Type         | Required | Notes                                   |
+|------------|--------------|----------|-----------------------------------------|
+| `page`     | Integer (≥1) | Yes      | Controls server-side OFFSET calculation |
+| `per_page` | Integer      | Yes      | Default = 20. Controls LIMIT            |
+| `search`   | Object       | Optional | See **Search Contract** below           |
+| `date`     | Object       | Optional | See **Date Contract** below             |
+
+---
+
+### 🔍 Search Contract (Canonical & Locked)
+
+`search` **MUST be omitted entirely** if the client has no filters.
+
+If present, **it must satisfy** all of the following:
+
+✔️ `search.global` **OR** `search.columns` **MUST exist** (one or both)
+✔️ `search.global` MUST be a **string** if present
+✔️ `search.columns` MUST be an **object of aliases → string filters** if present
+
+❌ Empty search blocks are forbidden:
+
+```json
+{ "search": {} } // ❌ INVALID (no global or columns)
 ```
 
+Valid examples:
+
+```json
+{ "search": { "global": "alice" } }              // ✔️ global-only
+{ "search": { "columns": { "email": "alice" } } } // ✔️ columns-only
+{ "search": { "global": "alice", "columns": { "email": "alice" } } } // ✔️ both
+```
+
+`search.columns` **uses ALIASES ONLY** — never raw DB column names.
+
+---
+
+### 📅 Date Contract (Canonical & Locked)
+
+`date` **MUST be omitted entirely** if empty.
+
+If present, it MUST include both:
+
+| Key    | Type              | Required |
+|--------|-------------------|----------|
+| `from` | Date (YYYY-MM-DD) | Yes      |
+| `to`   | Date (YYYY-MM-DD) | Yes      |
+
+❌ Partial date blocks are forbidden:
+
+```json
+{ "date": { "from": "2024-01-01" } } // ❌ INVALID (missing `to`)
+```
+
+---
+
 ### Mandatory Rules
-*   **page**: Integer, ≥ 1.
-*   **per_page**: Integer, default = 20.
-*   **search** and **date**: OPTIONAL and MUST be omitted if empty.
-*   **search.columns**: Uses ALIASES ONLY.
-*   **No dynamic filters**: Clients must not send arbitrary SQL columns.
-*   **No client-side pagination or filtering**: All filtering happens on the server.
+
+* `page`: Integer ≥ 1.
+* `per_page`: Integer, default = 20.
+* `search` and `date`: **OPTIONAL**, but **MUST satisfy their contracts if present**.
+* `search.columns`: **ALIASES ONLY**.
+* **No dynamic filters**: clients may not send arbitrary SQL columns.
+* **Server-side only** filtering & pagination.
+
+---
 
 ### Explicitly Forbidden (NON-NEGOTIABLE)
 
 The following request or response shapes are **STRICTLY FORBIDDEN**:
 
-- ❌ `filters`
-- ❌ `limit`
-- ❌ `items` / `meta`
-- ❌ `from_date` / `to_date`
-- ❌ client-side pagination
-- ❌ client-side filtering
-- ❌ undocumented or dynamic keys
+* ❌ `filters`
+* ❌ `limit`
+* ❌ `items` / `meta`
+* ❌ `from_date` / `to_date`
+* ❌ client-side pagination
+* ❌ client-side filtering
+* ❌ undocumented or dynamic keys
 
-Any usage of the above is considered a **Canonical Violation**.
+Any usage of the above is a **Canonical Violation**.
+
+---
 
 ### Canonical Pagination Semantics
-*   **LIMIT**: `:per_page`
-*   **OFFSET**: `(:page - 1) * :per_page`
-*   **total**: Filtered total count.
 
-Pagination is **SERVER-SIDE ONLY** and mandatory for Canonical Query endpoints.
+* **LIMIT**  = `:per_page`
+* **OFFSET** = `(:page - 1) * :per_page`
+* **total**  = filtered total count
 
-Pagination is **SERVER-SIDE ONLY** and applies to **ALL LIST / QUERY endpoints**.
+Pagination is **SERVER-SIDE ONLY** and applies to **ALL**
+Canonical LIST / QUERY endpoints.
+
+---
 
 ### Canonical Response Envelope
+
 ```json
 {
   "data": [],

@@ -138,50 +138,22 @@ and enforced across **POST-based Canonical LIST / QUERY APIs** only.
 
 ---
 
-### 0. Pagination & Filtering — Architectural Decision (LOCKED)
+### 0. Architectural Decision (LOCKED)
 
-**Status:** LOCKED / MANDATORY
+**Status:** LOCKED / MANDATORY  
 **Applies to:** All LIST APIs (Sessions, Admins, Roles, and future resources)
 
 The Admin Control Panel enforces a **single canonical model** for:
 
 * Pagination
-* Searching
-* Column filtering
+* Searching (global & column)
 * Optional date range filtering
 
 These concerns are **architectural**, not UI conveniences.
 
 ---
 
-### 1. Canonical Pagination DTO
-
-Pagination MUST be represented using the shared Domain DTO:
-
-```
-App\Domain\DTO\Common\PaginationDTO
-```
-
-This DTO is the **only allowed representation** of pagination data
-inside the application.
-
-#### Hard Rules
-
-* Pagination MUST NOT be represented as anonymous arrays
-* All LIST responses MUST expose pagination via `PaginationDTO`
-* `PaginationDTO`:
-
-  * Lives in the Domain layer
-  * Implements `JsonSerializable`
-  * Defines an explicit array shape in `jsonSerialize()`
-* Infrastructure Readers (PDO / Infra layer) are responsible for constructing `PaginationDTO`
-* Controllers MUST NOT assemble or mutate pagination structures
-
-Any deviation from this contract is considered a **Canonical Violation**.
-
----
-
-### 2. Canonical LIST Request Contract
+### 1. Canonical LIST Request Model (Shape)
 
 #### Request (JSON)
 
@@ -189,126 +161,105 @@ Any deviation from this contract is considered a **Canonical Violation**.
 {
   "page": 1,
   "per_page": 20,
-
   "search": {
-    "global": "",
-    "columns": {}
+    "global": "text",
+    "columns": {
+      "alias": "value"
+    }
   },
-
   "date": {
     "from": "YYYY-MM-DD",
     "to": "YYYY-MM-DD"
   }
 }
-```
+````
+
+**Field Semantics:**
+
+| Field      | Type   | Required | Notes               |
+|------------|--------|----------|---------------------|
+| `page`     | int    | yes      | ≥ 1                 |
+| `per_page` | int    | yes      | default = 20        |
+| `search`   | object | optional | See Search Contract |
+| `date`     | object | optional | See Date Contract   |
 
 ---
 
-### 3. Search Semantics (LOCKED)
+### 2. Canonical Search Contract (LOCKED)
 
-#### 3.1 Global Search
+`search` is **optional** and MUST be **omitted** entirely when unused.
 
-* `search.global` represents a **free-text search**
-* Applied as **OR** across a predefined whitelist of searchable columns
-* Backend defines the searchable columns explicitly
-* UI MUST NOT decide which columns are searchable
+If present, it MUST satisfy ALL of the following:
 
-**Rules:**
+✔️ MUST contain `global` **OR** `columns` (one or both)
+✔️ `global` MUST be a **string** if present
+✔️ `columns` MUST be an **object: alias → string** if present
+✔️ `columns` MUST use **ALIASES ONLY** (never DB columns)
 
-* Global search is OPTIONAL
-* Empty or missing value MUST be ignored
-* Search is **server-side only**
-
----
-
-#### 3.2 Column-Based Filters
-
-* `search.columns` is a key-value map
-* Each key represents a **specific column filter**
-* Applied as **AND** conditions
-
-**Rules:**
-
-* Only documented columns are allowed
-* Unknown columns MUST be ignored or rejected
-* Empty values MUST be ignored
-* UI MUST NOT send undocumented filters
-
----
-
-### 4. Date Range Filtering (OPTIONAL / CAPABILITY-BASED)
-
-#### 4.1 Purpose
-
-Some LIST resources are **time-based** (e.g. sessions, audit logs),
-while others are not.
-
-Date filtering is therefore **optional** and **capability-driven**.
-
----
-
-#### 4.2 Request Shape
+❌ Empty search blocks are forbidden:
 
 ```json
-"date": {
-  "from": "YYYY-MM-DD",
-  "to": "YYYY-MM-DD"
-}
+{ "search": {} } // INVALID (missing both global and columns)
 ```
 
-**Rules:**
+**Valid examples:**
 
-* `date` object is OPTIONAL
-* `from` and `to` are OPTIONAL and independent
-* One-sided ranges are allowed
-* Backend is responsible for validation and normalization
+```json
+{ "search": { "global": "alice" } }
+{ "search": { "columns": { "email": "alice" } } }
+{ "search": { "global": "alice", "columns": { "email": "alice" } } }
+```
+
+**Semantics:**
+
+* `search.global`: free-text search, applied as **OR** across an allowed whitelist
+* `search.columns`: exact filters, applied as **AND**
 
 ---
 
-#### 4.3 Backend Capability Declaration (MANDATORY)
+### 3. Date Range Contract (LOCKED)
 
-Each LIST API MUST explicitly declare whether it supports date filtering.
+`date` is **optional** and MUST be **omitted** entirely when unused.
 
-**Backend-owned decision only.**
+If present, it MUST include BOTH keys:
 
-Example (conceptual):
+| Key    | Type              | Required |
+|--------|-------------------|----------|
+| `from` | Date (YYYY-MM-DD) | yes      |
+| `to`   | Date (YYYY-MM-DD) | yes      |
 
+❌ Partial date ranges are forbidden:
+
+```json
+{ "date": { "from": "2024-01-01" } } // INVALID
 ```
-supportsDateFilter = true | false
-dateColumn = "created_at"
-```
 
-**Rules:**
+**Notes:**
 
-* UI MUST NOT assume date support
-* UI MUST NOT send `date` filters unless explicitly supported
-* Date filtering applies to **ONE predefined column only**
-* Dynamic date columns are FORBIDDEN
+* Date filtering applies to **one backend-defined column**
+* Dynamic date columns are **FORBIDDEN**
+* UI MUST NOT assume date support unless declared
 
 ---
 
-#### 4.4 Unsupported Date Filters
+### 4. Pagination Semantics (LOCKED)
 
-If a LIST API does NOT support date filtering:
+Pagination is **server-side only**:
 
-* `date` input MUST be:
+* **LIMIT** = `:per_page`
+* **OFFSET** = `(:page - 1) * :per_page`
 
-  * Ignored silently
-    **OR**
-  * Rejected with validation error (`date_filter_not_supported`)
-
-The chosen behavior MUST be consistent per API.
+Clients MUST NOT implement client-side pagination.
 
 ---
 
-### 5. Canonical LIST Response Contract
+### 5. Canonical Response Envelope (LOCKED)
 
 #### Response (JSON)
 
 ```json
 {
   "data": [ ... ],
-
   "pagination": {
     "page": 1,
     "per_page": 20,
@@ -318,220 +269,70 @@ The chosen behavior MUST be consistent per API.
 }
 ```
 
----
+Where:
 
-### 6. Pagination Fields Semantics
-
-| Field      | Meaning                                |
-|------------|----------------------------------------|
-| `page`     | Current page number                    |
-| `per_page` | Rows per page                          |
-| `total`    | Total rows in the dataset (no filters) |
-| `filtered` | Rows count after ALL filters applied   |
-
-**Important:**
-
-* `filtered` reflects:
-
-  * Global search
-  * Column filters
-  * Date range filters (if supported)
+| Field      | Meaning                               |
+|------------|---------------------------------------|
+| `page`     | current page                          |
+| `per_page` | rows per page                         |
+| `total`    | total rows before filtering           |
+| `filtered` | rows after global/column/date filters |
 
 ---
 
-### 7. Hard Prohibitions (SECURITY & CONSISTENCY)
+### 6. Explicit Prohibitions (NON-NEGOTIABLE)
 
-❌ Client-side pagination
-❌ Client-side searching
-❌ UI-defined searchable columns
-❌ Dynamic SQL column injection
-❌ Multiple date columns per LIST
-❌ Implicit date filtering
+The following are **strictly forbidden** on Canonical LIST APIs:
+
+❌ `filters`  
+❌ `limit`  
+❌ `items` / `meta`  
+❌ `from_date` / `to_date`  
+❌ client-side pagination  
+❌ client-side filtering  
+❌ UI-defined searchable columns  
+❌ dynamic SQL column injection  
+❌ multiple date columns  
+❌ implicit filtering  
+❌ undocumented request keys
+
+Any usage of the above is a **Canonical Violation**.
 
 ---
 
-### 8. Enforcement Summary
+### 7. Enforcement Model
 
-* LIST APIs MUST follow this contract
-* UI reflects backend-declared capabilities
+* Backend declares capabilities (global search / columns / date)
+* UI MUST reflect backend-declared capabilities only
 * Backend owns all filtering logic
-* Any deviation is a **Canonical Violation**
-
----
-
-## ✅ Status
-
-**Pagination, Search, and Date Filtering Contract: LOCKED**
+* Repositories must apply filters explicitly
+* DTOs define **shape only**, not SQL
 
 ---
 
 ## 🧩 F.1) Reusable LIST Infrastructure (Canonical)
 
-**Status:** ARCHITECTURE-LOCKED
-**Applies to:** All current and future LIST APIs
+**Status:** ARCHITECTURE-LOCKED**
 
-To avoid duplication, inconsistency, and security drift, the Admin Control Panel
-defines a **reusable, capability-driven infrastructure** for all LIST queries.
-
-Reuse is achieved through **shared contracts and orchestration**,
-**NOT** through generic SQL builders or magic helpers.
-
----
-
-### 1. Core Principle
-
-> **LIST behavior is reusable by contract, not by copy-paste.**
-
-All LIST APIs MUST share:
-
-* The same request structure
-* The same pagination model
-* The same filtering semantics
-
-While allowing:
-
-* Per-resource capabilities
-* Per-resource column control
-* Per-resource SQL ownership
-
----
-
-### 2. Canonical LIST Query DTO (MANDATORY)
-
-All LIST APIs MUST accept a unified request DTO representing list intent.
-
-**Conceptual DTO:**
+See reference implementation in:
 
 ```
-App\Domain\List\ListQueryDTO
+SessionQueryController
+SessionListReaderInterface
+ListFilterResolver
+ListQueryDTO
+PaginationDTO
 ```
 
-**Responsibilities:**
+Principles:
 
-* Page number
-* Page size
-* Global search term
-* Column-based filters
-* Optional date range
+* Reuse is **contract-based**, not copy-paste
+* Repositories remain **simple & explicit**
+* No generic SQL builders
+* No dynamic WHERE generation
+* No dynamic column reflection
 
-**Non-Responsibilities (STRICT):**
-❌ No SQL logic
-❌ No column knowledge
-❌ No table awareness
-❌ No authorization logic
-
-This DTO defines **shape only**, not behavior.
-
----
-
-### 3. Capability-Driven Design (MANDATORY)
-
-Each LIST resource MUST explicitly declare its supported capabilities.
-
-Capabilities are **backend-owned** and **resource-specific**.
-
-Conceptual capability set:
-
-* Supports global search (yes/no)
-* Supported searchable columns (explicit whitelist)
-* Supports column-based filters (yes/no)
-* Supports date filtering (yes/no)
-* Date column name (single, predefined)
-
-**Rules:**
-
-* UI MUST NOT assume capabilities
-* UI reflects backend-declared capabilities only
-* Capabilities MUST NOT be inferred dynamically
-* Capabilities MUST be documented per resource
-
----
-
-### 4. Centralized Filter Resolution (REUSABLE CORE)
-
-Filtering logic MUST be centralized in a reusable resolver.
-
-**Conceptual component:**
-
-```
-App\Infrastructure\Query\ListFilterResolver
-```
-
-**Responsibilities:**
-
-* Validate incoming filters against declared capabilities
-* Normalize search input
-* Ignore or reject unsupported filters
-* Produce a **structured, SQL-agnostic filter model**
-
-**Non-Responsibilities (STRICT):**
-❌ No SQL generation
-❌ No PDO usage
-❌ No table or column names
-❌ No pagination math
-
-The resolver prepares **safe intent**, not queries.
-
----
-
-### 5. Repository Responsibility (STRICT)
-
-Repositories remain **fully responsible** for SQL execution.
-
-Each Repository:
-
-* Knows exactly ONE table
-* Knows its allowed columns
-* Applies resolved filters explicitly
-* Constructs `PaginationDTO`
-* Executes queries using PDO only
-
-**Prohibited:**
-❌ Generic repositories
-❌ Shared SQL builders
-❌ Cross-table list handlers
-
----
-
-### 6. Reference Implementation Rule
-
-At least ONE LIST API MUST act as a **reference implementation**
-for this infrastructure.
-
-Current reference:
-
-* `Sessions` LIST API
-
-All future LIST APIs MUST:
-
-* Follow the same structure
-* Reuse the same DTOs and resolver
-* Differ ONLY in declared capabilities and repository logic
-
----
-
-### 7. Hard Prohibitions
-
-❌ Copy-pasting list logic across controllers
-❌ UI-driven filtering logic
-❌ Generic SQL helpers
-❌ Dynamic column selection
-❌ Implicit capabilities
-
----
-
-### 8. Enforcement Summary
-
-* LIST reuse is **structural**, not procedural
-* Capabilities are explicit and backend-owned
-* Repositories remain simple and predictable
-* Any deviation is a **Canonical Violation**
-
----
-
-## ✅ Status
-
-**Reusable LIST Infrastructure: LOCKED**
+Any deviation is a **Canonical Violation**.
 
 ---
 
