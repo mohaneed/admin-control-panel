@@ -641,6 +641,44 @@ The system defines several modules that cross application boundaries and affect 
 
 ---
 
+### **0. Input Normalization (CANONICAL BOUNDARY)**
+
+**Status:** ARCHITECTURE-LOCKED / MANDATORY  
+**Applies to:** All Web & API requests  
+**Authoritative Decision:** `docs/adr/ADR-001-input-normalization.md`
+
+The Admin Control Panel enforces a **mandatory input normalization boundary**
+that executes **before any validation, guards, or authorization logic**.
+
+Input Normalization is responsible for:
+
+* Canonical key mapping
+* Legacy compatibility
+* Precedence resolution
+
+And is **strictly forbidden** from performing:
+
+❌ Validation  
+❌ Sanitization  
+❌ Business logic  
+❌ Default value injection
+
+All downstream layers (Validation, DTOs, Controllers, Services)
+MUST operate on **canonical input only**.
+
+By definition:
+
+* Validation schemas MUST NOT handle legacy keys
+* Controllers MUST NOT compensate for non-canonical input
+* DTOs MUST be constructed from normalized input only
+
+Any deviation is considered an **Architecture Violation**.
+
+> Full rationale, scope, and non-goals are defined in  
+> `docs/adr/ADR-001-input-normalization.md`
+
+---
+
 ### **1. Input Validation (NEW)**
 
 **Status:** ARCHITECTURE-APPROVED / ACTIVE  

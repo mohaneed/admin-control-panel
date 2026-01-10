@@ -133,6 +133,7 @@ Entries MUST NOT be rewritten or reordered.
 - fix(admin-query): remove invalid LIMIT backticks causing SQL syntax error
 - feat(input-normalization): introduce canonical input normalization middleware
 - fix(validation,list): align error and input shapes with DTO contracts
+- docs(architecture): lock input normalization as canonical boundary and ADR
 
 ---
 
