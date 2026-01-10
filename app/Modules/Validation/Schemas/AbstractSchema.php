@@ -47,7 +47,7 @@ abstract class AbstractSchema implements SchemaInterface
 //            } catch (ValidationException) {  // Catch parent exception for broader coverage without changing behavior
 //            }
             } catch (NestedValidationException | ValidationException) {
-                $errors[$field] = $errorCode;
+                $errors[$field] = [$errorCode];
             }
         }
 

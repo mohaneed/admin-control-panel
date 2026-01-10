@@ -36,7 +36,15 @@ final readonly class SessionQueryController
         $this->validationGuard->check(new SharedListQuerySchema(), $body);
 
         // 2️⃣ Build canonical DTO
-        $query = ListQueryDTO::fromArray($body);
+        /** @var array{
+         *   page?: int,
+         *   per_page?: int,
+         *   search?: array{global?: string, columns?: array<string, string>},
+         *   date?: array{from?: string, to?: string}
+         * } $canonicalInput
+         */
+        $canonicalInput = $body;
+        $query = ListQueryDTO::fromArray($canonicalInput);
 
         // 3️⃣ Authorization scope (HARD RULE)
         $adminIdFilter = $this->authorizationService->hasPermission($adminId, 'sessions.view_all')

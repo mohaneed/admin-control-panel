@@ -132,6 +132,7 @@ Entries MUST NOT be rewritten or reordered.
 - fix(query): enforce canonical list validation, filtering, and session status handling
 - fix(admin-query): remove invalid LIMIT backticks causing SQL syntax error
 - feat(input-normalization): introduce canonical input normalization middleware
+- fix(validation,list): align error and input shapes with DTO contracts
 
 ---
 
