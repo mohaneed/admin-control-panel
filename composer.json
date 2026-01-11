@@ -10,6 +10,7 @@
     "ext-pdo": "*",
     "ext-readline": "*",
     "ext-redis": "*",
+    "maatify/psr-logger": "^1.0",
     "php-di/php-di": "^7.0",
     "phpmailer/phpmailer": "^7.0",
     "pragmarx/google2fa": "^8.0",

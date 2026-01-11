@@ -98,21 +98,170 @@ This rule is **SECURITY-CRITICAL** and MUST NOT be bypassed, inferred, or altere
 
 ## 🪵 D) Logging Policy (HARD)
 
-The system enforces a strict separation between "What Changed" (Audit) and "What Happened" (Security Event).
+The system enforces a **strict, non-negotiable separation** between different
+types of logging, based on **authority, security impact, and transactional guarantees**.
 
-### 1. Audit Logs (`audit_logs`)
-*   **Purpose**: Authoritative history of Authority/Security mutations.
-*   **Interface**: `AuthoritativeSecurityAuditWriterInterface`.
-*   **Schema**: Actor (Admin ID), Target Type (String), Target ID, Action, Changes (JSON Diff).
-*   **Constraint**: Transactional integrity required for these events.
-
-### 2. Security Events (`security_events`)
-*   **Purpose**: Signals, alerts, and high-volume tracking (Login, Failed Access, Logout).
-*   **Interface**: `SecurityEventLoggerInterface`.
-*   **Schema**: Event Name, Admin ID, Severity (Info/Warning/Error), Payload (Context).
-*   **Behavior**: Best-effort logging (does not block unless critical).
+Logging is **NOT a single concern** in this system.
 
 ---
+
+### D.1 Audit Logs (`audit_logs`) — Authoritative (LOCKED)
+
+* **Purpose**: Authoritative history of authority, permission, and security-impacting mutations.
+* **Nature**: Source of truth.
+* **Interface**: `AuthoritativeSecurityAuditWriterInterface`
+* **Storage**: Database only (`audit_logs` table).
+* **Schema**:
+  * Actor (admin_id)
+  * Target Type (string)
+  * Target ID
+  * Action
+  * Changes (JSON diff)
+
+**Hard Requirements:**
+
+* Audit logs MUST be written:
+  * Inside the same `PDO` transaction as the mutation
+  * Fail-closed (any failure aborts the transaction)
+* Audit logs MUST NOT:
+  * Use filesystem logging
+  * Use PSR-3
+  * Be asynchronous
+  * Be subject to retention cleanup
+
+Any deviation is a **SECURITY VIOLATION**.
+
+---
+
+### D.2 Security Events (`security_events`) — Observational
+
+* **Purpose**: High-volume security signals and activity tracking.
+  * Login
+  * Logout
+  * Failed authentication
+  * Step-up failures
+* **Interface**: `SecurityEventLoggerInterface`
+* **Storage**: Database only (`security_events` table).
+* **Severity**: Info / Warning / Error
+* **Behavior**:
+  * Best-effort
+  * MUST NOT block user-facing flows except for CRITICAL failures
+
+**Rules:**
+
+* Security events are **not authoritative**
+* They are **queryable and aggregatable**
+* They MUST NOT replace or duplicate audit logs
+* Filesystem logging is **FORBIDDEN** for security events
+
+---
+
+### D.3 Application & Infrastructure Logs (PSR-3) — Non-Authoritative
+
+The system allows the use of a **PSR-3 compliant logger** strictly for
+**non-authoritative, non-transactional diagnostics**.
+
+#### Approved Implementation
+
+* `maatify/psr-logger` MAY be used as the concrete implementation of:
+  * `Psr\Log\LoggerInterface`
+* Binding MUST occur **only in the Dependency Injection Container**.
+
+**Approved Container Binding Example:**
+```php
+LoggerInterface::class => function () {
+    return \Maatify\PsrLogger\LoggerFactory::create('slim/app');
+},
+````
+
+#### Explicitly ALLOWED
+
+* Application debug logs
+* Infrastructure and integration failures (SMTP, Redis, IO, queues)
+* Development diagnostics
+* Operational telemetry
+
+#### Explicitly FORBIDDEN
+
+PSR-3 logging MUST NOT be used for:
+
+* Audit logging
+* Security events
+* Authority or governance actions
+* Domain services
+* Transaction-bound operations
+* Any logic requiring consistency with database state
+
+PSR-3 logs are **diagnostic only** and MUST NEVER be treated as a source of truth.
+
+---
+
+### D.4 Trait Usage Policy for PSR-3 Loggers (STRICT)
+
+The following traits provided by `maatify/psr-logger` are governed by strict rules.
+
+#### ❌ Forbidden in Application Runtime
+
+The following traits MUST NOT be used inside:
+
+* Domain layer
+* Application services
+* Security-related code
+* Audit-related code
+
+**Forbidden Traits:**
+
+* `Maatify\PsrLogger\Traits\LoggerContextTrait`
+* `Maatify\PsrLogger\Traits\StaticLoggerTrait`
+
+**Reason:**
+
+* Bypass Dependency Injection
+* Introduce hidden dependencies
+* Break testability
+* Violate transactional and authority boundaries
+
+---
+
+#### ✅ Narrow Exception (Infrastructure Only)
+
+`StaticLoggerTrait` MAY be used **only** in:
+
+* Bootstrap scripts
+* CLI tools
+* Cron jobs
+* Maintenance utilities
+
+Where Dependency Injection is not available.
+
+This exception **does NOT apply** to runtime application logic.
+
+---
+
+### D.5 Log Retention & Cleanup (PSR-3 Only)
+
+* Log rotation and cleanup (e.g. `LogCleaner`) apply **ONLY** to:
+
+  * Application & infrastructure logs
+* Retention policies MUST NOT be applied to:
+
+  * `audit_logs`
+  * `security_events`
+
+Any retention or deletion of authoritative logs is forbidden without
+explicit legal and architectural approval.
+
+---
+
+### D.6 Summary (Non-Negotiable)
+
+| Log Type         | Storage    | Transactional | PSR-3 |
+|------------------|------------|---------------|-------|
+| Audit Logs       | Database   | YES (HARD)    | ❌ NO  |
+| Security Events  | Database   | NO            | ❌ NO  |
+| App / Infra Logs | Filesystem | NO            | ✅ YES |
+
+This separation is **ARCHITECTURE-LOCKED**.
 
 ## 🚦 E) Routing & Middleware Contract
 

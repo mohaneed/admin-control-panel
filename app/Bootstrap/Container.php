@@ -153,6 +153,7 @@ use App\Modules\Validation\Guard\ValidationGuard;
 use App\Modules\Validation\Validator\RespectValidator;
 use DI\ContainerBuilder;
 use Exception;
+use Maatify\PsrLogger\LoggerFactory;
 use PDO;
 use Psr\Container\ContainerInterface;
 use Psr\Log\LoggerInterface;
@@ -533,35 +534,7 @@ class Container
                 );
             },
             LoggerInterface::class => function () {
-                return new class extends AbstractLogger {
-                    public function log(
-                        mixed $level,
-                        string|\Stringable $message,
-                        array $context = []
-                    ): void {
-                        $levelStr = is_scalar($level) || $level instanceof \Stringable
-                            ? (string) $level
-                            : 'mixed';
-
-                        $jsonContext = $context !== []
-                            ? json_encode(
-                                $context,
-                                JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
-                            )
-                            : '';
-
-                        if ($jsonContext === false) {
-                            $jsonContext = '{"error":"json_encode_failed"}';
-                        }
-
-                        error_log(sprintf(
-                            '[%s] %s %s',
-                            strtoupper($levelStr),
-                            (string) $message,
-                            $jsonContext
-                        ));
-                    }
-                };
+                return LoggerFactory::create('slim/app');
             },
             TelemetryAuditLoggerInterface::class => function (ContainerInterface $c) {
                 $pdo = $c->get(PDO::class);
