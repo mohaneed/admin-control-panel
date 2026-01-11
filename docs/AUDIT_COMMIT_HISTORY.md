@@ -175,6 +175,8 @@ Entries MUST NOT be rewritten or reordered.
 - test(email,notification): enforce notification-to-email responsibility boundaries
 - schema(adr): finalize independent delivery queues and remove notification delivery
 - docs(architecture): lock crypto contract and add bounded refactor plan
+- docs(canonical): lock crypto context registry and enforce refactor guardrails
+
 
 ---
 

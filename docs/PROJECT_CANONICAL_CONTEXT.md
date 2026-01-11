@@ -899,20 +899,24 @@ is **STRICTLY FORBIDDEN** outside the Crypto module.
 All reversible encryption operations **MUST** use a predefined,
 versioned crypto context.
 
-Allowed contexts are defined exclusively in:
+##### Canonical Context Source (NON-NEGOTIABLE)
 
-```
-
-App\Domain\Security\CryptoContext
-
-```
+`App\Domain\Security\CryptoContext` is the **single and exclusive source of truth**
+for all cryptographic context identifiers.
 
 Rules:
 
-* Contexts MUST be versioned (`:vX`)
-* Contexts MUST NOT be user-defined
-* Contexts MUST be static and documented
-* Dynamic or runtime contexts are forbidden
+* All encryption contexts MUST be referenced via constants from `CryptoContext`
+* Literal or inline context strings are STRICTLY FORBIDDEN
+* No layer (Controller, Service, Repository, Worker) may define or modify contexts
+* Adding or changing a context REQUIRES:
+  - Explicit architectural decision
+  - Documentation update
+  - Security review
+* Crypto Application Services MUST reference contexts ONLY via `CryptoContext`
+
+Any usage of a string-based context outside `CryptoContext`
+is considered a **SECURITY AND ARCHITECTURE VIOLATION**.
 
 ---
 
@@ -985,6 +989,34 @@ Any deviation from this matrix is a **Canonical Violation**.
 This contract is **SECURITY-CRITICAL** and MUST NOT be altered
 without an explicit architectural decision and documentation update.
 
+#### Crypto Application Services (MANDATORY ABSTRACTION)
+
+To prevent crypto leakage and uncontrolled refactoring, the system defines
+**Crypto Application Services** as the ONLY allowed entry point for
+application-level cryptographic intent.
+
+These services act as **thin adapters** between domain intent and the
+CryptoFacade.
+
+Rules:
+
+* Crypto Application Services:
+  - MAY depend on `CryptoFacadeInterface`
+  - MAY reference `CryptoContext`
+  - MUST NOT contain business logic
+  - MUST NOT expose crypto primitives
+* Controllers, Domain Services, and Repositories:
+  - MUST NOT call CryptoFacade directly
+  - MUST NOT reference CryptoContext directly
+
+Typical responsibilities include:
+* Identifier encryption / decryption
+* Blind index derivation
+* Payload encryption for queues or storage
+* Any violation MUST be treated as a refactor blocker
+
+This layer is REQUIRED before any cryptographic refactor work.
+
 > ⚠️ **IMPORTANT — DESCRIPTIVE ONLY**
 >
 > The following section documents the **current implementation (as-built)**.
@@ -992,6 +1024,22 @@ without an explicit architectural decision and documentation update.
 > to justify refactoring, redesign, or deviation from the rules defined above.
 
 ---
+
+> 🔒 Refactor Guardrail
+>
+> Any refactor involving cryptography or database access MUST comply with
+> the constraints defined in:
+>
+> `REFACTOR PLAN — CRYPTO & DATABASE CENTRALIZATION`
+>
+> Refactor work that bypasses Crypto Application Services or CryptoContext
+> is INVALID and MUST be rejected.
+
+This guardrail applies to:
+- Human contributors
+- AI executors (Jules, Codex, Claude)
+- Emergency hotfixes
+
 
 ## 🔐 Cryptography — Canonical Implementation (As-Built)
 
