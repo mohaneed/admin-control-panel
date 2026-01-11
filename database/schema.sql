@@ -1,25 +1,41 @@
 SET FOREIGN_KEY_CHECKS=0;
 
-DROP TABLE IF EXISTS system_ownership;
+-- Dependent / leaf tables
 DROP TABLE IF EXISTS admin_direct_permissions;
-DROP TABLE IF EXISTS step_up_grants;
-DROP TABLE IF EXISTS audit_outbox;
-DROP TABLE IF EXISTS verification_codes;
-DROP TABLE IF EXISTS admin_notification_channels;
-DROP TABLE IF EXISTS admin_notification_preferences;
-DROP TABLE IF EXISTS admin_notifications;
-DROP TABLE IF EXISTS failed_notifications;
-DROP TABLE IF EXISTS security_events;
-DROP TABLE IF EXISTS audit_logs;
 DROP TABLE IF EXISTS role_permissions;
 DROP TABLE IF EXISTS admin_roles;
-DROP TABLE IF EXISTS permissions;
-DROP TABLE IF EXISTS roles;
+DROP TABLE IF EXISTS step_up_grants;
 DROP TABLE IF EXISTS admin_sessions;
 DROP TABLE IF EXISTS admin_passwords;
 DROP TABLE IF EXISTS admin_emails;
-DROP TABLE IF EXISTS admins;
+DROP TABLE IF EXISTS admin_remember_me_tokens;
+
+DROP TABLE IF EXISTS verification_codes;
+DROP TABLE IF EXISTS admin_notification_preferences;
+DROP TABLE IF EXISTS admin_notification_channels;
+DROP TABLE IF EXISTS admin_notifications;
+DROP TABLE IF EXISTS failed_notifications;
+
+DROP TABLE IF EXISTS audit_outbox;
+DROP TABLE IF EXISTS audit_logs;
+DROP TABLE IF EXISTS security_events;
+
+-- Delivery queues (independent, no FK but semantically leaf)
 DROP TABLE IF EXISTS email_queue;
+DROP TABLE IF EXISTS telegram_queue;
+
+-- Auth / RBAC roots
+DROP TABLE IF EXISTS permissions;
+DROP TABLE IF EXISTS roles;
+
+-- System-level ownership
+DROP TABLE IF EXISTS system_ownership;
+
+-- Root entity
+DROP TABLE IF EXISTS admins;
+
+-- System state (independent)
+DROP TABLE IF EXISTS system_state;
 
 SET FOREIGN_KEY_CHECKS=1;
 
@@ -296,60 +312,56 @@ CREATE TABLE `email_queue` (
     COMMENT='Encrypted async email delivery queue';
 
 
-CREATE TABLE `notification_delivery_queue` (
-                                               `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+CREATE TABLE `telegram_queue` (
+                                  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 
-    /* ===== Intent / Trace ===== */
-                                               `intent_id` VARCHAR(64) NOT NULL COMMENT 'Notification intent correlation id',
-
-    /* ===== Channel ===== */
-                                               `channel_type` ENUM('email','telegram','sms','push') NOT NULL,
+    /* ===== Correlation ===== */
+                                  `source` VARCHAR(32) NOT NULL COMMENT 'notification | system | manual',
+                                  `source_ref` VARCHAR(64) DEFAULT NULL COMMENT 'intent_id or external ref',
 
     /* ===== Entity Binding ===== */
-                                               `entity_type` VARCHAR(32) NOT NULL COMMENT 'admin (locked for now)',
-                                               `entity_id` VARCHAR(64) NOT NULL COMMENT 'Admin ID (string-safe)',
+                                  `entity_type` VARCHAR(32) NOT NULL COMMENT 'admin | system',
+                                  `entity_id` VARCHAR(64) NOT NULL COMMENT 'Admin ID (string-safe)',
 
-    /* ===== Recipient (Encrypted) ===== */
-                                               `recipient_encrypted` VARBINARY(512) NOT NULL,
-                                               `recipient_iv` VARBINARY(16) NOT NULL,
-                                               `recipient_tag` VARBINARY(16) NOT NULL,
-                                               `recipient_key_id` VARCHAR(64) NOT NULL,
+    /* ===== Telegram Recipient (Encrypted) ===== */
+                                  `chat_id_encrypted` VARBINARY(255) NOT NULL,
+                                  `chat_id_iv` VARBINARY(16) NOT NULL,
+                                  `chat_id_tag` VARBINARY(16) NOT NULL,
+                                  `chat_id_key_id` VARCHAR(64) NOT NULL,
 
-    /* ===== Payload (Encrypted rendered output) ===== */
-                                               `payload_encrypted` LONGBLOB NOT NULL,
-                                               `payload_iv` VARBINARY(16) NOT NULL,
-                                               `payload_tag` VARBINARY(16) NOT NULL,
-                                               `payload_key_id` VARCHAR(64) NOT NULL,
+    /* ===== Message Payload (Encrypted) ===== */
+                                  `message_encrypted` LONGBLOB NOT NULL,
+                                  `message_iv` VARBINARY(16) NOT NULL,
+                                  `message_tag` VARBINARY(16) NOT NULL,
+                                  `message_key_id` VARCHAR(64) NOT NULL,
 
-    /* ===== Channel Metadata ===== */
-                                               `channel_meta` JSON NOT NULL COMMENT 'Channel-specific delivery options',
+    /* ===== Telegram Options ===== */
+                                  `parse_mode` ENUM('HTML','MarkdownV2','Plain') NOT NULL DEFAULT 'HTML',
+                                  `disable_preview` BOOLEAN NOT NULL DEFAULT 1,
 
     /* ===== Delivery State ===== */
-                                               `status` ENUM('pending','processing','sent','failed','skipped')
-                                                   NOT NULL DEFAULT 'pending',
-                                               `attempts` TINYINT UNSIGNED NOT NULL DEFAULT 0,
-                                               `last_error` VARCHAR(128) NOT NULL DEFAULT '',
+                                  `status` ENUM('pending','processing','sent','failed','skipped')
+                                      NOT NULL DEFAULT 'pending',
+                                  `attempts` TINYINT UNSIGNED NOT NULL DEFAULT 0,
+                                  `last_error` VARCHAR(128) NOT NULL DEFAULT '',
 
     /* ===== Scheduling ===== */
-                                               `scheduled_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                               `sent_at` DATETIME DEFAULT NULL,
+                                  `scheduled_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                  `sent_at` DATETIME DEFAULT NULL,
 
     /* ===== Timestamps ===== */
-                                               `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                               `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-                                                   ON UPDATE CURRENT_TIMESTAMP,
+                                  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                  `updated_at` TIMESTAMP NOT NULL
+                                      DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-                                               PRIMARY KEY (`id`),
+                                  PRIMARY KEY (`id`),
 
-    /* ===== Indexes ===== */
-                                               KEY `idx_queue_status_schedule` (`status`, `scheduled_at`),
-                                               KEY `idx_queue_channel` (`channel_type`),
-                                               KEY `idx_queue_entity` (`entity_type`, `entity_id`),
-                                               KEY `idx_queue_intent` (`intent_id`)
-
+                                  KEY `idx_tg_status_schedule` (`status`, `scheduled_at`),
+                                  KEY `idx_tg_entity` (`entity_type`, `entity_id`),
+                                  KEY `idx_tg_source` (`source`, `source_ref`)
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_unicode_ci
-    COMMENT='Unified multi-channel notification delivery queue';
+    COMMENT='Encrypted Telegram async delivery queue';
 
 

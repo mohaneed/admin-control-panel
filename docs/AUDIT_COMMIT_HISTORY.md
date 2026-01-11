@@ -173,6 +173,7 @@ Entries MUST NOT be rewritten or reordered.
 - feat(email): activate async email pipeline with queue, crypto, worker, and renderer
 - fix(email): finalize canonical DI wiring for Email worker transport
 - test(email,notification): enforce notification-to-email responsibility boundaries
+- schema(adr): finalize independent delivery queues and remove notification delivery
 
 ---
 
