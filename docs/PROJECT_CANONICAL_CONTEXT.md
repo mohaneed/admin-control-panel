@@ -516,8 +516,179 @@ Any deviation is a **Canonical Violation**.
 * **Transactions**: Services manage transactions, Repositories accept `PDO` in constructor (shared connection).
 
 ---
+## 🧪 I) Testing & Verification Model (CANONICAL)
 
-## 🏆 I) Canonical Templates
+**Status:** ARCHITECTURE-LOCKED / MANDATORY  
+**Applies to:** All API endpoints, security-sensitive flows, and database-backed operations
+
+Testing in this project is **not optional** and **not advisory**.  
+It is a **core architectural mechanism** used to verify correctness, security, and fail-closed behavior of the system.
+
+Any implementation that violates the rules in this section is considered an
+**ARCHITECTURE VIOLATION**, regardless of functional correctness.
+
+---
+
+### I.1 Testing Scope & Classification
+
+The system recognizes the following test categories:
+
+| Test Type            | Purpose                                    | Mandatory     |
+|----------------------|--------------------------------------------|---------------|
+| Unit Tests           | Pure logic (DTOs, helpers, pure functions) | Optional      |
+| Integration Tests    | Services + Repositories + DB               | Required      |
+| Endpoint / E2E Tests | Full HTTP pipeline verification            | **MANDATORY** |
+
+**Endpoint / Integration Tests are the authoritative verification mechanism**  
+for system behavior.
+
+Unit tests alone are **insufficient** for validating this system.
+
+---
+
+### I.2 Endpoint / Integration Tests (MANDATORY)
+
+Every API endpoint that:
+
+* Mutates state
+* Reads protected data
+* Enforces authorization
+* Triggers audit or security events
+* Participates in authentication or step-up flows
+
+**MUST** have at least one corresponding **Endpoint Test**.
+
+Endpoint Tests MUST:
+
+* Execute via the **HTTP layer**
+* Pass through the **full middleware pipeline**
+* Use real request objects, headers, cookies, and payloads
+* Exercise real controllers, services, repositories, and guards
+
+❌ Calling services or repositories directly is **FORBIDDEN**  
+❌ Bypassing middleware is **FORBIDDEN**
+
+---
+
+### I.3 Database Usage Rules for Tests
+
+Endpoint and Integration Tests MUST interact with a **real database engine**.
+
+Allowed options:
+
+* Dedicated test database (e.g. `admin_control_panel_test`)
+* Ephemeral database instance
+* SQLite (only if behavior matches production semantics)
+
+❌ Using development or production databases is **STRICTLY FORBIDDEN**
+
+Tests MUST NOT rely on mocks or fakes for:
+
+* Database access
+* Authorization
+* Auditing
+* Security events
+
+---
+
+### I.4 Isolation & Transaction Boundaries
+
+Each test MUST be fully isolated.
+
+Isolation MUST be achieved by one of the following mechanisms:
+
+#### Option A — Transaction Rollback (Preferred)
+
+* Begin a transaction before the test
+* Execute the endpoint
+* Assert results
+* Roll back the transaction
+
+#### Option B — Database Reset
+
+* Truncate affected tables
+* Reload schema or fixtures
+* Ensure a clean state before each test
+
+**Hard Rule:**
+
+> No test may leave persistent side effects that affect another test.
+
+Test execution order MUST NOT matter.
+
+---
+
+### I.5 Security & Fail-Closed Verification
+
+Endpoint Tests MUST explicitly verify **fail-closed behavior**.
+
+This includes asserting that:
+
+* Unauthorized access is denied
+* Missing permissions are rejected
+* Invalid state transitions are blocked
+* Audit failures abort the transaction
+* Security invariants are enforced
+
+If a failure occurs during:
+
+* Authorization
+* Audit logging
+* Security validation
+
+The operation MUST fail completely.
+
+A test that only asserts “success paths” is considered **INCOMPLETE**.
+
+---
+
+### I.6 Explicit Prohibitions (NON-NEGOTIABLE)
+
+The following are **STRICTLY FORBIDDEN** in tests:
+
+❌ Mocking authorization decisions  
+❌ Mocking audit writers  
+❌ Mocking security event loggers  
+❌ Skipping middleware  
+❌ Direct service invocation instead of HTTP  
+❌ Sharing database state across tests  
+❌ Tests that depend on execution order  
+❌ Tests without cleanup or rollback
+
+Violations invalidate the test regardless of assertions.
+
+---
+
+### I.7 Definition of “Done” (Testing)
+
+An endpoint or feature is considered **DONE** only when:
+
+* Endpoint / Integration Tests exist
+* Tests pass against a real database
+* Fail-closed behavior is verified
+* Authorization and audit rules are exercised
+* No test leaves residual state
+
+UI implementation MUST NOT proceed
+until the corresponding endpoint tests are complete and passing.
+
+---
+
+### I.8 Architectural Authority
+
+This section is **CANONICAL**.
+
+Any change to testing strategy, scope, or enforcement requires:
+
+* Explicit architectural decision
+* Documentation update
+* Reviewer approval
+
+Ad-hoc or convenience-based testing approaches are **NOT ACCEPTABLE**.
+
+---
+
+## 🏆 J) Canonical Templates
 
 **Reference**: `docs/ADMIN_PANEL_CANONICAL_TEMPLATE.md`
 
@@ -539,7 +710,7 @@ Any deviation is a **Canonical Violation**.
 
 ---
 
-## 📝 J) Task Playbook
+## 📝 K) Task Playbook
 
 ### 1. Add New Admin Panel Page (UI)
 
@@ -569,7 +740,7 @@ Any deviation is a **Canonical Violation**.
 
 ---
 
-## ⚔️ K) CONFLICTS
+## ⚔️ L) CONFLICTS
 
 * **Web vs Ui Controllers**: `app/Http/Controllers/Web/` contains legacy logic. `app/Http/Controllers/Ui/` is the new standard.
 
@@ -578,14 +749,14 @@ Any deviation is a **Canonical Violation**.
 
 ---
 
-## ❓ L) OPEN QUESTIONS
+## ❓ M) OPEN QUESTIONS
 
 * **Asset Management**: How are frontend assets (JS/CSS) specifically for `sessions.twig` managed? The file content is not visible, but `SessionListController` exists. It implies inline scripts or a pattern not yet fully documented.
 * **Legacy Data Loading**: Do the legacy "Web" controllers handle data loading inside the controller (server-side)? Verification needed before refactoring.
 
 ---
 
-## 🧩 M) Cross-Cutting Concerns (Canonical)
+## 🧩 N) Cross-Cutting Concerns (Canonical)
 
 The system defines several modules that cross application boundaries and affect multiple layers.
 

@@ -176,6 +176,7 @@ Entries MUST NOT be rewritten or reordered.
 - schema(adr): finalize independent delivery queues and remove notification delivery
 - docs(architecture): lock crypto contract and add bounded refactor plan
 - docs(canonical): lock crypto context registry and enforce refactor guardrails
+- docs(testing): formalize canonical testing & verification model
 
 
 ---
