@@ -170,6 +170,7 @@ Entries MUST NOT be rewritten or reordered.
 - feat(email): implement email queue worker with crypto-safe decryption and smtp transport
 - docs(canonical): lock Email as cross-domain infrastructure (not notification-owned)
 - docs(env): add comments for PSR-3 logger configuration (path, retention, timezone)
+- feat(email): activate async email pipeline with queue, crypto, worker, and renderer
 
 ---
 
