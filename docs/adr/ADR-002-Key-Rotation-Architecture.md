@@ -107,11 +107,11 @@ This invariant is enforced by the Key Rotation module.
 
 ## Key Status Semantics
 
-| Status | Encrypt | Decrypt | Notes |
-|------|--------|---------|------|
-| active | ✔️ | ✔️ | Used for new encryption |
-| inactive | ❌ | ✔️ | Old data only |
-| retired | ❌ | ✔️ | Grace period / legacy data |
+| Status   | Encrypt | Decrypt | Notes                      |
+|----------|---------|---------|----------------------------|
+| active   | ✔️      | ✔️      | Used for new encryption    |
+| inactive | ❌       | ✔️      | Old data only              |
+| retired  | ❌       | ✔️      | Grace period / legacy data |
 
 Encryption MUST NEVER use inactive or retired keys.
 

@@ -24,6 +24,7 @@ by a newer ADR.
 | ADR-007 | Notification Module Scope & History Coupling   | ACCEPTED          | Notification System  |
 | ADR-008 | Email Delivery as Independent Channel Queue    | ACCEPTED / LOCKED | Messaging / Delivery |
 | ADR-009 | Telegram Delivery as Independent Channel Queue | ACCEPTED / LOCKED | Messaging / Delivery |
+| ADR-010 | Crypto Key Rotation Wiring & Bootstrap         | ACCEPTED / LOCKED | Crypto Integration   |
 ---
 
 ## 🧭 How to Use ADRs

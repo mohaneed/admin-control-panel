@@ -179,6 +179,7 @@ Entries MUST NOT be rewritten or reordered.
 - docs(testing): formalize canonical testing & verification model
 - chore: remove unused legacy notification delivery layer
 - docs(index): add canonical documentation index for humans and AI
+- docs(adr): legitimize crypto key rotation wiring and fix canonical references
 
 
 ---

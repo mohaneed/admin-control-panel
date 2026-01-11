@@ -766,7 +766,7 @@ The system defines several modules that cross application boundaries and affect 
 
 **Status:** ARCHITECTURE-LOCKED / MANDATORY  
 **Applies to:** All Web & API requests  
-**Authoritative Decision:** `docs/adr/ADR-001-input-normalization.md`
+**Authoritative Decision:** `docs/adr/ADR-006-input-normalization.md`
 
 The Admin Control Panel enforces a **mandatory input normalization boundary**
 that executes **before any validation, guards, or authorization logic**.
@@ -796,7 +796,7 @@ By definition:
 Any deviation is considered an **Architecture Violation**.
 
 > Full rationale, scope, and non-goals are defined in  
-> `docs/adr/ADR-001-input-normalization.md`
+> `docs/adr/ADR-006-input-normalization.md`
 
 ---
 

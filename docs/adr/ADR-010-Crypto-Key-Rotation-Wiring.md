@@ -1,4 +1,4 @@
-# ADR-012: Crypto Key Rotation via Bootstrap Wiring
+# ADR-010: Crypto Key Rotation via Bootstrap Wiring
 
 **Status:** ACCEPTED
 **Date:** 2026-01-09

@@ -1,4 +1,4 @@
-# ADR-001: Canonical Input Normalization Boundary
+# ADR-006: Canonical Input Normalization Boundary
 
 ## Status
 **ACCEPTED — LOCKED**
