@@ -123,6 +123,8 @@ use App\Infrastructure\Repository\SecurityEventRepository;
 use App\Infrastructure\Security\WebClientInfoProvider;
 use App\Infrastructure\Service\Google2faTotpService;
 use App\Infrastructure\UX\AdminActivityMapper;
+use App\Modules\ActivityLog\Contracts\ActivityLogWriterInterface;
+use App\Modules\ActivityLog\Drivers\MySQL\MySQLActivityLogWriter;
 use App\Modules\Crypto\KeyRotation\KeyRotationService;
 use App\Modules\Crypto\KeyRotation\Providers\InMemoryKeyProvider;
 use App\Modules\Crypto\KeyRotation\Policy\StrictSingleActiveKeyPolicy;
@@ -531,6 +533,12 @@ class Container
             },
             LoggerInterface::class => function () {
                 return LoggerFactory::create('slim/app');
+            },
+            ActivityLogWriterInterface::class => function (ContainerInterface $c) {
+                $pdo = $c->get(PDO::class);
+                assert($pdo instanceof PDO);
+
+                return new MySQLActivityLogWriter($pdo);
             },
             TelemetryAuditLoggerInterface::class => function (ContainerInterface $c) {
                 $pdo = $c->get(PDO::class);

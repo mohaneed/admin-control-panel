@@ -19,6 +19,7 @@ DROP TABLE IF EXISTS failed_notifications;
 DROP TABLE IF EXISTS audit_outbox;
 DROP TABLE IF EXISTS audit_logs;
 DROP TABLE IF EXISTS security_events;
+DROP TABLE IF EXISTS activity_logs;
 
 -- Delivery queues (independent, no FK but semantically leaf)
 DROP TABLE IF EXISTS email_queue;
@@ -363,5 +364,44 @@ CREATE TABLE `telegram_queue` (
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_unicode_ci
     COMMENT='Encrypted Telegram async delivery queue';
+
+
+CREATE TABLE activity_logs (
+                               id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+
+    -- Actor info
+                               actor_type VARCHAR(32) NOT NULL,
+                               actor_id BIGINT UNSIGNED NULL,
+
+    -- Action semantics
+                               action VARCHAR(128) NOT NULL,
+
+    -- Target entity
+                               entity_type VARCHAR(64) NULL,
+                               entity_id BIGINT UNSIGNED NULL,
+
+    -- Extra context
+                               metadata JSON NULL,
+
+    -- Request context
+                               ip_address VARCHAR(45) NULL,
+                               user_agent VARCHAR(255) NULL,
+
+    -- Correlation / tracing
+                               request_id VARCHAR(64) NULL,
+
+    -- Timestamp
+                               occurred_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+
+    -- Indexes
+                               INDEX idx_actor (actor_type, actor_id),
+                               INDEX idx_action (action),
+                               INDEX idx_entity (entity_type, entity_id),
+                               INDEX idx_occurred_at (occurred_at),
+                               INDEX idx_request (request_id)
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci;
+
 
 

@@ -185,6 +185,7 @@ Entries MUST NOT be rewritten or reordered.
 - docs(api): resync API_PHASE1 with discovered AS-IS routes
 - docs(audit): document unused and orphaned artifacts inventory
 - docs(logging): formalize activity logs and refine logging policy boundaries
+- feat(activity-log): complete activity logging write pipeline
 
 ---
 
