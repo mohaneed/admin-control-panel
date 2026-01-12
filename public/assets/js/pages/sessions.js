@@ -1,37 +1,90 @@
+/**
+ * Sessions Page - Final Version
+ * Controls ALL params structure and handles session-specific logic
+ */
+
 document.addEventListener('DOMContentLoaded', () => {
-    // Defines
-    const headers = [
-        "user ID",
-        "session ID",
-        "is current",
-        "Status",
-        "expires at"
-    ];
-    const rows = [
-        "admin_id",
-        "session_id",
-        "is_current",
-        "status",
-        "expires_at"
-    ];
+    const headers = ["User ID", "Session ID", "Status", "Expires At"];
+    const rows = ["admin_id", "session_id", "status", "expires_at"];
 
     const searchForm = document.getElementById('sessions-search-form');
     const resetBtn = document.getElementById('btn-reset');
     const selectedCount = document.getElementById('selected-count');
-    
-    
-    // Inputs
     const inputSessionId = document.getElementById('filter-session-id');
     const inputAdminId = document.getElementById('filter-admin-id');
     const inputStatus = document.getElementById('filter-status');
+    const btnBulkRevoke = document.getElementById('btn-bulk-revoke');
 
-    // Init
+    let selectedSessions = new Set();
+
+    // ========================================================================
+    // Custom Renderers - Define ONCE at the top
+    // ========================================================================
+
+    /**
+     * Custom renderer for status column
+     */
+    const statusRenderer = (value, row) => {
+        const isCurrent = row.is_current === true || row.is_current === 1 || row.is_current === "1";
+        const status = value?.toLowerCase();
+
+        let statusText = value || 'Unknown';
+        let statusClass = "bg-gray-600";
+
+        if (isCurrent && status === 'active') {
+            statusText = "Current";
+            statusClass = "bg-green-600"; // 🟢
+        } else if (status === 'active') {
+            statusText = "Active";
+            statusClass = "bg-blue-600"; // 🔵
+        } else if (status === 'expired') {
+            statusText = "Expired";
+            statusClass = "bg-orange-600"; // 🟠
+        } else if (status === 'revoked') {
+            statusText = "Revoked";
+            statusClass = "bg-red-600"; // 🔴
+        }
+
+        return `<span class="${statusClass} text-white px-3 py-1 rounded-lg text-xs font-medium uppercase tracking-wide">${statusText}</span>`;
+    };
+
+    /**
+     * Custom renderer for session_id column
+     * Clickable to copy to clipboard
+     */
+    const sessionIdRenderer = (value, row) => {
+        if (!value) return '<span class="text-gray-400 italic">N/A</span>';
+
+        const displayValue = value.length > 16 ? value.substring(0, 16) + '...' : value;
+
+        return `
+            <span class="font-mono text-xs text-blue-600 hover:text-blue-800 cursor-pointer underline decoration-dotted relative session-id-copy" 
+                  data-session-id="${value}"
+                  title="Click to copy: ${value}">
+                ${displayValue}
+            </span>
+        `;
+    };
+
+    // ========================================================================
+    // Initialize
+    // ========================================================================
+
     init();
 
     function init() {
-        loadSessions(); // Initial load
+        loadSessions();
         setupEventListeners();
+        setupTableEventListeners();
     }
+
+    function setupTableFiltersAfterRender() {
+        setTimeout(() => setupTableFilters(), 100);
+    }
+
+    // ========================================================================
+    // Event Listeners
+    // ========================================================================
 
     function setupEventListeners() {
         if (searchForm) {
@@ -43,106 +96,386 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (resetBtn) {
             resetBtn.addEventListener('click', () => {
-                // Clear inputs
-                if(inputSessionId) inputSessionId.value = '';
-                if(inputAdminId) inputAdminId.value = '';
-                if(inputStatus) inputStatus.value = '';
-                
+                if (inputSessionId) inputSessionId.value = '';
+                if (inputAdminId) inputAdminId.value = '';
+                if (inputStatus) inputStatus.value = '';
                 loadSessions();
             });
         }
-        
-        const btnBulkRevoke = document.getElementById('btn-bulk-revoke');
+
         if (btnBulkRevoke) {
             btnBulkRevoke.addEventListener('click', revokeAllSessionsSelected);
         }
+
+        // ✅ Setup click handler for session ID copy
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('session-id-copy')) {
+                const sessionId = e.target.getAttribute('data-session-id');
+                copyToClipboard(sessionId, e.target);
+            }
+        });
     }
 
-    // Callback for selection change
+    function setupTableEventListeners() {
+        document.addEventListener('tableAction', async (e) => {
+            const { action, value, currentParams } = e.detail;
+            console.log("📨 Table event:", action, value);
+
+            let newParams = JSON.parse(JSON.stringify(currentParams));
+
+            switch(action) {
+                case 'pageChange':
+                    newParams.page = value;
+                    break;
+
+                case 'perPageChange':
+                    newParams.per_page = value;
+                    newParams.page = 1;
+                    break;
+            }
+
+            // Clean empty values
+            if (newParams.search) {
+                if (!newParams.search.global || !newParams.search.global.trim()) {
+                    delete newParams.search.global;
+                }
+
+                if (newParams.search.columns) {
+                    Object.keys(newParams.search.columns).forEach(key => {
+                        if (!newParams.search.columns[key] || !newParams.search.columns[key].toString().trim()) {
+                            delete newParams.search.columns[key];
+                        }
+                    });
+
+                    if (Object.keys(newParams.search.columns).length === 0) {
+                        delete newParams.search.columns;
+                    }
+                }
+
+                if (Object.keys(newParams.search).length === 0) {
+                    delete newParams.search;
+                }
+            }
+
+            await loadSessionsWithParams(newParams);
+        });
+    }
+
+    // ========================================================================
+    // Selection & Revoke
+    // ========================================================================
+
     function updateSelectionCount(selectedItems) {
         const count = selectedItems.size;
-        console.log("Selected count:", selectedItems);
-        // Update count badge
-        if(selectedCount) selectedCount.textContent = count;
-        
-        // Update button state (enabled if > 0)
-        const btnBulkRevoke = document.getElementById('btn-bulk-revoke');
+        console.log("📊 Selected:", count);
+
+        if (selectedCount) selectedCount.textContent = count;
+
         if (btnBulkRevoke) {
             btnBulkRevoke.disabled = count === 0;
-            if (count > 0) {
-               btnBulkRevoke.classList.remove('cursor-not-allowed');
-            } else {
-               btnBulkRevoke.classList.add('cursor-not-allowed');
-            }
+            // ✅ Same size as other buttons: text-sm px-3 py-1
+            btnBulkRevoke.className = count > 0
+                ? "text-sm px-3 py-1 bg-red-600 text-white hover:bg-red-700 transition-all duration-300 border border-red-600 rounded-2xl"
+                : "text-sm px-3 py-1 bg-gray-300 text-gray-500 transition-all duration-300 border border-gray-300 rounded-2xl cursor-not-allowed opacity-50";
         }
     }
-    let selectedSessions = new Set();
+
     function revokeAllSessionsSelected() {
         const items = getSelectedItems();
+
+        if (items.length === 0) {
+            showAlert('w', 'Select at least one session');
+            return;
+        }
+
+        if (!confirm(`Revoke ${items.length} session(s)?`)) return;
+
         selectedSessions = new Set(items);
-        items.forEach(sessionId => revokeSession(sessionId));
+        Promise.all(items.map(id => revokeSession(id)))
+            .then(() => {
+                clearSelectedItems();
+                loadSessions();
+            });
     }
-    
+
     async function revokeSession(sessionId) {
-        console.log("Revoking session:", sessionId);
         try {
-            const response = await fetch('/api/sessions/' + sessionId, {
+            const response = await fetch(`/api/sessions/${sessionId}`, {
                 method: 'DELETE',
-                 headers: {
-                    'Content-Type': 'application/json'
-                }
+                headers: { 'Content-Type': 'application/json' }
             });
 
-            console.log("Session:", response);
             if (response.ok) {
-                // Remove from local tracking set
-                if(selectedSessions instanceof Set) {
-                    selectedSessions.delete(sessionId);
-                }
-                
-                loadSessions(); // Reload table
-                showAlert('Session revoked successfully.');
+                selectedSessions.delete(sessionId);
+                showAlert('s', 'Session revoked');
+                return true;
             } else {
-                try {
-                    const data = await response.json();
-                    console.log("Data:", data);
-                    showAlert('w', (data.error || 'Unknown error'));
-                } catch (e) {
-                    console.error(e);
-                    showAlert('Failed to revoke session');
-                }
+                const data = await response.json();
+                showAlert('w', data.error || 'Failed');
+                return false;
             }
         } catch (e) {
-            console.error(e);
-            showAlert('d','Error revoking session');
+            showAlert('d', 'Network error');
+            return false;
         }
     }
 
-    async function loadSessions() {
-        // ... (existing filter logic)
-        const filters = {};
-        
-        if (inputSessionId && inputSessionId.value.trim()) {
-            filters.session_id = inputSessionId.value.trim();
-        }
-        if (inputAdminId && inputAdminId.value.trim()) {
-            filters.admin_id = inputAdminId.value.trim();
-        }
-        if (inputStatus && inputStatus.value) {
-            filters.status = inputStatus.value;
+    // ========================================================================
+    // Table Filters (Custom UI)
+    // ========================================================================
+
+    function setupTableFilters() {
+        const filterContainer = document.getElementById('table-custom-filters');
+        if (!filterContainer) return;
+
+        filterContainer.innerHTML = `
+            <div class="flex gap-4 items-center flex-wrap">
+                <div class="w-64">
+                    <input id="sessions-global-search" 
+                        class="w-full border rounded-lg px-3 py-1 text-sm" 
+                        placeholder="Search sessions..." />
+                </div>
+                
+                <div class="flex gap-2">
+                    <span data-status="all" class="cursor-pointer text-sm px-2 py-1 rounded-lg active bg-blue-600 text-white hover:bg-blue-400">All</span>
+                    <span data-status="active" class="cursor-pointer text-sm px-2 py-1 rounded-lg hover:bg-blue-400 hover:text-white">Active</span>
+                    <span data-status="expired" class="cursor-pointer text-sm px-2 py-1 rounded-lg hover:bg-blue-400 hover:text-white">Expired</span>
+                    <span data-status="revoked" class="cursor-pointer text-sm px-2 py-1 rounded-lg hover:bg-blue-400 hover:text-white">Revoked</span>
+                </div>
+            </div>
+        `;
+
+        const globalSearch = document.getElementById('sessions-global-search');
+        if (globalSearch) {
+            globalSearch.addEventListener('keyup', (e) => {
+                const value = e.target.value.trim();
+                clearTimeout(globalSearch.searchTimeout);
+                globalSearch.searchTimeout = setTimeout(() => {
+                    handleGlobalSearch(value);
+                }, 500);
+            });
         }
 
+        const statusBtns = filterContainer.querySelectorAll('[data-status]');
+        statusBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                statusBtns.forEach(b => b.classList.remove('active', 'bg-blue-600', 'text-white'));
+                btn.classList.add('active', 'bg-blue-600', 'text-white');
+                const status = btn.getAttribute('data-status');
+                handleStatusFilter(status);
+            });
+        });
+    }
+
+    function handleGlobalSearch(searchValue) {
+        console.log("🔍 Global search:", searchValue);
+        const params = buildParams(1, 10);
+
+        if (searchValue && searchValue.trim()) {
+            if (!params.search) {
+                params.search = { columns: {} };
+            }
+            params.search.global = searchValue.trim();
+        }
+
+        loadSessionsWithParams(params);
+    }
+
+    function handleStatusFilter(status) {
+        console.log("🔘 Status filter:", status);
+        const params = buildParams(1, 10);
+
+        if (status !== 'all') {
+            if (!params.search) {
+                params.search = { columns: {} };
+            }
+            params.search.columns.status = status;
+        }
+
+        loadSessionsWithParams(params);
+    }
+
+    // ========================================================================
+    // Params Builder
+    // ========================================================================
+
+    function buildParams(pageNumber = 1, perPage = 10) {
         const params = {
-            limit: 10,
-            per_page: 10, 
-            filters: filters
+            page: pageNumber,
+            per_page: perPage
         };
 
-        // Call global createTable from data_table.js
+        const searchColumns = {};
+
+        if (inputSessionId && inputSessionId.value.trim()) {
+            searchColumns.session_id = inputSessionId.value.trim();
+        }
+        if (inputAdminId && inputAdminId.value.trim()) {
+            searchColumns.admin_id = inputAdminId.value.trim();
+        }
+        if (inputStatus && inputStatus.value) {
+            searchColumns.status = inputStatus.value;
+        }
+
+        if (Object.keys(searchColumns).length > 0) {
+            params.search = { columns: searchColumns };
+        }
+
+        return params;
+    }
+
+    // ========================================================================
+    // Load Sessions
+    // ========================================================================
+
+    async function loadSessions(pageNumber = 1) {
+        const params = buildParams(pageNumber, 10);
+        await loadSessionsWithParams(params);
+    }
+
+    async function loadSessionsWithParams(params) {
+        console.log("🚀 Sessions sending:", JSON.stringify(params, null, 2));
+
         if (typeof createTable === 'function') {
-            await createTable("sessions/query", params, headers, rows, true, 'session_id', updateSelectionCount);
+            try {
+                const result = await createTable(
+                    "sessions/query",
+                    params,
+                    headers,
+                    rows,
+                    true,
+                    'session_id',
+                    updateSelectionCount,
+                    {
+                        status: statusRenderer,
+                        session_id: sessionIdRenderer
+                    }
+                );
+
+                if (result && result.success) {
+                    console.log("✅ Sessions loaded:", result.data.length);
+
+                    // ✅ Calculate selectable IDs (ONLY active, NOT expired or current)
+                    const selectableIds = result.data
+                        .filter(row => {
+                            const isCurrent = row.is_current === true || row.is_current === 1 || row.is_current === "1";
+                            const status = row.status?.toLowerCase();
+
+                            // Not selectable if current
+                            if (isCurrent) return false;
+
+                            // ✅ ONLY active is selectable (NOT expired)
+                            return status === 'active';
+                        })
+                        .map(row => String(row.session_id));
+
+                    console.log("✅ Selectable sessions:", selectableIds.length);
+
+                    // Re-render with selectable IDs
+                    await createTable(
+                        "sessions/query",
+                        params,
+                        headers,
+                        rows,
+                        true,
+                        'session_id',
+                        updateSelectionCount,
+                        {
+                            status: statusRenderer,
+                            session_id: sessionIdRenderer
+                        },
+                        selectableIds
+                    );
+
+                    setupTableFiltersAfterRender();
+                }
+            } catch (error) {
+                console.error("❌ Error:", error);
+                showAlert('d', 'Failed to load');
+            }
         } else {
-            console.error("createTable function not found. Ensure data_table.js is loaded.");
+            console.error("❌ createTable not found");
+        }
+    }
+
+    // ========================================================================
+    // Helpers
+    // ========================================================================
+
+    /**
+     * Copy text to clipboard and show notification
+     */
+    function copyToClipboard(text, element) {
+        // Use modern Clipboard API
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(() => {
+                showCopyNotification(element);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                fallbackCopy(text, element);
+            });
+        } else {
+            fallbackCopy(text, element);
+        }
+    }
+
+    /**
+     * Fallback copy method for older browsers
+     */
+    function fallbackCopy(text, element) {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+
+        try {
+            document.execCommand('copy');
+            showCopyNotification(element);
+        } catch (err) {
+            console.error('Fallback copy failed:', err);
+        }
+
+        document.body.removeChild(textarea);
+    }
+
+    /**
+     * Show small "Copied!" notification near the element
+     */
+    function showCopyNotification(element) {
+        // Create notification
+        const notification = document.createElement('div');
+        notification.textContent = 'Copied!';
+        notification.className = 'absolute bg-green-600 text-white text-xs px-2 py-1 rounded shadow-lg z-50 animate-fade-in';
+        notification.style.cssText = 'font-size: 10px; font-weight: 500; pointer-events: none;';
+
+        // Position near the element
+        const rect = element.getBoundingClientRect();
+        notification.style.position = 'fixed';
+        notification.style.left = (rect.left + rect.width / 2) + 'px';
+        notification.style.top = (rect.top - 30) + 'px';
+        notification.style.transform = 'translateX(-50%)';
+
+        document.body.appendChild(notification);
+
+        // Fade out and remove
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            notification.style.transition = 'opacity 0.3s ease';
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, 300);
+        }, 1000);
+    }
+
+    function showAlert(type, message) {
+        if (typeof window.showAlert === 'function') {
+            window.showAlert(type, message);
+        } else {
+            console.log(`[${type}] ${message}`);
         }
     }
 });
