@@ -11,11 +11,14 @@ use App\Domain\Service\AuthorizationService;
 use App\Infrastructure\Query\ListFilterResolver;
 use App\Modules\Validation\Guard\ValidationGuard;
 use App\Modules\Validation\Schemas\SharedListQuerySchema;
+use Maatify\PsrLogger\Traits\StaticLoggerTrait;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 
 final readonly class SessionQueryController
 {
+
+//    use StaticLoggerTrait;
     public function __construct(
         private SessionListReaderInterface $reader,
         private AuthorizationService $authorizationService,
@@ -31,6 +34,9 @@ final readonly class SessionQueryController
 
         /** @var array<string,mixed> $body */
         $body = (array) $request->getParsedBody();
+
+//        $logger = self::getLogger('bootstrap/init');
+//        $logger->info('SessionQueryController', $body);
 
         // 1️⃣ Validate canonical list/query request
         $this->validationGuard->check(new SharedListQuerySchema(), $body);

@@ -190,6 +190,7 @@ Entries MUST NOT be rewritten or reordered.
 - feat(activity-log): add list reader, controller, integration tests, and docs
 - feat(activity-log): wire UI GET route with canonical API POST query
 - feat(sessions-ui): enhance sessions UI interactions and table controls
+- feat(api,bootstrap): add canonical JSON validation error handling and body parsing
 
 ---
 
