@@ -15,6 +15,8 @@ declare(strict_types=1);
 
 namespace App\Services\ActivityLog;
 
+use App\Context\AdminContext;
+use App\Context\RequestContext;
 use App\Modules\ActivityLog\Contracts\ActivityActionInterface;
 use App\Modules\ActivityLog\Service\ActivityLogService;
 
@@ -22,69 +24,59 @@ use App\Modules\ActivityLog\Service\ActivityLogService;
  * Admin-scoped Activity Log Facade.
  *
  * - Fixes actor_type = admin
- * - Accepts admin_id from the outside
+ * - Accepts AdminContext & RequestContext
  * - Delegates writing to ActivityLogService
  *
  * This class is:
  * - Admin-aware
+ * - Request-aware (via Contexts)
  * - Stateless
  * - Reusable from any context (HTTP / Job / CLI / Tests)
  *
  * It MUST NOT:
  * - Resolve admin from session
+ * - Access ServerRequestInterface
+ * - Access globals
  * - Perform authorization
- * - Access request globals
  */
 final readonly class AdminActivityLogService
 {
     public function __construct(
         private ActivityLogService $activityLogService,
-    )
-    {
-    }
+    ) {}
 
     /**
      * Log an admin activity.
      *
-     * @param   int                             $adminId
-     * @param   ActivityActionInterface|string  $action
-     * @param   string|null                     $entityType
-     * @param   int|null                        $entityId
-     * @param   array<string, mixed>|null       $metadata
-     * @param   string|null                     $ipAddress
-     * @param   string|null                     $userAgent
-     * @param   string|null                     $requestId
+     * @param AdminContext                   $adminContext
+     * @param RequestContext                 $requestContext
+     * @param ActivityActionInterface|string $action
+     * @param string|null                    $entityType
+     * @param int|null                       $entityId
+     * @param array<string, mixed>|null      $metadata
      */
     public function log(
-        int $adminId,
+        AdminContext $adminContext,
+        RequestContext $requestContext,
         ActivityActionInterface|string $action,
-
         ?string $entityType = null,
         ?int $entityId = null,
-
         ?array $metadata = null,
-
-        ?string $ipAddress = null,
-        ?string $userAgent = null,
-
-        ?string $requestId = null,
-    ): void
-    {
+    ): void {
         $this->activityLogService->log(
-            action    : $action,
+            action     : $action,
 
-            actorType : 'admin',
-            actorId   : $adminId,
+            actorType  : 'admin',
+            actorId    : $adminContext->adminId,
 
-            entityType: $entityType,
-            entityId  : $entityId,
+            entityType : $entityType,
+            entityId   : $entityId,
 
-            metadata  : $metadata,
+            metadata   : $metadata,
 
-            ipAddress : $ipAddress,
-            userAgent : $userAgent,
-
-            requestId : $requestId,
+            ipAddress  : $requestContext->ipAddress,
+            userAgent  : $requestContext->userAgent,
+            requestId  : $requestContext->requestId,
         );
     }
 }

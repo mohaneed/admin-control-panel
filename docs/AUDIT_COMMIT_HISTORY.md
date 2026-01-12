@@ -195,6 +195,7 @@ Entries MUST NOT be rewritten or reordered.
 - fix(validation): simplify SearchQueryRule to structure-only validation
 - test(validation): cover numeric and string column search cases
 - feat(http): introduce RequestIdMiddleware with strict UUID v4 validation
+- feat(context,auth,activity-log): introduce request/admin contexts and admin login result DTO
 
 ---
 

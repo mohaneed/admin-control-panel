@@ -55,10 +55,12 @@ readonly class LoginController
 
         try {
             // We get the token.
-            $token = $this->authService->login($blindIndex, $dto->password);
+            $result = $this->authService->login($blindIndex, $dto->password);
+
+            $token = $result->token;
 
             // Fetch session details to align cookie expiration
-            $session = $this->sessionRepository->findSession($token);
+            $session = $this->sessionRepository->findSession($result->token);
             if ($session === null) {
                 // This should practically not happen immediately after creation
                 throw new InvalidCredentialsException("Session creation failed.");

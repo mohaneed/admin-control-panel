@@ -12,6 +12,7 @@ use App\Domain\Contracts\TelemetryAuditLoggerInterface;
 use App\Domain\Contracts\ClientInfoProviderInterface;
 use App\Domain\Contracts\AuthoritativeSecurityAuditWriterInterface;
 use App\Domain\Contracts\SecurityEventLoggerInterface;
+use App\Domain\DTO\AdminLoginResultDTO;
 use App\Domain\DTO\AuditEventDTO;
 use App\Domain\DTO\LegacyAuditEventDTO;
 use App\Domain\DTO\SecurityEventDTO;
@@ -38,7 +39,7 @@ readonly class AdminAuthenticationService
     ) {
     }
 
-    public function login(string $blindIndex, string $password): string
+    public function login(string $blindIndex, string $password): AdminLoginResultDTO
     {
         $this->recoveryState->enforce(RecoveryStateService::ACTION_LOGIN);
 
@@ -128,7 +129,10 @@ readonly class AdminAuthenticationService
             throw $e;
         }
 
-        return $token;
+        return new AdminLoginResultDTO(
+            adminId: $adminId,
+            token: $token
+        );
     }
 
     public function logoutSession(int $adminId, string $token): void

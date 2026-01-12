@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Bootstrap;
 
+use App\Context\Resolver\AdminContextResolver;
+use App\Context\Resolver\RequestContextResolver;
 use App\Domain\ActivityLog\Reader\ActivityLogListReaderInterface;
 use App\Domain\Admin\Reader\AdminQueryReaderInterface;
 use App\Domain\Contracts\AdminActivityQueryInterface;
@@ -586,11 +588,24 @@ class Container
                 $authService = $c->get(AdminAuthenticationService::class);
                 $config = $c->get(AdminConfigDTO::class);
                 $validationGuard = $c->get(ValidationGuard::class);
+
+                $requestContextResolver = $c->get(\App\Context\Resolver\RequestContextResolver::class);
+
+                $adminActivityLogService = $c->get(\App\Services\ActivityLog\AdminActivityLogService::class);
+
                 assert($authService instanceof AdminAuthenticationService);
                 assert($config instanceof AdminConfigDTO);
                 assert($validationGuard instanceof ValidationGuard);
+                assert($requestContextResolver instanceof \App\Context\Resolver\RequestContextResolver);
+                assert($adminActivityLogService instanceof \App\Services\ActivityLog\AdminActivityLogService);
 
-                return new AuthController($authService, $config->emailBlindIndexKey, $validationGuard);
+                return new AuthController(
+                    $authService,
+                    $config->emailBlindIndexKey,
+                    $validationGuard,
+                    $requestContextResolver,
+                    $adminActivityLogService
+                );
             },
             LoginController::class => function (ContainerInterface $c) {
                 $authService = $c->get(AdminAuthenticationService::class);
@@ -1129,6 +1144,13 @@ class Container
                 $config = $c->get(EmailTransportConfigDTO::class);
                 assert($config instanceof EmailTransportConfigDTO);
                 return new SmtpEmailTransport($config);
+            },
+            RequestContextResolver::class => function () {
+                return new RequestContextResolver();
+            },
+
+            AdminContextResolver::class => function () {
+                return new AdminContextResolver();
             },
         ]);
 
