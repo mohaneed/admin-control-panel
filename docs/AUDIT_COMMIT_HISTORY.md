@@ -193,6 +193,7 @@ Entries MUST NOT be rewritten or reordered.
 - feat(api,bootstrap): add canonical JSON validation error handling and body parsing
 - chore(activity-log): introduce admin-scoped activity log facade (initial scaffold)
 - fix(validation): simplify SearchQueryRule to structure-only validation
+- test(validation): cover numeric and string column search cases
 
 ---
 
