@@ -203,6 +203,7 @@ Entries MUST NOT be rewritten or reordered.
 - feat(activity-logs-ui): add activity logs list view with global search and metadata modal
 - feat(ui): expose Activity Logs page in sidebar
 - feat(layout): add Activity Logs icon to sidebar
+- feat(crypto): add canonical crypto service interfaces and DTO skeletons
 
 ---
 
