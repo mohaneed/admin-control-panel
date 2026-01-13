@@ -15,7 +15,7 @@ declare(strict_types=1);
 
 namespace App\Application\Crypto;
 
-use App\Application\Crypto\DTO\EncryptedIdentifierDTO;
+use App\Domain\DTO\Crypto\EncryptedPayloadDTO;
 
 /**
  * AdminIdentifierCryptoServiceInterface
@@ -44,18 +44,18 @@ interface AdminIdentifierCryptoServiceInterface
      *
      * @param   string  $plainEmail
      *
-     * @return EncryptedIdentifierDTO Encrypted identifier DTO (implementation-defined)
+     * @return EncryptedPayloadDTO Encrypted recipient DTO
      */
-    public function encryptEmail(string $plainEmail): EncryptedIdentifierDTO;
+    public function encryptEmail(string $plainEmail): EncryptedPayloadDTO;
 
     /**
      * Decrypt an admin email identifier.
      *
-     * @param   EncryptedIdentifierDTO  $encryptedIdentifier
+     * @param   EncryptedPayloadDTO  $encryptedIdentifier
      *
      * @return string Plain admin email
      */
-    public function decryptEmail(EncryptedIdentifierDTO $encryptedIdentifier): string;
+    public function decryptEmail(EncryptedPayloadDTO $encryptedIdentifier): string;
 
     /**
      * Derive a blind index for an admin email.

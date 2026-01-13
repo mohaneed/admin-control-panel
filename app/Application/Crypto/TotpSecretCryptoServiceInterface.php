@@ -15,7 +15,7 @@ declare(strict_types=1);
 
 namespace App\Application\Crypto;
 
-use App\Application\Crypto\DTO\EncryptedTotpSecretDTO;
+use App\Domain\DTO\Crypto\EncryptedPayloadDTO;
 
 /**
  * TotpSecretCryptoServiceInterface
@@ -39,16 +39,16 @@ interface TotpSecretCryptoServiceInterface
      *
      * @param   string  $plainSeed
      *
-     * @return EncryptedTotpSecretDTO Encrypted TOTP seed DTO
+     * @return EncryptedPayloadDTO Encrypted TOTP seed DTO
      */
-    public function encryptTotpSeed(string $plainSeed): EncryptedTotpSecretDTO;
+    public function encryptTotpSeed(string $plainSeed): EncryptedPayloadDTO;
 
     /**
      * Decrypt a TOTP seed.
      *
-     * @param   EncryptedTotpSecretDTO  $encryptedSeed
+     * @param   EncryptedPayloadDTO  $encryptedSeed
      *
      * @return string Plain TOTP seed
      */
-    public function decryptTotpSeed(EncryptedTotpSecretDTO $encryptedSeed): string;
+    public function decryptTotpSeed(EncryptedPayloadDTO $encryptedSeed): string;
 }

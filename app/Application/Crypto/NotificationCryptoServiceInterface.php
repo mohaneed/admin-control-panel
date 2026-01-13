@@ -15,7 +15,7 @@ declare(strict_types=1);
 
 namespace App\Application\Crypto;
 
-use App\Application\Crypto\DTO\EncryptedPayloadDTO;
+use App\Domain\DTO\Crypto\EncryptedPayloadDTO;
 
 /**
  * NotificationCryptoServiceInterface

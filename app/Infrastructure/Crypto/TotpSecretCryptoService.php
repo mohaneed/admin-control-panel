@@ -16,7 +16,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Crypto;
 
 use App\Application\Crypto\TotpSecretCryptoServiceInterface;
-use App\Application\Crypto\DTO\EncryptedTotpSecretDTO;
+use App\Domain\DTO\Crypto\EncryptedPayloadDTO;
 use App\Domain\Security\CryptoContext;
 use App\Modules\Crypto\DX\CryptoProvider;
 use App\Modules\Crypto\Reversible\DTO\ReversibleCryptoMetadataDTO;
@@ -42,7 +42,7 @@ final class TotpSecretCryptoService implements TotpSecretCryptoServiceInterface
     ) {
     }
 
-    public function encryptTotpSeed(string $plainSeed): EncryptedTotpSecretDTO
+    public function encryptTotpSeed(string $plainSeed): EncryptedPayloadDTO
     {
         $response = $this->cryptoProvider
             ->context(CryptoContext::TOTP_SEED_V1)
@@ -51,7 +51,7 @@ final class TotpSecretCryptoService implements TotpSecretCryptoServiceInterface
         /** @var \App\Modules\Crypto\Reversible\DTO\ReversibleCryptoEncryptionResultDTO $result */
         $result = $response['result'];
 
-        return new EncryptedTotpSecretDTO(
+        return new EncryptedPayloadDTO(
             ciphertext: $result->cipher,
             iv: $result->iv ?? '',
             tag: $result->tag ?? '',
@@ -59,7 +59,7 @@ final class TotpSecretCryptoService implements TotpSecretCryptoServiceInterface
         );
     }
 
-    public function decryptTotpSeed(EncryptedTotpSecretDTO $encryptedSeed): string
+    public function decryptTotpSeed(EncryptedPayloadDTO $encryptedSeed): string
     {
         $metadata = new ReversibleCryptoMetadataDTO(
             iv: $encryptedSeed->iv,

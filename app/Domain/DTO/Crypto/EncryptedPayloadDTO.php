@@ -25,13 +25,13 @@ namespace App\Domain\DTO\Crypto;
  *
  * This DTO is storage-agnostic.
  */
-final class EncryptedPayloadDTO
+final readonly class EncryptedPayloadDTO
 {
     public function __construct(
-        public readonly string $ciphertext,
-        public readonly string $iv,
-        public readonly string $tag,
-        public readonly string $keyId
+        public string $ciphertext,
+        public string $iv,
+        public string $tag,
+        public string $keyId
     )
     {
     }

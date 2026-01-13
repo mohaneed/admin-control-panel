@@ -16,7 +16,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Crypto;
 
 use App\Application\Crypto\AdminIdentifierCryptoServiceInterface;
-use App\Application\Crypto\DTO\EncryptedIdentifierDTO;
+use App\Domain\DTO\Crypto\EncryptedPayloadDTO;
 use App\Domain\Security\CryptoContext;
 use App\Modules\Crypto\DX\CryptoProvider;
 use App\Modules\Crypto\Reversible\DTO\ReversibleCryptoEncryptionResultDTO;
@@ -53,7 +53,7 @@ final class AdminIdentifierCryptoService implements AdminIdentifierCryptoService
         $this->blindIndexPepper = $blindIndexPepper;
     }
 
-    public function encryptEmail(string $plainEmail): EncryptedIdentifierDTO
+    public function encryptEmail(string $plainEmail): EncryptedPayloadDTO
     {
         $response = $this->cryptoProvider
             ->context(CryptoContext::IDENTIFIER_EMAIL_V1)
@@ -62,7 +62,7 @@ final class AdminIdentifierCryptoService implements AdminIdentifierCryptoService
         /** @var ReversibleCryptoEncryptionResultDTO $result */
         $result = $response['result'];
 
-        return new EncryptedIdentifierDTO(
+        return new EncryptedPayloadDTO(
             ciphertext: $result->cipher,
             iv        : $result->iv ?? '',
             tag       : $result->tag ?? '',
@@ -70,7 +70,7 @@ final class AdminIdentifierCryptoService implements AdminIdentifierCryptoService
         );
     }
 
-    public function decryptEmail(EncryptedIdentifierDTO $encryptedIdentifier): string
+    public function decryptEmail(EncryptedPayloadDTO $encryptedIdentifier): string
     {
         $metadata = new ReversibleCryptoMetadataDTO(
             iv : $encryptedIdentifier->iv !== '' ? $encryptedIdentifier->iv : null,
