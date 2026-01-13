@@ -200,6 +200,7 @@ Entries MUST NOT be rewritten or reordered.
 - feat(web-auth): log successful admin login via activity log
 - refactor(ui-table): improve sessions table rendering and interactions
 - feat(context): complete HTTP context injection and admin activity logging alignment
+- feat(activity-logs-ui): add activity logs list view with global search and metadata modal
 
 ---
 
