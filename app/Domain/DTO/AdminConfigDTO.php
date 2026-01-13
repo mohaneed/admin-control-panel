@@ -10,19 +10,14 @@ readonly class AdminConfigDTO
         public string $appEnv,
         public bool $appDebug,
         public string $timezone,
-        /** @var array<string, string> */
-        public array $passwordPeppers,
         public string $passwordActivePepperId,
-        public string $emailBlindIndexKey,
-        public string $emailEncryptionKey,
         public string $dbHost,
         public string $dbName,
         public string $dbUser,
-        public string $dbPass,
         public bool $isRecoveryMode,
-        /** @var array<int, array{id: string, key: string}> */
-        public array $cryptoKeys = [],
         public ?string $activeKeyId = null,
+        public bool $hasCryptoKeyRing = false,
+        public bool $hasPasswordPepperRing = false,
     ) {
     }
 }

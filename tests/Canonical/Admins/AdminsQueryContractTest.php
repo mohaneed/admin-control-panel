@@ -172,17 +172,14 @@ class AdminsQueryContractTest extends TestCase
              appEnv: 'test',
              appDebug: true,
              timezone: 'UTC',
-             passwordPepper: 'secret',
-             passwordPepperOld: null,
-             emailBlindIndexKey: 'blind_key',
-             emailEncryptionKey: 'key',
+             passwordActivePepperId: 'v1',
              dbHost: '',
              dbName: '',
              dbUser: '',
-             dbPass: '',
              isRecoveryMode: false,
-             cryptoKeys: [],
-             activeKeyId: 'v1'
+             activeKeyId: 'v1',
+             hasCryptoKeyRing: false,
+             hasPasswordPepperRing: false
         );
     }
 
@@ -211,7 +208,7 @@ class AdminsQueryContractTest extends TestCase
              return $stmt;
         });
 
-        $reader = new PdoAdminQueryReader($pdo, $config);
+        $reader = new PdoAdminQueryReader($pdo, $config, 'blind_key', 'enc_key');
 
         // Just calling it to trigger the mock callbacks
         $stmt->method('fetchColumn')->willReturn(0);
@@ -249,7 +246,7 @@ class AdminsQueryContractTest extends TestCase
             return $stmt;
         });
 
-        $reader = new PdoAdminQueryReader($pdo, $realConfig);
+        $reader = new PdoAdminQueryReader($pdo, $realConfig, 'blind_key', 'enc_key');
 
         $dto = ListQueryDTO::fromArray(['search' => ['global' => 'test@example.com']]);
         $capabilities = AdminListCapabilities::define();
@@ -288,7 +285,7 @@ class AdminsQueryContractTest extends TestCase
             return $stmt;
         });
 
-        $reader = new PdoAdminQueryReader($pdo, $realConfig);
+        $reader = new PdoAdminQueryReader($pdo, $realConfig, 'blind_key', 'enc_key');
 
         $dto = ListQueryDTO::fromArray(['search' => ['global' => 'alice']]); // Not an ID, Not an Email
         $capabilities = AdminListCapabilities::define();
@@ -327,7 +324,7 @@ class AdminsQueryContractTest extends TestCase
             return $stmt;
         });
 
-        $reader = new PdoAdminQueryReader($pdo, $realConfig);
+        $reader = new PdoAdminQueryReader($pdo, $realConfig, 'blind_key', 'enc_key');
 
         $dto = ListQueryDTO::fromArray(['search' => ['columns' => ['id' => '123']]]);
         $capabilities = AdminListCapabilities::define();
@@ -366,7 +363,7 @@ class AdminsQueryContractTest extends TestCase
             return $stmt;
         });
 
-        $reader = new PdoAdminQueryReader($pdo, $realConfig);
+        $reader = new PdoAdminQueryReader($pdo, $realConfig, 'blind_key', 'enc_key');
 
         $dto = ListQueryDTO::fromArray(['search' => ['columns' => ['email' => 'test@example.com']]]);
         $capabilities = AdminListCapabilities::define();
@@ -405,7 +402,7 @@ class AdminsQueryContractTest extends TestCase
             return $stmt;
         });
 
-        $reader = new PdoAdminQueryReader($pdo, $realConfig);
+        $reader = new PdoAdminQueryReader($pdo, $realConfig, 'blind_key', 'enc_key');
 
         $dto = ListQueryDTO::fromArray(['date' => ['from' => '2023-01-01', 'to' => '2023-01-31']]);
         $capabilities = AdminListCapabilities::define();

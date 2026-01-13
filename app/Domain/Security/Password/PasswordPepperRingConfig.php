@@ -31,8 +31,13 @@ final readonly class PasswordPepperRingConfig
             throw new Exception('PASSWORD_PEPPERS is required and cannot be empty.');
         }
 
+        $rawPeppers = $env['PASSWORD_PEPPERS'];
+        if (!is_string($rawPeppers)) {
+             throw new Exception('PASSWORD_PEPPERS must be a string.');
+        }
+
         /** @var mixed $peppers */
-        $peppers = json_decode((string)$env['PASSWORD_PEPPERS'], true, 512, JSON_THROW_ON_ERROR);
+        $peppers = json_decode($rawPeppers, true, 512, JSON_THROW_ON_ERROR);
 
         if (!is_array($peppers) || empty($peppers)) {
             throw new Exception('PASSWORD_PEPPERS must be a non-empty JSON object map');

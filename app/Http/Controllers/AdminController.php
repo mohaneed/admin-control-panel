@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Domain\DTO\AdminConfigDTO;
 use App\Domain\DTO\Request\CreateAdminEmailRequestDTO;
 use App\Domain\DTO\Request\VerifyAdminEmailRequestDTO;
 use App\Domain\DTO\Response\ActionResultResponseDTO;
@@ -28,8 +27,9 @@ class AdminController
     public function __construct(
         private AdminRepository $adminRepository,
         private AdminEmailRepository $adminEmailRepository,
-        private AdminConfigDTO $config,
-        private ValidationGuard $validationGuard
+        private ValidationGuard $validationGuard,
+        private string $emailBlindIndexKey,
+        private string $emailEncryptionKey
     ) {
     }
 
@@ -77,11 +77,11 @@ class AdminController
         $email = $requestDto->email;
 
         // Blind Index
-        $blindIndexKey = $this->config->emailBlindIndexKey;
+        $blindIndexKey = $this->emailBlindIndexKey;
         $blindIndex = hash_hmac('sha256', $email, $blindIndexKey);
 
         // Encryption
-        $encryptionKey = $this->config->emailEncryptionKey;
+        $encryptionKey = $this->emailEncryptionKey;
         
         $cipher = 'aes-256-gcm';
         $ivLen = openssl_cipher_iv_length($cipher);
@@ -132,7 +132,7 @@ class AdminController
         }
         $email = $requestDto->email;
 
-        $blindIndexKey = $this->config->emailBlindIndexKey;
+        $blindIndexKey = $this->emailBlindIndexKey;
         $blindIndex = hash_hmac('sha256', $email, $blindIndexKey);
 
         $adminId = $this->adminEmailRepository->findByBlindIndex($blindIndex);
@@ -166,7 +166,7 @@ class AdminController
 
         $encryptedEmail = $this->adminEmailRepository->getEncryptedEmail($adminId);
 
-        $encryptionKey = $this->config->emailEncryptionKey;
+        $encryptionKey = $this->emailEncryptionKey;
         $cipher = 'aes-256-gcm';
 
         $data = base64_decode((string)$encryptedEmail, true);

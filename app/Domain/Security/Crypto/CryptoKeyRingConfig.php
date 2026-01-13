@@ -27,8 +27,13 @@ final readonly class CryptoKeyRingConfig
             throw new \Exception('CRYPTO_KEYS is required and cannot be empty.');
         }
 
+        $rawKeys = $env['CRYPTO_KEYS'];
+        if (!is_string($rawKeys)) {
+             throw new \Exception('CRYPTO_KEYS must be a string.');
+        }
+
         /** @var mixed $keys */
-        $keys = json_decode($env['CRYPTO_KEYS'], true, 512, JSON_THROW_ON_ERROR);
+        $keys = json_decode($rawKeys, true, 512, JSON_THROW_ON_ERROR);
 
         if (!is_array($keys) || empty($keys)) {
             throw new \Exception('CRYPTO_KEYS must be a non-empty JSON array');
@@ -47,8 +52,8 @@ final readonly class CryptoKeyRingConfig
         }
 
         $activeKeyId = $env['CRYPTO_ACTIVE_KEY_ID'] ?? null;
-        if (empty($activeKeyId)) {
-            throw new \Exception('CRYPTO_ACTIVE_KEY_ID is required.');
+        if (empty($activeKeyId) || !is_string($activeKeyId)) {
+            throw new \Exception('CRYPTO_ACTIVE_KEY_ID is required and must be a string.');
         }
 
         if (!isset($ids[$activeKeyId])) {

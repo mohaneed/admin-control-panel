@@ -218,6 +218,7 @@ Entries MUST NOT be rewritten or reordered.
 - chore(auth): lock password governance with pepper ring and required Argon2 options
 - refactor(crypto): extract env crypto key ring parsing into CryptoKeyRingConfig
 - refactor(auth): extract password pepper env parsing into PasswordPepperRingConfig
+- refactor(config): remove secrets from AdminConfigDTO and inject crypto/password configs directly
 
 ---
 

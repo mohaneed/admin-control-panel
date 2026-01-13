@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Infrastructure\Reader\Admin;
 
 use App\Domain\Admin\Reader\AdminQueryReaderInterface;
-use App\Domain\DTO\AdminConfigDTO;
 use App\Domain\DTO\AdminList\AdminListItemDTO;
 use App\Domain\DTO\AdminList\AdminListResponseDTO;
 use App\Domain\DTO\Common\PaginationDTO;
@@ -17,7 +16,8 @@ final readonly class PdoAdminQueryReader implements AdminQueryReaderInterface
 {
     public function __construct(
         private PDO $pdo,
-        private AdminConfigDTO $config
+        private string $emailBlindIndexKey,
+        private string $emailEncryptionKey
     ) {}
 
     public function queryAdmins(
@@ -44,7 +44,7 @@ final readonly class PdoAdminQueryReader implements AdminQueryReaderInterface
                 $blind = hash_hmac(
                     'sha256',
                     strtolower($g),
-                    $this->config->emailBlindIndexKey
+                    $this->emailBlindIndexKey
                 );
 
                 $where[] = 'ae.email_blind_index = :global_email';
@@ -66,7 +66,7 @@ final readonly class PdoAdminQueryReader implements AdminQueryReaderInterface
                 $blind = hash_hmac(
                     'sha256',
                     strtolower((string) $value),
-                    $this->config->emailBlindIndexKey
+                    $this->emailBlindIndexKey
                 );
 
                 $where[] = 'ae.email_blind_index = :email';
@@ -201,7 +201,7 @@ final readonly class PdoAdminQueryReader implements AdminQueryReaderInterface
             $decrypted = openssl_decrypt(
                 $ciphertext,
                 $cipher,
-                $this->config->emailEncryptionKey,
+                $this->emailEncryptionKey,
                 OPENSSL_RAW_DATA,
                 $iv,
                 $tag

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Reader\Session;
 
-use App\Domain\DTO\AdminConfigDTO;
 use App\Domain\DTO\Common\PaginationDTO;
 use App\Domain\DTO\Session\SessionListItemDTO;
 use App\Domain\DTO\Session\SessionListResponseDTO;
@@ -18,7 +17,7 @@ readonly class PdoSessionListReader implements SessionListReaderInterface
 {
     public function __construct(
         private PDO $pdo,
-        private AdminConfigDTO $config
+        private string $emailEncryptionKey
     ) {}
 
     public function getSessions(
@@ -231,7 +230,7 @@ readonly class PdoSessionListReader implements SessionListReaderInterface
             $decrypted = openssl_decrypt(
                 $ciphertext,
                 $cipher,
-                $this->config->emailEncryptionKey,
+                $this->emailEncryptionKey,
                 OPENSSL_RAW_DATA,
                 $iv,
                 $tag

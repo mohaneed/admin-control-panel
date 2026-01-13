@@ -221,17 +221,14 @@ class Container
             appEnv: $_ENV['APP_ENV'],
             appDebug: $_ENV['APP_DEBUG'] === 'true',
             timezone: $_ENV['APP_TIMEZONE'],
-            passwordPeppers: $passwordPepperConfig->peppers(),
             passwordActivePepperId: $passwordPepperConfig->activeId(),
-            emailBlindIndexKey: $_ENV['EMAIL_BLIND_INDEX_KEY'],
-            emailEncryptionKey: $_ENV['EMAIL_ENCRYPTION_KEY'],
             dbHost: $_ENV['DB_HOST'],
             dbName: $_ENV['DB_NAME'],
             dbUser: $_ENV['DB_USER'],
-            dbPass: $_ENV['DB_PASS'],
             isRecoveryMode: ($_ENV['RECOVERY_MODE'] ?? 'false') === 'true',
-            cryptoKeys: $cryptoRing->keys(),
-            activeKeyId: $cryptoRing->activeKeyId()
+            activeKeyId: $cryptoRing->activeKeyId(),
+            hasCryptoKeyRing: !empty($cryptoRing->keys()),
+            hasPasswordPepperRing: !empty($passwordPepperConfig->peppers())
         );
 
         // Create Email Config DTO
@@ -312,7 +309,7 @@ class Container
                     $config->dbHost,
                     $config->dbName,
                     $config->dbUser,
-                    $config->dbPass
+                    $_ENV['DB_PASS'] // Direct ENV access for secret
                 );
                 return $factory->create();
             },
@@ -323,7 +320,7 @@ class Container
                     $config->dbHost,
                     $config->dbName,
                     $config->dbUser,
-                    $config->dbPass
+                    $_ENV['DB_PASS'] // Direct ENV access for secret
                 );
             },
             AdminRepository::class => function (ContainerInterface $c) {
@@ -334,15 +331,19 @@ class Container
             AdminController::class => function (ContainerInterface $c) {
                 $adminRepo = $c->get(AdminRepository::class);
                 $emailRepo = $c->get(AdminEmailRepository::class);
-                $config = $c->get(AdminConfigDTO::class);
                 $validationGuard = $c->get(ValidationGuard::class);
 
                 assert($adminRepo instanceof AdminRepository);
                 assert($emailRepo instanceof AdminEmailRepository);
-                assert($config instanceof AdminConfigDTO);
                 assert($validationGuard instanceof ValidationGuard);
 
-                return new AdminController($adminRepo, $emailRepo, $config, $validationGuard);
+                return new AdminController(
+                    $adminRepo,
+                    $emailRepo,
+                    $validationGuard,
+                    $_ENV['EMAIL_BLIND_INDEX_KEY'], // Direct ENV access
+                    $_ENV['EMAIL_ENCRYPTION_KEY']   // Direct ENV access
+                );
             },
             AdminEmailRepository::class => function (ContainerInterface $c) {
                 $pdo = $c->get(PDO::class);
@@ -663,7 +664,7 @@ class Container
 
                 return new AuthController(
                     $authService,
-                    $config->emailBlindIndexKey,
+                    $_ENV['EMAIL_BLIND_INDEX_KEY'], // Direct ENV access
                     $validationGuard,
                     $contextProvider,
                     $adminActivityLogService
@@ -691,7 +692,7 @@ class Container
                     $authService,
                     $sessionRepo,
                     $rememberMeService,
-                    $config->emailBlindIndexKey,
+                    $_ENV['EMAIL_BLIND_INDEX_KEY'], // Direct ENV access
                     $view,
                     $contextProvider,
                     $adminActivityLogService
@@ -742,7 +743,7 @@ class Container
                     $lookup,
                     $view,
                     $logger,
-                    $config->emailBlindIndexKey
+                    $_ENV['EMAIL_BLIND_INDEX_KEY'] // Direct ENV access
                 );
             },
             TelegramConnectController::class => function (ContainerInterface $c) {
@@ -882,10 +883,11 @@ class Container
             // Phase 14.3: Sessions
             SessionListReaderInterface::class => function (ContainerInterface $c) {
                 $pdo = $c->get(PDO::class);
-                $config = $c->get(AdminConfigDTO::class);
                 assert($pdo instanceof PDO);
-                assert($config instanceof AdminConfigDTO);
-                return new PdoSessionListReader($pdo, $config);
+                return new PdoSessionListReader(
+                    $pdo,
+                    $_ENV['EMAIL_ENCRYPTION_KEY'] // Direct ENV access
+                );
             },
             SessionListController::class => function (ContainerInterface $c) {
                 $twig = $c->get(Twig::class);
@@ -942,14 +944,13 @@ class Container
             AdminQueryReaderInterface::class =>
                 function ($c): AdminQueryReaderInterface {
                 $pdo = $c->get(PDO::class);
-                $config = $c->get(AdminConfigDTO::class);
 
                 assert($pdo instanceof PDO);
-                assert($config instanceof AdminConfigDTO);
 
                 return new PdoAdminQueryReader(
                     $pdo,
-                    $config
+                    $_ENV['EMAIL_BLIND_INDEX_KEY'], // Direct ENV access
+                    $_ENV['EMAIL_ENCRYPTION_KEY']   // Direct ENV access
                 );
             },
 
@@ -1048,7 +1049,13 @@ class Container
                 assert($pdo instanceof PDO);
                 assert($config instanceof AdminConfigDTO);
 
-                return new RecoveryStateService($auditWriter, $securityLogger, $pdo, $config);
+                return new RecoveryStateService(
+                    $auditWriter,
+                    $securityLogger,
+                    $pdo,
+                    $config,
+                    $_ENV['EMAIL_BLIND_INDEX_KEY'] // Direct ENV access
+                );
             },
             RecoveryStateMiddleware::class => function (ContainerInterface $c) {
                 $service = $c->get(RecoveryStateService::class);
@@ -1091,7 +1098,7 @@ class Container
                 $registry->register(new Aes256GcmAlgorithm());
                 return $registry;
             },
-            KeyRotationService::class => function (ContainerInterface $c) {
+            KeyRotationService::class => function (ContainerInterface $c) use ($cryptoRing) {
                 $config = $c->get(AdminConfigDTO::class);
                 assert($config instanceof AdminConfigDTO);
 
@@ -1103,7 +1110,7 @@ class Container
                 $keys = [];
 
                 // Fail-closed: CRYPTO_KEYS is strictly required (enforced in Config DTO, but double-checked here implicitly)
-                foreach ($config->cryptoKeys as $keyData) {
+                foreach ($cryptoRing->keys() as $keyData) {
                     if ($keyData['id'] === '' || $keyData['key'] === '') {
                         throw new \Exception('Invalid crypto key structure. "id" and "key" must be non-empty.');
                     }

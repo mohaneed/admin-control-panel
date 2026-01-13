@@ -41,7 +41,8 @@ class RecoveryStateService
         private AuthoritativeSecurityAuditWriterInterface $auditWriter,
         private SecurityEventLoggerInterface $securityLogger,
         private PDO $pdo,
-        private AdminConfigDTO $config
+        private AdminConfigDTO $config,
+        private string $emailBlindIndexKey
     ) {
     }
 
@@ -66,7 +67,7 @@ class RecoveryStateService
             return true;
         }
 
-        $key = $this->config->emailBlindIndexKey;
+        $key = $this->emailBlindIndexKey;
         // Basic length check for security
         if (empty($key) || strlen($key) < 32) {
             return true;
@@ -97,7 +98,7 @@ class RecoveryStateService
         if ($storedState === self::SYSTEM_STATE_ACTIVE && $isEnvLocked) {
             // Reason derivation
             $reason = RecoveryTransitionReason::ENVIRONMENT_OVERRIDE;
-            $key = $this->config->emailBlindIndexKey;
+            $key = $this->emailBlindIndexKey;
             if (empty($key) || strlen($key) < 32) {
                 $reason = RecoveryTransitionReason::WEAK_CRYPTO_KEY;
             }

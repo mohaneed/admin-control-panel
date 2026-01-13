@@ -65,14 +65,14 @@ try {
     // 2. Email
     $emailRepo = $container->get(AdminEmailRepository::class);
     assert($emailRepo instanceof AdminEmailRepository);
-    $blindIndexKey = $config->emailBlindIndexKey;
+    $blindIndexKey = $_ENV['EMAIL_BLIND_INDEX_KEY'];
     if (strlen($blindIndexKey) < 32) {
         throw new RuntimeException("EMAIL_BLIND_INDEX_KEY missing or weak");
     }
     $blindIndex = hash_hmac('sha256', $email, $blindIndexKey);
 
     // Encryption
-    $encryptionKey = $config->emailEncryptionKey;
+    $encryptionKey = $_ENV['EMAIL_ENCRYPTION_KEY'];
     if (strlen($encryptionKey) < 32) {
          throw new RuntimeException("EMAIL_ENCRYPTION_KEY missing or weak. Set it in .env");
     }
