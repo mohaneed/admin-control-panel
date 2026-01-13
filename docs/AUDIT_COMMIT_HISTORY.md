@@ -213,6 +213,7 @@ Entries MUST NOT be rewritten or reordered.
 - docs(agent): add full cryptographic census and usage inventory
 - docs(agent): add crypto services & rotation project inventory report
 - refactor(crypto): unify encrypted payload DTOs and remove unused contracts
+- chore(crypto): enforce fail-closed rotation and add legacy crypto guardrails
 
 ---
 

@@ -41,7 +41,8 @@
 
   "scripts": {
     "test": "phpunit",
-    "analyse": "phpstan analyse app --level=max"
+    "analyse": "phpstan analyse app --level=max",
+    "lint:crypto": "bash scripts/ci/forbid-legacy-crypto.sh"
   },
 
   "config": {

@@ -204,6 +204,8 @@ class Container
             'MAIL_PASSWORD',
             'MAIL_FROM_ADDRESS',
             'MAIL_FROM_NAME',
+            'CRYPTO_KEYS',
+            'CRYPTO_ACTIVE_KEY_ID',
         ])->notEmpty();
 
         // Create Config DTO
@@ -222,17 +224,36 @@ class Container
             isRecoveryMode: ($_ENV['RECOVERY_MODE'] ?? 'false') === 'true',
             cryptoKeys: (function (): array {
                 if (empty($_ENV['CRYPTO_KEYS'])) {
-                    return [];
+                    throw new \Exception('CRYPTO_KEYS is required and cannot be empty.');
                 }
                 /** @var mixed $keys */
                 $keys = json_decode($_ENV['CRYPTO_KEYS'], true, 512, JSON_THROW_ON_ERROR);
-                if (!is_array($keys)) {
-                    throw new \Exception('CRYPTO_KEYS must be a JSON array');
+                if (!is_array($keys) || empty($keys)) {
+                    throw new \Exception('CRYPTO_KEYS must be a non-empty JSON array');
                 }
+
+                // Validate structure
+                $ids = [];
+                foreach ($keys as $k) {
+                    if (!isset($k['id']) || !isset($k['key'])) {
+                        throw new \Exception('Invalid CRYPTO_KEYS structure. Each key must have "id" and "key".');
+                    }
+                    if (isset($ids[$k['id']])) {
+                        throw new \Exception('Duplicate key ID in CRYPTO_KEYS: ' . $k['id']);
+                    }
+                    $ids[$k['id']] = true;
+                }
+
                 /** @var array<int, array{id: string, key: string}> $keys */
                 return $keys;
             })(),
-            activeKeyId: $_ENV['CRYPTO_ACTIVE_KEY_ID'] ?? null
+            activeKeyId: (function(): string {
+                $id = $_ENV['CRYPTO_ACTIVE_KEY_ID'] ?? null;
+                if (empty($id)) {
+                    throw new \Exception('CRYPTO_ACTIVE_KEY_ID is required.');
+                }
+                return $id;
+            })()
         );
 
         // Create Email Config DTO
@@ -1070,50 +1091,44 @@ class Container
 
                 $keys = [];
 
-                if (!empty($config->cryptoKeys)) {
-                    foreach ($config->cryptoKeys as $keyData) {
-                        if ($keyData['id'] === '' || $keyData['key'] === '') {
-                            throw new \Exception('Invalid crypto key structure. "id" and "key" must be non-empty.');
-                        }
-
-                        $rawKey = (string) $keyData['key'];
-                        if (ctype_xdigit($rawKey)) {
-                            $rawKey = hex2bin($rawKey);
-                        }
-
-                        if ($rawKey === false) {
-                            throw new \Exception('Failed to decode hex key for ID: ' . $keyData['id']);
-                        }
-
-                        $status = ($keyData['id'] === $activeKeyId)
-                            ? KeyStatusEnum::ACTIVE
-                            : KeyStatusEnum::INACTIVE;
-
-                        $keys[] = new CryptoKeyDTO(
-                            (string) $keyData['id'],
-                            (string) $rawKey,
-                            $status,
-                            new \DateTimeImmutable()
-                        );
+                // Fail-closed: CRYPTO_KEYS is strictly required (enforced in Config DTO, but double-checked here implicitly)
+                foreach ($config->cryptoKeys as $keyData) {
+                    if ($keyData['id'] === '' || $keyData['key'] === '') {
+                        throw new \Exception('Invalid crypto key structure. "id" and "key" must be non-empty.');
                     }
-                } else {
-                    // Legacy fallback using EMAIL_ENCRYPTION_KEY but utilizing configured ID
-                    $rawKey = $config->emailEncryptionKey;
+
+                    $rawKey = (string) $keyData['key'];
                     if (ctype_xdigit($rawKey)) {
                         $rawKey = hex2bin($rawKey);
                     }
 
                     if ($rawKey === false) {
-                        throw new \Exception('Failed to decode legacy EMAIL_ENCRYPTION_KEY');
+                        throw new \Exception('Failed to decode hex key for ID: ' . $keyData['id']);
                     }
 
-                    // Enforce using the configured activeKeyId, NEVER a default 'v1'
+                    $status = ($keyData['id'] === $activeKeyId)
+                        ? KeyStatusEnum::ACTIVE
+                        : KeyStatusEnum::INACTIVE;
+
                     $keys[] = new CryptoKeyDTO(
-                        $activeKeyId,
+                        (string) $keyData['id'],
                         (string) $rawKey,
-                        KeyStatusEnum::ACTIVE,
+                        $status,
                         new \DateTimeImmutable()
                     );
+                }
+
+                // Validate that the active key ID actually exists in the provided keys
+                $activeFound = false;
+                foreach ($keys as $key) {
+                    if ($key->id() === $activeKeyId) {
+                        $activeFound = true;
+                        break;
+                    }
+                }
+
+                if (!$activeFound) {
+                    throw new \Exception("CRYPTO_ACTIVE_KEY_ID '{$activeKeyId}' not found in CRYPTO_KEYS.");
                 }
 
                 // Strict Status Enforcement
