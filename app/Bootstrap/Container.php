@@ -48,6 +48,7 @@ use App\Domain\Contracts\VerificationCodeRepositoryInterface;
 use App\Domain\Contracts\VerificationCodeValidatorInterface;
 use App\Domain\DTO\AdminConfigDTO;
 use App\Domain\Ownership\SystemOwnershipRepositoryInterface;
+use App\Domain\Security\Crypto\CryptoKeyRingConfig;
 use App\Domain\Security\Password\PasswordPepperRing;
 use App\Domain\Service\AdminAuthenticationService;
 use App\Domain\Service\AdminEmailVerificationService;
@@ -211,6 +212,8 @@ class Container
             'CRYPTO_ACTIVE_KEY_ID',
         ])->notEmpty();
 
+        $cryptoRing = CryptoKeyRingConfig::fromEnv($_ENV);
+
         // Create Config DTO
         $config = new AdminConfigDTO(
             appEnv: $_ENV['APP_ENV'],
@@ -247,38 +250,8 @@ class Container
             dbUser: $_ENV['DB_USER'],
             dbPass: $_ENV['DB_PASS'],
             isRecoveryMode: ($_ENV['RECOVERY_MODE'] ?? 'false') === 'true',
-            cryptoKeys: (function (): array {
-                if (empty($_ENV['CRYPTO_KEYS'])) {
-                    throw new \Exception('CRYPTO_KEYS is required and cannot be empty.');
-                }
-                /** @var mixed $keys */
-                $keys = json_decode($_ENV['CRYPTO_KEYS'], true, 512, JSON_THROW_ON_ERROR);
-                if (!is_array($keys) || empty($keys)) {
-                    throw new \Exception('CRYPTO_KEYS must be a non-empty JSON array');
-                }
-
-                // Validate structure
-                $ids = [];
-                foreach ($keys as $k) {
-                    if (!isset($k['id']) || !isset($k['key'])) {
-                        throw new \Exception('Invalid CRYPTO_KEYS structure. Each key must have "id" and "key".');
-                    }
-                    if (isset($ids[$k['id']])) {
-                        throw new \Exception('Duplicate key ID in CRYPTO_KEYS: ' . $k['id']);
-                    }
-                    $ids[$k['id']] = true;
-                }
-
-                /** @var array<int, array{id: string, key: string}> $keys */
-                return $keys;
-            })(),
-            activeKeyId: (function(): string {
-                $id = $_ENV['CRYPTO_ACTIVE_KEY_ID'] ?? null;
-                if (empty($id)) {
-                    throw new \Exception('CRYPTO_ACTIVE_KEY_ID is required.');
-                }
-                return $id;
-            })()
+            cryptoKeys: $cryptoRing->keys(),
+            activeKeyId: $cryptoRing->activeKeyId()
         );
 
         // Validate Active Pepper ID exists in Peppers
