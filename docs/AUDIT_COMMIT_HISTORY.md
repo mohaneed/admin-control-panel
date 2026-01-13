@@ -217,6 +217,7 @@ Entries MUST NOT be rewritten or reordered.
 - chore(auth): cut over to pepper ring passwords with transactional upgrade-on-login
 - chore(auth): lock password governance with pepper ring and required Argon2 options
 - refactor(crypto): extract env crypto key ring parsing into CryptoKeyRingConfig
+- refactor(auth): extract password pepper env parsing into PasswordPepperRingConfig
 
 ---
 
