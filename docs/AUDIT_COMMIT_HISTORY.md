@@ -204,6 +204,7 @@ Entries MUST NOT be rewritten or reordered.
 - feat(ui): expose Activity Logs page in sidebar
 - feat(layout): add Activity Logs icon to sidebar
 - feat(crypto): add canonical crypto service interfaces and DTO skeletons
+- chore(agent): record as-is crypto execution baseline before service implementation
 
 ---
 
