@@ -75,8 +75,8 @@ readonly class AdminAuthenticationService
         }
 
         // 3. Verify Password
-        $hash = $this->passwordRepository->getPasswordHash($adminId);
-        if ($hash === null || !$this->passwordService->verify($password, $hash)) {
+        $record = $this->passwordRepository->getPasswordRecord($adminId);
+        if ($record === null || !$this->passwordService->verify($password, $record->hash, $record->pepperId)) {
             $this->securityLogger->log(new SecurityEventDTO(
                 $adminId,
                 'login_failed',
@@ -89,9 +89,16 @@ readonly class AdminAuthenticationService
             throw new InvalidCredentialsException("Invalid credentials.");
         }
 
-        // 4. Create Session (Transactional)
+        // 4. Transactional Login (Upgrade + Session)
         $this->pdo->beginTransaction();
         try {
+            // 4.1 Upgrade-on-Login (Rehash if pepper changed)
+            if ($this->passwordService->needsRehash($record->pepperId)) {
+                $newHash = $this->passwordService->hash($password);
+                $this->passwordRepository->savePassword($adminId, $newHash['hash'], $newHash['pepper_id']);
+            }
+
+            // 4.2 Create Session
             $token = $this->sessionRepository->createSession($adminId);
             // Hash token to get Session ID (for audit logging)
             $sessionId = hash('sha256', $token);

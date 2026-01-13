@@ -10,8 +10,9 @@ readonly class AdminConfigDTO
         public string $appEnv,
         public bool $appDebug,
         public string $timezone,
-        public string $passwordPepper,
-        public ?string $passwordPepperOld,
+        /** @var array<string, string> */
+        public array $passwordPeppers,
+        public string $passwordActivePepperId,
         public string $emailBlindIndexKey,
         public string $emailEncryptionKey,
         public string $dbHost,

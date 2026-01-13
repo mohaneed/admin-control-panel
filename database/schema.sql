@@ -67,6 +67,7 @@ CREATE TABLE admin_emails (
 CREATE TABLE admin_passwords (
     admin_id INT PRIMARY KEY,
     password_hash VARCHAR(255) NOT NULL,
+    pepper_id VARCHAR(16) NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_ap_admin_id FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -402,6 +403,3 @@ CREATE TABLE activity_logs (
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_unicode_ci;
-
-
-

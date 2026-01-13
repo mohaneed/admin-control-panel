@@ -194,7 +194,8 @@ class Container
             'DB_NAME',
             'DB_USER',
             'DB_PASS',
-            'PASSWORD_PEPPER',
+            'PASSWORD_PEPPERS',
+            'PASSWORD_ACTIVE_PEPPER_ID',
             'EMAIL_BLIND_INDEX_KEY',
             'APP_TIMEZONE',
             'EMAIL_ENCRYPTION_KEY',
@@ -213,8 +214,30 @@ class Container
             appEnv: $_ENV['APP_ENV'],
             appDebug: $_ENV['APP_DEBUG'] === 'true',
             timezone: $_ENV['APP_TIMEZONE'],
-            passwordPepper: $_ENV['PASSWORD_PEPPER'],
-            passwordPepperOld: $_ENV['PASSWORD_PEPPER_OLD'] ?? null,
+            passwordPeppers: (function (): array {
+                if (empty($_ENV['PASSWORD_PEPPERS'])) {
+                    throw new \Exception('PASSWORD_PEPPERS is required and cannot be empty.');
+                }
+                /** @var mixed $peppers */
+                $peppers = json_decode($_ENV['PASSWORD_PEPPERS'], true, 512, JSON_THROW_ON_ERROR);
+                if (!is_array($peppers) || empty($peppers)) {
+                    throw new \Exception('PASSWORD_PEPPERS must be a non-empty JSON object map');
+                }
+                foreach ($peppers as $id => $secret) {
+                    if (strlen($secret) < 32) {
+                        throw new \Exception("Pepper secret for ID '$id' is too short (min 32 chars).");
+                    }
+                }
+                /** @var array<string, string> $peppers */
+                return $peppers;
+            })(),
+            passwordActivePepperId: (function (): string {
+                $id = $_ENV['PASSWORD_ACTIVE_PEPPER_ID'] ?? '';
+                if (empty($id)) {
+                    throw new \Exception('PASSWORD_ACTIVE_PEPPER_ID is required.');
+                }
+                return $id;
+            })(),
             emailBlindIndexKey: $_ENV['EMAIL_BLIND_INDEX_KEY'],
             emailEncryptionKey: $_ENV['EMAIL_ENCRYPTION_KEY'],
             dbHost: $_ENV['DB_HOST'],
@@ -255,6 +278,11 @@ class Container
                 return $id;
             })()
         );
+
+        // Validate Active Pepper ID exists in Peppers
+        if (!isset($config->passwordPeppers[$config->passwordActivePepperId])) {
+            throw new \Exception("PASSWORD_ACTIVE_PEPPER_ID '{$config->passwordActivePepperId}' not found in PASSWORD_PEPPERS.");
+        }
 
         // Create Email Config DTO
         $emailConfig = new EmailTransportConfigDTO(
@@ -440,7 +468,7 @@ class Container
                 $config = $c->get(AdminConfigDTO::class);
                 assert($config instanceof AdminConfigDTO);
 
-                return new PasswordService($config->passwordPepper, $config->passwordPepperOld);
+                return new PasswordService($config->passwordPeppers, $config->passwordActivePepperId);
             },
             AdminAuthenticationService::class => function (ContainerInterface $c) {
                 $lookup = $c->get(AdminIdentifierLookupInterface::class);

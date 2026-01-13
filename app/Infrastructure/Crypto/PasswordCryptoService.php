@@ -31,13 +31,11 @@ use App\Domain\Service\PasswordService;
  *
  * BEHAVIOR:
  * - Argon2id hashing
- * - Pepper application
- * - Old pepper fallback
- * - Legacy plaintext fallback (if present in PasswordService)
+ * - Pepper Ring application (Deterministic)
+ * - NO legacy fallback
  *
  * STATUS:
- * - Phase 1 implementation
- * - NO behavior change
+ * - Phase 2 implementation (Pepper Ring)
  * - SAFE wrapper
  */
 final class PasswordCryptoService implements PasswordCryptoServiceInterface
@@ -58,16 +56,16 @@ final class PasswordCryptoService implements PasswordCryptoServiceInterface
     {
         /**
          * PasswordService::hash()
-         * - Applies pepper
+         * - Applies active pepper from ring
          * - Uses Argon2id
-         * - Returns string hash
+         * - Returns array {hash, pepper_id}
          */
-        $hash = $this->passwordService->hash($plainPassword);
+        $result = $this->passwordService->hash($plainPassword);
 
         return new PasswordHashDTO(
-            hash     : $hash,
+            hash     : $result['hash'],
             algorithm: 'argon2id',
-            params   : []
+            params   : ['pepper_id' => $result['pepper_id']]
         );
     }
 
@@ -80,13 +78,16 @@ final class PasswordCryptoService implements PasswordCryptoServiceInterface
     {
         /**
          * PasswordService::verify()
-         * - Handles pepper
-         * - Handles old pepper fallback
-         * - Handles legacy plaintext fallback (if implemented)
+         * - Looks up pepper by ID from params
+         * - Verifies using that specific pepper
+         * - Fails if pepper ID is unknown
          */
+        $pepperId = (string)($passwordHash->params['pepper_id'] ?? '');
+        
         return $this->passwordService->verify(
             $plainPassword,
-            $passwordHash->hash
+            $passwordHash->hash,
+            $pepperId
         );
     }
 }

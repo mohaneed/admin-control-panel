@@ -89,7 +89,9 @@ try {
     assert($passRepo instanceof AdminPasswordRepositoryInterface);
     $passwordService = $container->get(PasswordService::class);
     assert($passwordService instanceof PasswordService);
-    $passRepo->savePassword($adminId, $passwordService->hash($password));
+    
+    $hashResult = $passwordService->hash($password);
+    $passRepo->savePassword($adminId, $hashResult['hash'], $hashResult['pepper_id']);
 
     // 4. TOTP
     $totpRepo = $container->get(TotpSecretRepositoryInterface::class);
