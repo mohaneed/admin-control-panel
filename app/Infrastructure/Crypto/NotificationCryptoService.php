@@ -16,7 +16,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Crypto;
 
 use App\Application\Crypto\NotificationCryptoServiceInterface;
-use App\Application\Crypto\DTO\EncryptedPayloadDTO;
+use App\Domain\DTO\Crypto\EncryptedPayloadDTO;
 use App\Domain\Security\CryptoContext;
 use App\Modules\Crypto\DX\CryptoProvider;
 use App\Modules\Crypto\Reversible\DTO\ReversibleCryptoEncryptionResultDTO;
