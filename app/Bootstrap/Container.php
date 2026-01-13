@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Bootstrap;
 
+use App\Application\Crypto\AdminIdentifierCryptoServiceInterface;
+use App\Application\Crypto\NotificationCryptoServiceInterface;
+use App\Application\Crypto\PasswordCryptoServiceInterface;
+use App\Application\Crypto\TotpSecretCryptoServiceInterface;
 use App\Context\Resolver\AdminContextResolver;
 use App\Context\Resolver\RequestContextResolver;
 use App\Domain\ActivityLog\Reader\ActivityLogListReaderInterface;
@@ -87,6 +91,10 @@ use App\Http\Controllers\Ui\UiSettingsController;
 use App\Http\Controllers\Ui\SessionListController;
 use App\Domain\Session\Reader\SessionListReaderInterface;
 use App\Infrastructure\ActivityLog\MySQLActivityLogWriter;
+use App\Infrastructure\Crypto\AdminIdentifierCryptoService;
+use App\Infrastructure\Crypto\NotificationCryptoService;
+use App\Infrastructure\Crypto\PasswordCryptoService;
+use App\Infrastructure\Crypto\TotpSecretCryptoService;
 use App\Infrastructure\Reader\ActivityLog\PdoActivityLogListReader;
 use App\Infrastructure\Reader\Session\PdoSessionListReader;
 use App\Http\Middleware\RememberMeMiddleware;
@@ -1193,6 +1201,45 @@ class Container
 
                 return new HttpContextProvider($request, $adminResolver, $requestResolver);
             },
+
+            NotificationCryptoServiceInterface::class => function (ContainerInterface $c) {
+                $cryptoProvider = $c->get(CryptoProvider::class);
+
+                assert($cryptoProvider instanceof CryptoProvider);
+
+                return new NotificationCryptoService($cryptoProvider);
+            },
+
+            TotpSecretCryptoServiceInterface::class => function (ContainerInterface $c) {
+                $cryptoProvider = $c->get(CryptoProvider::class);
+
+                assert($cryptoProvider instanceof CryptoProvider);
+
+                return new TotpSecretCryptoService($cryptoProvider);
+            },
+
+
+            AdminIdentifierCryptoServiceInterface::class => function (ContainerInterface $c) {
+                $cryptoProvider = $c->get(CryptoProvider::class);
+                $blindIndexPepper = $_ENV['ADMIN_IDENTIFIER_PEPPER'] ?? '';
+
+                assert($cryptoProvider instanceof CryptoProvider);
+
+                return new AdminIdentifierCryptoService(
+                    $cryptoProvider,
+                    $blindIndexPepper
+                );
+            },
+
+
+            PasswordCryptoServiceInterface::class => function (ContainerInterface $c) {
+                $passwordService = $c->get(PasswordService::class);
+
+                assert($passwordService instanceof PasswordService);
+
+                return new PasswordCryptoService($passwordService);
+            },
+
         ]);
 
         return $containerBuilder->build();

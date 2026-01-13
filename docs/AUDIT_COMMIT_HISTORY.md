@@ -206,6 +206,7 @@ Entries MUST NOT be rewritten or reordered.
 - feat(crypto): add canonical crypto service interfaces and DTO skeletons
 - chore(agent): record as-is crypto execution baseline before service implementation
 - feat(crypto): add canonical crypto service adapters and DTO fixes
+- crypto: wire canonical crypto services into container (no behavior change)
 
 ---
 
