@@ -211,6 +211,7 @@ Entries MUST NOT be rewritten or reordered.
 - docs(agent): add read-only key unification strategy
 - docs(agent): add phased identity crypto migration strategy
 - docs(agent): add full cryptographic census and usage inventory
+- docs(agent): add crypto services & rotation project inventory report
 
 ---
 
