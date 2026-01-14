@@ -221,6 +221,7 @@ Entries MUST NOT be rewritten or reordered.
 - refactor(config): remove secrets from AdminConfigDTO and inject crypto/password configs directly
 - refactor(crypto): remove EMAIL_ENCRYPTION_KEY, use AdminIdentifierCryptoService for admin emails
 - chore(container): remove unused EMAIL_ENCRYPTION_KEY and align env bindings
+- Subject: docs(agent): finalize crypto/password closure audit after controller fix
 
 ---
 
