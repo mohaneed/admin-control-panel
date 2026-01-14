@@ -223,6 +223,7 @@ Entries MUST NOT be rewritten or reordered.
 - chore(container): remove unused EMAIL_ENCRYPTION_KEY and align env bindings
 - docs(agent): finalize crypto/password closure audit after controller fix
 - docs(canonical): lock cryptography, password, and logging architecture post-audit
+- Fix request-scoped context propagation after session authentication
 
 ---
 
