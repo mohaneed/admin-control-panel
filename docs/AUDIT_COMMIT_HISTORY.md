@@ -233,6 +233,7 @@ Entries MUST NOT be rewritten or reordered.
 - http: enrich RequestContext with route, method, and path metadata
 - security-events: introduce write-side module with contracts, DTOs, and mysql repository
 - db: refactor security_events schema (actor_type, actor_id, severity, request context)
+- security-events(reader): add module-level MySQL reader with pagination and strict row mapping
 
 ---
 
