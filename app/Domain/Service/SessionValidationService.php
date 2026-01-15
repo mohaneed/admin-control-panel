@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Service;
 
 use App\Domain\Contracts\AdminSessionValidationRepositoryInterface;
+use App\Context\RequestContext;
 use App\Domain\Contracts\ClientInfoProviderInterface;
 use App\Domain\Contracts\SecurityEventLoggerInterface;
 use App\Domain\DTO\SecurityEventDTO;
@@ -18,16 +19,13 @@ class SessionValidationService
 {
     private AdminSessionValidationRepositoryInterface $repository;
     private SecurityEventLoggerInterface $securityLogger;
-    private ClientInfoProviderInterface $clientInfoProvider;
 
     public function __construct(
         AdminSessionValidationRepositoryInterface $repository,
-        SecurityEventLoggerInterface $securityLogger,
-        ClientInfoProviderInterface $clientInfoProvider
+        SecurityEventLoggerInterface $securityLogger
     ) {
         $this->repository = $repository;
         $this->securityLogger = $securityLogger;
-        $this->clientInfoProvider = $clientInfoProvider;
     }
 
     /**
@@ -36,7 +34,7 @@ class SessionValidationService
      * @throws RevokedSessionException
      * @throws Exception
      */
-    public function validate(string $token): int
+    public function validate(string $token, RequestContext $context): int
     {
         $session = $this->repository->findSession($token);
 
@@ -46,9 +44,10 @@ class SessionValidationService
                 'session_validation_failed',
                 'warning',
                 ['reason' => 'invalid_token'],
-                $this->clientInfoProvider->getIpAddress(),
-                $this->clientInfoProvider->getUserAgent(),
-                new DateTimeImmutable()
+                $context->ipAddress,
+                $context->userAgent,
+                new DateTimeImmutable(),
+                $context->requestId
             ));
             throw new InvalidSessionException('Session not found or invalid.');
         }
@@ -59,9 +58,10 @@ class SessionValidationService
                 'session_validation_failed',
                 'warning',
                 ['reason' => 'revoked'],
-                $this->clientInfoProvider->getIpAddress(),
-                $this->clientInfoProvider->getUserAgent(),
-                new DateTimeImmutable()
+                $context->ipAddress,
+                $context->userAgent,
+                new DateTimeImmutable(),
+                $context->requestId
             ));
             throw new RevokedSessionException('Session has been revoked.');
         }
@@ -73,9 +73,10 @@ class SessionValidationService
                 'session_validation_failed',
                 'warning',
                 ['reason' => 'expired'],
-                $this->clientInfoProvider->getIpAddress(),
-                $this->clientInfoProvider->getUserAgent(),
-                new DateTimeImmutable()
+                $context->ipAddress,
+                $context->userAgent,
+                new DateTimeImmutable(),
+                $context->requestId
             ));
             throw new ExpiredSessionException('Session has expired.');
         }

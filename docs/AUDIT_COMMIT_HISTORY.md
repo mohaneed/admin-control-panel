@@ -226,6 +226,7 @@ Entries MUST NOT be rewritten or reordered.
 - Fix request-scoped context propagation after session authentication
 - refactor(context): remove legacy HttpContextProvider wiring from container
 - feat(logging): synchronize activity logging with existing audit flow
+- fix(audit,security): propagate RequestContext and enforce request_id across critical flows
 
 ---
 

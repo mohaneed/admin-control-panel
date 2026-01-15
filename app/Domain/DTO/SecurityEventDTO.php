@@ -8,17 +8,22 @@ use DateTimeImmutable;
 
 readonly class SecurityEventDTO
 {
+    /** @var array<string, mixed> */
+    public array $context;
+
     /**
-     * @param array<string, scalar> $context
+     * @param array<string, mixed> $context
      */
     public function __construct(
         public ?int $adminId,
         public string $eventName,
         public string $severity,
-        public array $context,
+        array $context,
         public ?string $ipAddress,
         public ?string $userAgent,
-        public DateTimeImmutable $occurredAt
+        public DateTimeImmutable $occurredAt,
+        string $requestId
     ) {
+        $this->context = array_merge($context, ['request_id' => $requestId]);
     }
 }
