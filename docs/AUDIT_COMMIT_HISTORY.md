@@ -229,6 +229,7 @@ Entries MUST NOT be rewritten or reordered.
 - fix(audit,security): propagate RequestContext and enforce request_id across critical flows
 - chore(context): finalize AdminContext closure and fix obsolete tests
 - docs(context): close context injection audit & harden canonical contracts
+- db(schema): add telemetry_traces table for high-volume tracing logs
 
 ---
 
