@@ -15,6 +15,8 @@ declare(strict_types=1);
 
 namespace App\Context;
 
+use App\Modules\SecurityEvents\Contracts\SecurityEventContextInterface;
+
 /**
  * Request-scoped context carrying request metadata for logging,
  * auditing, and tracing purposes.
@@ -25,7 +27,7 @@ namespace App\Context;
  * - It is intended to be created in HTTP middleware
  *   and propagated via request attributes.
  */
-final readonly class RequestContext
+final readonly class RequestContext implements SecurityEventContextInterface
 {
     public function __construct(
         public string $requestId,
@@ -38,5 +40,25 @@ final readonly class RequestContext
         public ?string $path = null,
     )
     {
+    }
+
+    public function getRequestId(): ?string
+    {
+        return $this->requestId;
+    }
+
+    public function getIpAddress(): ?string
+    {
+        return $this->ipAddress;
+    }
+
+    public function getUserAgent(): ?string
+    {
+        return $this->userAgent;
+    }
+
+    public function getRouteName(): ?string
+    {
+        return $this->routeName;
     }
 }

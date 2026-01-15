@@ -231,6 +231,7 @@ Entries MUST NOT be rewritten or reordered.
 - docs(context): close context injection audit & harden canonical contracts
 - db(schema): add telemetry_traces table for high-volume tracing logs
 - http: enrich RequestContext with route, method, and path metadata
+- security-events: introduce write-side module with contracts, DTOs, and mysql repository
 
 ---
 
