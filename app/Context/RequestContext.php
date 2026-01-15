@@ -16,6 +16,7 @@ declare(strict_types=1);
 namespace App\Context;
 
 use App\Modules\SecurityEvents\Contracts\SecurityEventContextInterface;
+use App\Modules\Telemetry\Contracts\TelemetryContextInterface;
 
 /**
  * Request-scoped context carrying request metadata for logging,
@@ -27,7 +28,7 @@ use App\Modules\SecurityEvents\Contracts\SecurityEventContextInterface;
  * - It is intended to be created in HTTP middleware
  *   and propagated via request attributes.
  */
-final readonly class RequestContext implements SecurityEventContextInterface
+final readonly class RequestContext implements SecurityEventContextInterface, TelemetryContextInterface
 {
     public function __construct(
         public string $requestId,

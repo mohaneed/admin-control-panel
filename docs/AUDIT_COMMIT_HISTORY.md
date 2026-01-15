@@ -237,6 +237,7 @@ Entries MUST NOT be rewritten or reordered.
 - security-events(module): align DTO with actor model and introduce explicit storage failure signaling
 - security-events: add complete write pipeline (module, domain, http recorder)
 - telemetry: introduce write-side module with domain recorder and http enrichment
+- telemetry(module): add context & storage contracts and align logger abstraction
 
 ---
 

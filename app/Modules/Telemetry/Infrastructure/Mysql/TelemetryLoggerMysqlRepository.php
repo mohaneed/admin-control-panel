@@ -18,6 +18,7 @@ namespace App\Modules\Telemetry\Infrastructure\Mysql;
 use App\Modules\Telemetry\Contracts\TelemetryLoggerInterface;
 use App\Modules\Telemetry\DTO\TelemetryEventDTO;
 use App\Modules\Telemetry\Exceptions\TelemetryStorageException;
+use App\Modules\Telemetry\Infrastructure\Contracts\TelemetryStorageInterface;
 use PDO;
 use Throwable;
 
@@ -29,7 +30,7 @@ use Throwable;
  * - No query/read responsibilities
  * - No swallowing (throw TelemetryStorageException)
  */
-final readonly class TelemetryLoggerMysqlRepository implements TelemetryLoggerInterface
+final readonly class TelemetryLoggerMysqlRepository  implements TelemetryLoggerInterface, TelemetryStorageInterface
 {
     public function __construct(
         private PDO $pdo
@@ -37,7 +38,22 @@ final readonly class TelemetryLoggerMysqlRepository implements TelemetryLoggerIn
     {
     }
 
-    public function insert(TelemetryEventDTO $dto): void
+    /**
+     * Module contract used by Domain recorder.
+     *
+     * @throws TelemetryStorageException
+     */
+    public function log(TelemetryEventDTO $dto): void
+    {
+        $this->store($dto);
+    }
+
+    /**
+     * Low-level storage contract.
+     *
+     * @throws TelemetryStorageException
+     */
+    public function store(TelemetryEventDTO $event): void
     {
         try {
             $stmt = $this->pdo->prepare(
@@ -66,19 +82,19 @@ final readonly class TelemetryLoggerMysqlRepository implements TelemetryLoggerIn
                 )'
             );
 
-            $metadataJson = $dto->metadata === [] ? null : json_encode($dto->metadata, JSON_THROW_ON_ERROR);
+            $metadataJson = $event->metadata === [] ? null : json_encode($event->metadata, JSON_THROW_ON_ERROR);
 
             $stmt->execute([
-                ':actor_type'  => $dto->actorType,
-                ':actor_id'    => $dto->actorId,
-                ':event_type'  => $dto->eventType->value,
-                ':severity'    => $dto->severity->value,
-                ':request_id'  => $dto->requestId,
-                ':route_name'  => $dto->routeName,
-                ':ip_address'  => $dto->ipAddress,
-                ':user_agent'  => $dto->userAgent,
+                ':actor_type'  => $event->actorType,
+                ':actor_id'    => $event->actorId,
+                ':event_type'  => $event->eventType->value,
+                ':severity'    => $event->severity->value,
+                ':request_id'  => $event->requestId,
+                ':route_name'  => $event->routeName,
+                ':ip_address'  => $event->ipAddress,
+                ':user_agent'  => $event->userAgent,
                 ':metadata'    => $metadataJson,
-                ':occurred_at' => $dto->occurredAt->format('Y-m-d H:i:s.u'),
+                ':occurred_at' => $event->occurredAt->format('Y-m-d H:i:s.u'),
             ]);
         } catch (Throwable $e) {
             throw new TelemetryStorageException('Telemetry storage failed (mysql insert).', 0, $e);

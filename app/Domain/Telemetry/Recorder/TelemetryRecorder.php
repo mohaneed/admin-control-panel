@@ -55,7 +55,7 @@ final readonly class TelemetryRecorder implements TelemetryRecorderInterface
                 occurredAt: new \DateTimeImmutable('now')
             );
 
-            $this->logger->insert($moduleDto);
+            $this->logger->log($moduleDto);
         } catch (TelemetryStorageException) {
             // Best-effort: swallow.
             // No PSR-3 logging here (diagnostics may be added later in an approved phase).

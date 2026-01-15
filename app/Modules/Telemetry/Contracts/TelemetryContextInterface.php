@@ -5,7 +5,7 @@
  * @Library     maatify/admin-control-panel
  * @Project     maatify:admin-control-panel
  * @author      Mohamed Abdulalim (megyptm) <mohamed@maatify.dev>
- * @since       2026-01-15 13:08
+ * @since       2026-01-15 16:53
  * @see         https://www.maatify.dev Maatify.dev
  * @link        https://github.com/Maatify/admin-control-panel view Project on GitHub
  * @note        Distributed in the hope that it will be useful - WITHOUT WARRANTY.
@@ -15,19 +15,20 @@ declare(strict_types=1);
 
 namespace App\Modules\Telemetry\Contracts;
 
-use App\Modules\Telemetry\DTO\TelemetryEventDTO;
-use App\Modules\Telemetry\Exceptions\TelemetryStorageException;
-
 /**
- * Module-level logger contract (storage adapter).
+ * Telemetry context contract (request-scoped data source).
  *
- * - Implementations may throw TelemetryStorageException.
- * - Swallowing failures is NOT allowed here.
+ * Notes:
+ * - Module contract only (library-friendly).
+ * - Concrete implementations may come from HTTP layer (e.g., RequestContext).
  */
-interface TelemetryLoggerInterface
+interface TelemetryContextInterface
 {
-    /**
-     * @throws TelemetryStorageException
-     */
-    public function log(TelemetryEventDTO $dto): void;
+    public function getRequestId(): ?string;
+
+    public function getRouteName(): ?string;
+
+    public function getIpAddress(): ?string;
+
+    public function getUserAgent(): ?string;
 }
