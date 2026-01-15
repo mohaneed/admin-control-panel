@@ -96,9 +96,10 @@ final class ActivityLogQueryControllerTest extends TestCase
                 ],
                 'date' => [
                     'from' => date('Y-m-d'),
+                    'to'   => date('Y-m-d'),
                 ],
             ])
-            ->withAttribute('admin_id', 1);
+            ->withAttribute(\App\Context\AdminContext::class, new \App\Context\AdminContext(1));
 
         $response = $controller($request, new Response());
 
