@@ -82,7 +82,7 @@ final class ScopeGuardMiddlewareTest extends TestCase
         // 3️⃣ routes
         $app->get('/admins', function () {
             return new Response();
-        })->setName('admins.create');
+        })->setName('admin.create');
 
         // =========================
         // Build real request
