@@ -6,7 +6,6 @@ namespace App\Domain\Service;
 
 use App\Domain\Contracts\AdminDirectPermissionRepositoryInterface;
 use App\Domain\Contracts\AdminRoleRepositoryInterface;
-use App\Domain\Contracts\TelemetryAuditLoggerInterface;
 use App\Context\RequestContext;
 use App\Domain\Contracts\RolePermissionRepositoryInterface;
 use App\Domain\Contracts\SecurityEventLoggerInterface;
@@ -22,15 +21,6 @@ readonly class AuthorizationService
         private AdminRoleRepositoryInterface $adminRoleRepository,
         private RolePermissionRepositoryInterface $rolePermissionRepository,
         private AdminDirectPermissionRepositoryInterface $directPermissionRepository,
-
-        // NOTE: Kept intentionally for now.
-        // TODO[AUDIT][BLOCKER]:
-        // audit_outbox
-        // TelemetryAuditLoggerInterface is currently injected but MUST NOT be used
-        // for authorization decisions. It will be fully replaced by
-        // NewAuthoritativeAuditLogger in a dedicated phase.
-        private TelemetryAuditLoggerInterface $auditLogger,
-
         private SecurityEventLoggerInterface $securityLogger,
         private SystemOwnershipRepositoryInterface $systemOwnershipRepository
     ) {

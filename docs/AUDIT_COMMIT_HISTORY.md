@@ -278,6 +278,7 @@ Entries MUST NOT be rewritten or reordered.
 - foundation(audit): establish authoritative audit write-side (frozen)
 - refactor(security): route step-up failures to security_events and remove telemetry
 - docs: add global logging rules and document PSR-3 diagnostic usage
+- chore(auth): remove telemetry audit dependencies from authentication and authorization services
 
 
 ---

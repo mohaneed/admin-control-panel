@@ -8,7 +8,6 @@ use App\Domain\Contracts\AdminEmailVerificationRepositoryInterface;
 use App\Domain\Contracts\AdminIdentifierLookupInterface;
 use App\Domain\Contracts\AdminPasswordRepositoryInterface;
 use App\Domain\Contracts\AdminSessionRepositoryInterface;
-use App\Domain\Contracts\TelemetryAuditLoggerInterface;
 use App\Context\RequestContext;
 use App\Domain\Contracts\AuthoritativeSecurityAuditWriterInterface;
 use App\Domain\Contracts\SecurityEventLoggerInterface;
@@ -28,14 +27,6 @@ readonly class AdminAuthenticationService
         private AdminEmailVerificationRepositoryInterface $verificationRepository,
         private AdminPasswordRepositoryInterface $passwordRepository,
         private AdminSessionRepositoryInterface $sessionRepository,
-
-        // NOTE: Kept intentionally for now.
-        // TODO[AUDIT][BLOCKER]:
-        // audit_outbox
-        // TelemetryAuditLoggerInterface MUST NOT be used for authentication
-        // or authority-related logging. It will be fully removed once
-        // the new authoritative audit logger is introduced.
-        private TelemetryAuditLoggerInterface $auditLogger,
 
         private SecurityEventLoggerInterface $securityLogger,
         private AuthoritativeSecurityAuditWriterInterface $outboxWriter,

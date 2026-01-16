@@ -270,14 +270,12 @@ class Container
                 $adminRoleRepo = $c->get(AdminRoleRepositoryInterface::class);
                 $rolePermissionRepo = $c->get(RolePermissionRepositoryInterface::class);
                 $directPermissionRepo = $c->get(AdminDirectPermissionRepositoryInterface::class);
-                $auditLogger = $c->get(TelemetryAuditLoggerInterface::class);
                 $securityLogger = $c->get(SecurityEventLoggerInterface::class);
                 $ownershipRepo = $c->get(SystemOwnershipRepositoryInterface::class);
 
                 assert($adminRoleRepo instanceof AdminRoleRepositoryInterface);
                 assert($rolePermissionRepo instanceof RolePermissionRepositoryInterface);
                 assert($directPermissionRepo instanceof AdminDirectPermissionRepositoryInterface);
-                assert($auditLogger instanceof TelemetryAuditLoggerInterface);
                 assert($securityLogger instanceof SecurityEventLoggerInterface);
                 assert($ownershipRepo instanceof SystemOwnershipRepositoryInterface);
 
@@ -285,7 +283,6 @@ class Container
                     $adminRoleRepo,
                     $rolePermissionRepo,
                     $directPermissionRepo,
-                    $auditLogger,
                     $securityLogger,
                     $ownershipRepo
                 );
@@ -450,7 +447,6 @@ class Container
                 $verificationRepo = $c->get(AdminEmailVerificationRepositoryInterface::class);
                 $passwordRepo = $c->get(AdminPasswordRepositoryInterface::class);
                 $sessionRepo = $c->get(AdminSessionRepositoryInterface::class);
-                $auditLogger = $c->get(TelemetryAuditLoggerInterface::class);
                 $securityLogger = $c->get(SecurityEventLoggerInterface::class);
                 $outboxWriter = $c->get(AuthoritativeSecurityAuditWriterInterface::class);
                 $recoveryState = $c->get(RecoveryStateService::class);
@@ -461,7 +457,6 @@ class Container
                 assert($verificationRepo instanceof AdminEmailVerificationRepositoryInterface);
                 assert($passwordRepo instanceof AdminPasswordRepositoryInterface);
                 assert($sessionRepo instanceof AdminSessionRepositoryInterface);
-                assert($auditLogger instanceof TelemetryAuditLoggerInterface);
                 assert($securityLogger instanceof SecurityEventLoggerInterface);
                 assert($outboxWriter instanceof AuthoritativeSecurityAuditWriterInterface);
                 assert($recoveryState instanceof RecoveryStateService);
@@ -473,7 +468,6 @@ class Container
                     $verificationRepo,
                     $passwordRepo,
                     $sessionRepo,
-                    $auditLogger,
                     $securityLogger,
                     $outboxWriter,
                     $recoveryState,
