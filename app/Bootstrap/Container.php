@@ -1001,12 +1001,20 @@ class Container
                 assert($service instanceof StepUpService);
                 return new ScopeGuardMiddleware($service);
             },
-            StepUpController::class => function (ContainerInterface $c) {
-                $service = $c->get(StepUpService::class);
-                $validationGuard = $c->get(ValidationGuard::class);
-                assert($service instanceof StepUpService);
-                assert($validationGuard instanceof ValidationGuard);
-                return new StepUpController($service, $validationGuard);
+            \App\Http\Controllers\StepUpController::class => function (ContainerInterface $c) {
+                $stepUpService = $c->get(\App\Domain\Service\StepUpService::class);
+                $validationGuard = $c->get(\App\Modules\Validation\Guard\ValidationGuard::class);
+                $telemetryFactory = $c->get(\App\Application\Telemetry\HttpTelemetryRecorderFactory::class);
+
+                assert($stepUpService instanceof \App\Domain\Service\StepUpService);
+                assert($validationGuard instanceof \App\Modules\Validation\Guard\ValidationGuard);
+                assert($telemetryFactory instanceof \App\Application\Telemetry\HttpTelemetryRecorderFactory);
+
+                return new \App\Http\Controllers\StepUpController(
+                    $stepUpService,
+                    $validationGuard,
+                    $telemetryFactory
+                );
             },
 
             // Phase Sx: Verification Code Infrastructure
