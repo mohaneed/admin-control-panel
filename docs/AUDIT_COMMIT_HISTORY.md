@@ -244,6 +244,7 @@ Entries MUST NOT be rewritten or reordered.
 - telemetry(enum): expand event taxonomy for auth, queries, mutations, and exceptions
 - telemetry(di): wire module logger, domain recorder, and http recorder factory
 - telemetry(crypto): add HKDF-based email hash DTO, contract, and service
+- telemetry(di): register telemetry email hasher service
 
 ---
 

@@ -1255,6 +1255,19 @@ class Container
                 return new \App\Application\Telemetry\HttpTelemetryRecorderFactory($recorder);
             },
 
+            // Telemetry - Email Hasher (HKDF + rotation)
+            \App\Application\Telemetry\Contracts\TelemetryEmailHasherInterface::class => function (ContainerInterface $c) {
+                $keyRotation = $c->get(\App\Modules\Crypto\KeyRotation\KeyRotationService::class);
+                assert($keyRotation instanceof \App\Modules\Crypto\KeyRotation\KeyRotationService);
+
+                $hkdf = $c->get(\App\Modules\Crypto\HKDF\HKDFService::class);
+                assert($hkdf instanceof \App\Modules\Crypto\HKDF\HKDFService);
+
+                return new \App\Infrastructure\Crypto\TelemetryEmailHashService(
+                    keyRotation: $keyRotation,
+                    hkdf: $hkdf
+                );
+            },
 
         ]);
 
