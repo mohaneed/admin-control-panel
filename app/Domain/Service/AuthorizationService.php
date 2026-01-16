@@ -29,14 +29,8 @@ readonly class AuthorizationService
     public function checkPermission(int $adminId, string $permission, RequestContext $context): void
     {
         // 0. System Owner Bypass
+        // Authorization decision only — no audit, no activity
         if ($this->systemOwnershipRepository->isOwner($adminId)) {
-            // TODO[AUDIT][BLOCKER]:
-            // audit_outbox
-            // Authorization decision (system owner bypass) was previously logged
-            // via TelemetryAuditLogger (best-effort, non-authoritative).
-            // This MUST be replaced with NewAuthoritativeAuditLogger.
-            // Original logger: TelemetryAuditLoggerInterface / PdoTelemetryAuditLogger.
-            // Ref: Logging Architecture Audit – AuthorizationService::checkPermission
             return;
         }
 
@@ -72,11 +66,7 @@ readonly class AuthorizationService
                     throw new PermissionDeniedException("Explicit deny for '$permission'.");
                 }
 
-                // TODO[AUDIT][BLOCKER]:
-                // audit_outbox
-                // Explicit permission allow was previously logged via TelemetryAuditLogger.
-                // This is an AUTHORITY decision and MUST use Authoritative Audit Logging.
-                // Ref: Logging Architecture Audit – AuthorizationService::checkPermission
+                // Explicit allow — authorization decision only
                 return;
             }
         }
@@ -85,11 +75,7 @@ readonly class AuthorizationService
         $roleIds = $this->adminRoleRepository->getRoleIds($adminId);
 
         if ($this->rolePermissionRepository->hasPermission($roleIds, $permission)) {
-            // TODO[AUDIT][BLOCKER]:
-            // audit_outbox
-            // Role-based access grant was previously logged via TelemetryAuditLogger.
-            // This MUST be replaced with NewAuthoritativeAuditLogger.
-            // Ref: Logging Architecture Audit – AuthorizationService::checkPermission
+            // Role-based allow — authorization decision only
             return;
         }
 
@@ -104,12 +90,13 @@ readonly class AuthorizationService
             new DateTimeImmutable(),
             $context->requestId
         ));
+
         throw new PermissionDeniedException("Admin $adminId lacks permission '$permission'.");
     }
 
     public function hasPermission(int $adminId, string $permission): bool
     {
-        // 0. System Owner Bypass
+        // Read-only helper — no logging
         if ($this->systemOwnershipRepository->isOwner($adminId)) {
             return true;
         }
@@ -118,7 +105,6 @@ readonly class AuthorizationService
             return false;
         }
 
-        // 1. Direct Permissions (Explicit Deny/Allow)
         $directPermissions = $this->directPermissionRepository->getActivePermissions($adminId);
         foreach ($directPermissions as $direct) {
             if ($direct['permission'] === $permission) {
@@ -126,7 +112,6 @@ readonly class AuthorizationService
             }
         }
 
-        // 2. Role Permissions
         $roleIds = $this->adminRoleRepository->getRoleIds($adminId);
 
         return $this->rolePermissionRepository->hasPermission($roleIds, $permission);
