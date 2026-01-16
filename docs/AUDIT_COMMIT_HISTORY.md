@@ -243,6 +243,7 @@ Entries MUST NOT be rewritten or reordered.
 - telemetry(enum): add auth, query, and exception event types
 - telemetry(enum): expand event taxonomy for auth, queries, mutations, and exceptions
 - telemetry(di): wire module logger, domain recorder, and http recorder factory
+- telemetry(crypto): add HKDF-based email hash DTO, contract, and service
 
 ---
 
