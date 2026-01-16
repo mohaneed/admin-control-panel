@@ -24,18 +24,36 @@ namespace App\Modules\Telemetry\Enum;
  */
 enum TelemetryEventTypeEnum: string
 {
+    // HTTP lifecycle
     case HTTP_REQUEST_START = 'http_request_start';
-    case HTTP_REQUEST_END = 'http_request_end';
+    case HTTP_REQUEST_END   = 'http_request_end';
 
+    // Auth / step-up (telemetry only, not authoritative)
+    case AUTH_LOGIN_SUCCESS  = 'auth_login_success';
+    case AUTH_LOGIN_FAILURE  = 'auth_login_failure';
+    case AUTH_STEPUP_SUCCESS = 'auth_stepup_success';
+    case AUTH_STEPUP_FAILURE = 'auth_stepup_failure';
+
+    // Rate limiting
     case RATE_LIMIT_HIT = 'rate_limit_hit';
-    case CACHE_MISS = 'cache_miss';
-    case CACHE_HIT = 'cache_hit';
 
-    case DB_QUERY_SLOW = 'db_query_slow';
+    // Cache
+    case CACHE_MISS = 'cache_miss';
+    case CACHE_HIT  = 'cache_hit';
+
+    // Queries / performance
+    case DATA_QUERY_EXECUTED = 'data_query_executed';
+    case DB_QUERY_SLOW       = 'db_query_slow';
+
+    // External calls
     case EXTERNAL_CALL_SLOW = 'external_call_slow';
     case EXTERNAL_CALL_FAIL = 'external_call_fail';
 
+    // System exceptions
+    case SYSTEM_EXCEPTION = 'system_exception';
+
+    // Workers
     case WORKER_JOB_START = 'worker_job_start';
-    case WORKER_JOB_END = 'worker_job_end';
-    case WORKER_JOB_FAIL = 'worker_job_fail';
+    case WORKER_JOB_END   = 'worker_job_end';
+    case WORKER_JOB_FAIL  = 'worker_job_fail';
 }

@@ -240,6 +240,7 @@ Entries MUST NOT be rewritten or reordered.
 - telemetry(module): add context & storage contracts and align logger abstraction
 - test(security-events): add recorder + mysql repo integration coverage
 - telemetry(app): add request-scoped HTTP telemetry recorder factory
+- telemetry(enum): add auth, query, and exception event types
 
 ---
 
