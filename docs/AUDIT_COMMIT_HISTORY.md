@@ -270,6 +270,7 @@ Entries MUST NOT be rewritten or reordered.
 - feat(telemetry): expose has_metadata flag in telemetry list query
 - feat(telemetry): add web and api routes for telemetry listing
 - feat(telemetry): bind telemetry list reader interface to PDO implementation
+- test(telemetry): add full telemetry coverage and fix AuthControllerTest
 
 
 ---
