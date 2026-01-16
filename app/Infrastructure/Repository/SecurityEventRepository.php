@@ -19,24 +19,30 @@ class SecurityEventRepository implements SecurityEventLoggerInterface
 
     public function log(SecurityEventDTO $event): void
     {
-        $stmt = $this->pdo->prepare(
-            'INSERT INTO security_events (admin_id, event_name, context, ip_address, user_agent, occurred_at)
+        try {
+            $stmt = $this->pdo->prepare(
+                'INSERT INTO security_events (admin_id, event_name, context, ip_address, user_agent, occurred_at)
              VALUES (:admin_id, :event_name, :context, :ip_address, :user_agent, :occurred_at)'
-        );
+            );
 
-        $context = $event->context;
-        $context['severity'] = $event->severity;
+            $context = $event->context;
+            $context['severity'] = $event->severity;
 
-        $contextJson = json_encode($context);
-        assert($contextJson !== false);
+            $contextJson = json_encode($context);
+            if ($contextJson === false) {
+                $contextJson = '{}';
+            }
 
-        $stmt->execute([
-            ':admin_id' => $event->adminId,
-            ':event_name' => $event->eventName,
-            ':context' => $contextJson,
-            ':ip_address' => $event->ipAddress,
-            ':user_agent' => $event->userAgent,
-            ':occurred_at' => $event->occurredAt->format('Y-m-d H:i:s'),
-        ]);
+            $stmt->execute([
+                ':admin_id'    => $event->adminId,
+                ':event_name'  => $event->eventName,
+                ':context'     => $contextJson,
+                ':ip_address'  => $event->ipAddress,
+                ':user_agent'  => $event->userAgent,
+                ':occurred_at' => $event->occurredAt->format('Y-m-d H:i:s'),
+            ]);
+        } catch (\Throwable $e) {
+            // swallow — telemetry MUST NOT break flow
+        }
     }
 }

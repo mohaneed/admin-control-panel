@@ -19,23 +19,29 @@ class PdoTelemetryAuditLogger implements TelemetryAuditLoggerInterface
 
     public function log(LegacyAuditEventDTO $event): void
     {
-        $stmt = $this->pdo->prepare(
-            'INSERT INTO audit_logs (actor_admin_id, target_type, target_id, action, changes, ip_address, user_agent, occurred_at)
+        try {
+            $stmt = $this->pdo->prepare(
+                'INSERT INTO audit_logs (actor_admin_id, target_type, target_id, action, changes, ip_address, user_agent, occurred_at)
              VALUES (:actor_admin_id, :target_type, :target_id, :action, :changes, :ip_address, :user_agent, :occurred_at)'
-        );
+            );
 
-        $changesJson = json_encode($event->changes);
-        assert($changesJson !== false);
+            $changesJson = json_encode($event->changes);
+            if ($changesJson === false) {
+                $changesJson = '{}';
+            }
 
-        $stmt->execute([
-            ':actor_admin_id' => $event->actorAdminId,
-            ':target_type' => $event->targetType,
-            ':target_id' => $event->targetId,
-            ':action' => $event->action,
-            ':changes' => $changesJson,
-            ':ip_address' => $event->ipAddress,
-            ':user_agent' => $event->userAgent,
-            ':occurred_at' => $event->occurredAt->format('Y-m-d H:i:s'),
-        ]);
+            $stmt->execute([
+                ':actor_admin_id' => $event->actorAdminId,
+                ':target_type'    => $event->targetType,
+                ':target_id'      => $event->targetId,
+                ':action'         => $event->action,
+                ':changes'        => $changesJson,
+                ':ip_address'     => $event->ipAddress,
+                ':user_agent'     => $event->userAgent,
+                ':occurred_at'    => $event->occurredAt->format('Y-m-d H:i:s'),
+            ]);
+        } catch (\Throwable $e) {
+            // swallow — telemetry MUST NOT break flow
+        }
     }
 }
