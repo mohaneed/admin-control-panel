@@ -27,58 +27,55 @@ final class HttpRequestTelemetryMiddleware implements MiddlewareInterface
         RequestHandlerInterface $handler
     ): ResponseInterface {
         $start = microtime(true);
+        $response = null;
 
         try {
             $response = $handler->handle($request);
+            return $response;
         } catch (Throwable $e) {
             // Let global error handlers deal with exception telemetry
             throw $e;
         } finally {
             try {
-                /** @var RequestContext|null $context */
                 $context = $request->getAttribute(RequestContext::class);
-
                 if (!$context instanceof RequestContext) {
-                    return $response ?? throw new \RuntimeException('Response missing');
-                }
-
-                $durationMs = (int) ((microtime(true) - $start) * 1000);
-
-                $metadata = [
-                    'method'       => $request->getMethod(),
-                    'route_name'   => $context->getRouteName(),
-                    'status_code'  => isset($response) ? $response->getStatusCode() : 500,
-                    'duration_ms'  => $durationMs,
-                ];
-
-                /** @var AdminContext|null $adminContext */
-                $adminContext = $request->getAttribute(AdminContext::class);
-
-                if ($adminContext instanceof AdminContext) {
-                    // ADMIN request
-                    $this->telemetryFactory
-                        ->admin($context)
-                        ->record(
-                            $adminContext->adminId,
-                            TelemetryEventTypeEnum::HTTP_REQUEST_END,
-                            TelemetrySeverityEnum::INFO,
-                            $metadata
-                        );
+                    // no context => skip telemetry (no return/throw here)
+                } elseif (!$response instanceof ResponseInterface) {
+                    // exception path => skip request-end telemetry
                 } else {
-                    // SYSTEM / unauthenticated request
-                    $this->telemetryFactory
-                        ->system($context)
-                        ->record(
-                            TelemetryEventTypeEnum::HTTP_REQUEST_END,
-                            TelemetrySeverityEnum::INFO,
-                            $metadata
-                        );
+                    $durationMs = (int) ((microtime(true) - $start) * 1000);
+
+                    $metadata = [
+                        'method'      => $request->getMethod(),
+                        'route_name'  => $context->getRouteName(),
+                        'status_code' => $response->getStatusCode(),
+                        'duration_ms' => $durationMs,
+                    ];
+
+                    $adminContext = $request->getAttribute(AdminContext::class);
+
+                    if ($adminContext instanceof AdminContext) {
+                        $this->telemetryFactory
+                            ->admin($context)
+                            ->record(
+                                $adminContext->adminId,
+                                TelemetryEventTypeEnum::HTTP_REQUEST_END,
+                                TelemetrySeverityEnum::INFO,
+                                $metadata
+                            );
+                    } else {
+                        $this->telemetryFactory
+                            ->system($context)
+                            ->record(
+                                TelemetryEventTypeEnum::HTTP_REQUEST_END,
+                                TelemetrySeverityEnum::INFO,
+                                $metadata
+                            );
+                    }
                 }
             } catch (Throwable) {
                 // swallow — telemetry must never affect request flow
             }
         }
-
-        return $response;
     }
 }

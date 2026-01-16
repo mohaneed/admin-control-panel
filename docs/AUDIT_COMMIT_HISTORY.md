@@ -256,6 +256,7 @@ Entries MUST NOT be rewritten or reordered.
 - feat(security, sessions): add admin-initiated single session revoke with canonical guards
 - feat(security, telemetry): add admin bulk session revoke telemetry
 - fix(telemetry): correct admin/system recorder invocation in HTTP middleware
+- fix(telemetry): stabilize HttpRequestTelemetryMiddleware control flow
 
 ---
 
