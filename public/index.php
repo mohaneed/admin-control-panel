@@ -2,6 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Application\Telemetry\HttpTelemetryRecorderFactory;
+use App\Context\RequestContext;
+use App\Modules\Telemetry\Enum\TelemetryEventTypeEnum;
+use App\Modules\Telemetry\Enum\TelemetrySeverityEnum;
 use App\Bootstrap\Container;
 use App\Modules\Validation\Exceptions\ValidationFailedException;
 use Psr\Http\Message\ResponseInterface;
@@ -38,6 +42,40 @@ $errorMiddleware->setErrorHandler(
         bool $logErrors,
         bool $logErrorDetails
     ) use ($app): ResponseInterface {
+
+        // ✅ Telemetry (best-effort, never breaks error handler)
+        try {
+            $context = $request->getAttribute(RequestContext::class);
+            if ($context instanceof RequestContext) {
+                $factory = $app->getContainer()->get(HttpTelemetryRecorderFactory::class);
+                if ($factory instanceof HttpTelemetryRecorderFactory) {
+                    /** @var ValidationFailedException $exception */
+                    $factory->system($context)->record(
+                        eventType: TelemetryEventTypeEnum::SYSTEM_EXCEPTION,
+                        severity: TelemetrySeverityEnum::WARN,
+                        metadata: [
+                            'exception_class' => get_class($exception),
+                            'exception_message' => $exception->getMessage(),
+                            'file' => $exception->getFile(),
+                            'line' => $exception->getLine(),
+                            'errors' => $exception->getErrors(),
+                        ]
+                    );
+                }
+            }
+        } catch (Throwable $e) {
+            try {
+                $logger = $app->getContainer()->get(\Psr\Log\LoggerInterface::class);
+                if ($logger instanceof \Psr\Log\LoggerInterface) {
+                    $logger->warning('Telemetry failure in ValidationFailedException handler', [
+                        'exception_class' => get_class($e),
+                        'message' => $e->getMessage(),
+                    ]);
+                }
+            } catch (Throwable) {
+                // swallow
+            }
+        }
 
         /** @var ValidationFailedException $exception */
         $payload = json_encode(

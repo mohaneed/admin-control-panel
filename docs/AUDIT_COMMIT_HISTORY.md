@@ -250,6 +250,7 @@ Entries MUST NOT be rewritten or reordered.
 - telemetry(auth): wire login telemetry and update container controller binding
 - telemetry(stepup): record step-up verify outcome via admin recorder
 - telemetry(sessions): record sessions query execution (best-effort)
+- telemetry(error): record validation failures and psr-log telemetry write errors
 
 ---
 
