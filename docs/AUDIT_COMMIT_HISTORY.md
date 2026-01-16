@@ -277,6 +277,7 @@ Entries MUST NOT be rewritten or reordered.
 - schema(audit): add actor_type to audit_outbox for authoritative audit events
 - foundation(audit): establish authoritative audit write-side (frozen)
 - refactor(security): route step-up failures to security_events and remove telemetry
+- docs: add global logging rules and document PSR-3 diagnostic usage
 
 
 ---
