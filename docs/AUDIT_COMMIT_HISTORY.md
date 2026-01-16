@@ -271,6 +271,7 @@ Entries MUST NOT be rewritten or reordered.
 - feat(telemetry): add web and api routes for telemetry listing
 - feat(telemetry): bind telemetry list reader interface to PDO implementation
 - test(telemetry): add full telemetry coverage and fix AuthControllerTest
+- feat(telemetry): expose has_metadata in list DTO and reader mapping
 
 
 ---
