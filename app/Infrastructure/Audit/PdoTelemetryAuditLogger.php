@@ -25,10 +25,7 @@ class PdoTelemetryAuditLogger implements TelemetryAuditLoggerInterface
              VALUES (:actor_admin_id, :target_type, :target_id, :action, :changes, :ip_address, :user_agent, :occurred_at)'
             );
 
-            $changesJson = json_encode($event->changes);
-            if ($changesJson === false) {
-                $changesJson = '{}';
-            }
+            $changesJson = json_encode($event->changes, JSON_THROW_ON_ERROR);
 
             $stmt->execute([
                 ':actor_admin_id' => $event->actorAdminId,
