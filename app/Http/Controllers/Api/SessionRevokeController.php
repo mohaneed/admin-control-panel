@@ -9,6 +9,9 @@ use App\Context\RequestContext;
 use App\Domain\Service\AuthorizationService;
 use App\Modules\Validation\Guard\ValidationGuard;
 use App\Modules\Validation\Schemas\SessionRevokeSchema;
+use App\Application\Telemetry\HttpTelemetryRecorderFactory;
+use App\Modules\Telemetry\Enum\TelemetryEventTypeEnum;
+use App\Modules\Telemetry\Enum\TelemetrySeverityEnum;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use DomainException;
@@ -17,9 +20,10 @@ use App\Domain\Exception\IdentifierNotFoundException;
 class SessionRevokeController
 {
     public function __construct(
-        private SessionRevocationService $revocationService,
-        private AuthorizationService $authorizationService,
-        private ValidationGuard $validationGuard
+        private readonly SessionRevocationService $revocationService,
+        private readonly AuthorizationService $authorizationService,
+        private readonly ValidationGuard $validationGuard,
+        private readonly HttpTelemetryRecorderFactory $telemetryFactory
     ) {
     }
 
@@ -30,13 +34,13 @@ class SessionRevokeController
     {
         $adminContext = $request->getAttribute(\App\Context\AdminContext::class);
         if (!$adminContext instanceof \App\Context\AdminContext) {
-             throw new \RuntimeException("AdminContext missing");
+            throw new \RuntimeException("AdminContext missing");
         }
         $adminId = $adminContext->adminId;
 
         $context = $request->getAttribute(RequestContext::class);
         if (!$context instanceof RequestContext) {
-             throw new \RuntimeException("Request context missing");
+            throw new \RuntimeException("Request context missing");
         }
 
         $this->authorizationService->checkPermission($adminId, 'sessions.revoke', $context);
@@ -51,21 +55,87 @@ class SessionRevokeController
         $currentSessionHash = $token !== '' ? hash('sha256', $token) : '';
 
         if ($currentSessionHash === '') {
-             $response->getBody()->write(json_encode(['error' => 'Current session not found'], JSON_THROW_ON_ERROR));
-             return $response->withStatus(401)->withHeader('Content-Type', 'application/json');
+            $response->getBody()->write(
+                json_encode(['error' => 'Current session not found'], JSON_THROW_ON_ERROR)
+            );
+            return $response->withStatus(401)->withHeader('Content-Type', 'application/json');
         }
 
         try {
-            $this->revocationService->revokeByHash($targetSessionHash, $currentSessionHash, $context);
+            $this->revocationService->revokeByHash(
+                $targetSessionHash,
+                $currentSessionHash,
+                $context
+            );
+
+            // ✅ Telemetry — successful admin-initiated revoke
+            try {
+                $this->telemetryFactory
+                    ->admin($context)
+                    ->record(
+                        $adminId,
+                        TelemetryEventTypeEnum::RESOURCE_MUTATION,
+                        TelemetrySeverityEnum::INFO,
+                        [
+                            'action'            => 'session_revoke',
+                            'target_session_id' => $targetSessionHash,
+                        ]
+                    );
+            } catch (\Throwable) {
+                // swallow — telemetry must never affect request flow
+            }
 
             $response->getBody()->write(json_encode(['status' => 'ok'], JSON_THROW_ON_ERROR));
             return $response->withStatus(200)->withHeader('Content-Type', 'application/json');
 
         } catch (DomainException $e) {
-            $response->getBody()->write(json_encode(['error' => $e->getMessage()], JSON_THROW_ON_ERROR));
+
+            // ⚠️ Telemetry — failed revoke attempt (business rule)
+            try {
+                $this->telemetryFactory
+                    ->admin($context)
+                    ->record(
+                        $adminId,
+                        TelemetryEventTypeEnum::RESOURCE_MUTATION,
+                        TelemetrySeverityEnum::WARN,
+                        [
+                            'action'            => 'session_revoke_failed',
+                            'reason'            => 'domain_exception',
+                            'target_session_id' => $targetSessionHash,
+                        ]
+                    );
+            } catch (\Throwable) {
+                // swallow
+            }
+
+            $response->getBody()->write(
+                json_encode(['error' => $e->getMessage()], JSON_THROW_ON_ERROR)
+            );
             return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+
         } catch (IdentifierNotFoundException $e) {
-            $response->getBody()->write(json_encode(['error' => $e->getMessage()], JSON_THROW_ON_ERROR));
+
+            // ⚠️ Telemetry — target not found
+            try {
+                $this->telemetryFactory
+                    ->admin($context)
+                    ->record(
+                        $adminId,
+                        TelemetryEventTypeEnum::RESOURCE_MUTATION,
+                        TelemetrySeverityEnum::WARN,
+                        [
+                            'action'            => 'session_revoke_failed',
+                            'reason'            => 'session_not_found',
+                            'target_session_id' => $targetSessionHash,
+                        ]
+                    );
+            } catch (\Throwable) {
+                // swallow
+            }
+
+            $response->getBody()->write(
+                json_encode(['error' => $e->getMessage()], JSON_THROW_ON_ERROR)
+            );
             return $response->withStatus(404)->withHeader('Content-Type', 'application/json');
         }
     }

@@ -913,10 +913,16 @@ class Container
                 $service = $c->get(SessionRevocationService::class);
                 $auth = $c->get(AuthorizationService::class);
                 $validationGuard = $c->get(ValidationGuard::class);
+                // Telemetry
+                $telemetryFactory = $c->get(\App\Application\Telemetry\HttpTelemetryRecorderFactory::class);
+
                 assert($service instanceof SessionRevocationService);
                 assert($auth instanceof AuthorizationService);
                 assert($validationGuard instanceof ValidationGuard);
-                return new SessionRevokeController($service, $auth, $validationGuard);
+                assert($telemetryFactory instanceof \App\Application\Telemetry\HttpTelemetryRecorderFactory);
+
+                return new SessionRevokeController($service, $auth, $validationGuard, $telemetryFactory
+                );
             },
             SessionBulkRevokeController::class => function (ContainerInterface $c) {
                 $service = $c->get(SessionRevocationService::class);
