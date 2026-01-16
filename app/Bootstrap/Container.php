@@ -1233,6 +1233,29 @@ class Container
                 return new PasswordCryptoService($passwordService);
             },
 
+            // Telemetry
+            \App\Modules\Telemetry\Contracts\TelemetryLoggerInterface::class => function (ContainerInterface $c) {
+                $pdo = $c->get(PDO::class);
+                assert($pdo instanceof PDO);
+
+                return new \App\Modules\Telemetry\Infrastructure\Mysql\TelemetryLoggerMysqlRepository($pdo);
+            },
+
+            \App\Domain\Telemetry\Recorder\TelemetryRecorderInterface::class => function (ContainerInterface $c) {
+                $logger = $c->get(\App\Modules\Telemetry\Contracts\TelemetryLoggerInterface::class);
+                assert($logger instanceof \App\Modules\Telemetry\Contracts\TelemetryLoggerInterface);
+
+                return new \App\Domain\Telemetry\Recorder\TelemetryRecorder($logger);
+            },
+
+            \App\Application\Telemetry\HttpTelemetryRecorderFactory::class => function (ContainerInterface $c) {
+                $recorder = $c->get(\App\Domain\Telemetry\Recorder\TelemetryRecorderInterface::class);
+                assert($recorder instanceof \App\Domain\Telemetry\Recorder\TelemetryRecorderInterface);
+
+                return new \App\Application\Telemetry\HttpTelemetryRecorderFactory($recorder);
+            },
+
+
         ]);
 
         return $containerBuilder->build();
