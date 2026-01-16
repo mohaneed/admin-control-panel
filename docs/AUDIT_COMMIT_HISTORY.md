@@ -258,6 +258,7 @@ Entries MUST NOT be rewritten or reordered.
 - fix(telemetry): correct admin/system recorder invocation in HTTP middleware
 - fix(telemetry): stabilize HttpRequestTelemetryMiddleware control flow
 - fix(telemetry): harden legacy PDO loggers to be best-effort
+- fix(telemetry): remove catch and prevent return overwrite in HttpRequestTelemetryMiddleware
 
 ---
 

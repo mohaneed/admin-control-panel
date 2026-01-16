@@ -32,17 +32,11 @@ final class HttpRequestTelemetryMiddleware implements MiddlewareInterface
         try {
             $response = $handler->handle($request);
             return $response;
-        } catch (Throwable $e) {
-            // Let global error handlers deal with exception telemetry
-            throw $e;
         } finally {
             try {
                 $context = $request->getAttribute(RequestContext::class);
-                if (!$context instanceof RequestContext) {
-                    // no context => skip telemetry (no return/throw here)
-                } elseif (!$response instanceof ResponseInterface) {
-                    // exception path => skip request-end telemetry
-                } else {
+
+                if ($context instanceof RequestContext && $response instanceof ResponseInterface) {
                     $durationMs = (int) ((microtime(true) - $start) * 1000);
 
                     $metadata = [
