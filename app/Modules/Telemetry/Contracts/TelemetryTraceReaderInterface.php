@@ -15,12 +15,22 @@ declare(strict_types=1);
 
 namespace App\Modules\Telemetry\Contracts;
 
-use App\Modules\Telemetry\DTO\TelemetryTraceReadPageDTO;
-use App\Modules\Telemetry\DTO\TelemetryTraceReadQueryDTO;
+use App\Modules\Telemetry\DTO\TelemetryTraceListQueryDTO;
+use App\Modules\Telemetry\DTO\TelemetryTraceReadDTO;
 
 interface TelemetryTraceReaderInterface
 {
-    public function paginate(TelemetryTraceReadQueryDTO $query): TelemetryTraceReadPageDTO;
+    /**
+     * @return TelemetryTraceReadDTO[]
+     */
+    public function paginate(
+        TelemetryTraceListQueryDTO $query,
+        int $page,
+        int $perPage
+    ): array;
 
-    public function count(TelemetryTraceReadQueryDTO $query): int;
+    public function count(TelemetryTraceListQueryDTO $query): int;
+
+    public function findById(int $id): ?TelemetryTraceReadDTO;
 }
+

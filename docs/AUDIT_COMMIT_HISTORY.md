@@ -263,6 +263,7 @@ Entries MUST NOT be rewritten or reordered.
 - fix(routes): add HttpRequestTelemetryMiddleware and remove duplicate RequestIdMiddleware
 - telemetry(reader-module): add mysql trace reader contracts and dto
 - chore(db): align telemetry_traces actor model with security_events
+- fix(telemetry): realign telemetry_traces schema with canonical actor model
 
 
 ---

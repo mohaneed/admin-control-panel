@@ -28,4 +28,7 @@ enum TelemetrySeverityEnum: string
     case INFO = 'info';
     case WARN = 'warn';
     case ERROR = 'error';
+
+    case NOTICE = 'notice';
+    case WARNING = 'warning';
 }

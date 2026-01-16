@@ -15,23 +15,28 @@ declare(strict_types=1);
 
 namespace App\Modules\Telemetry\DTO;
 
+use App\Modules\Telemetry\Enum\TelemetrySeverityEnum;
+use DateTimeImmutable;
+
 final readonly class TelemetryTraceReadDTO
 {
-    /**
-     * @param   array<string, mixed>|null  $metadata
-     */
     public function __construct(
         public int $id,
         public string $eventKey,
-        public string $severity,
+        public TelemetrySeverityEnum $severity,
+
         public ?string $routeName,
         public ?string $requestId,
-        public ?int $actorAdminId,
+
+        public string $actorType,
+        public ?int $actorId,
+
         public ?string $ipAddress,
         public ?string $userAgent,
-        public ?array $metadata,
-        public \DateTimeImmutable $occurredAt,
-    )
-    {
-    }
+
+        /** @var array<string, mixed> */
+        public array $metadata,
+
+        public DateTimeImmutable $occurredAt
+    ) {}
 }
