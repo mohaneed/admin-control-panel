@@ -255,6 +255,7 @@ Entries MUST NOT be rewritten or reordered.
 - feat(security, telemetry): add admin self-logout telemetry and wire canonical error handlers
 - feat(security, sessions): add admin-initiated single session revoke with canonical guards
 - feat(security, telemetry): add admin bulk session revoke telemetry
+- fix(telemetry): correct admin/system recorder invocation in HTTP middleware
 
 ---
 
