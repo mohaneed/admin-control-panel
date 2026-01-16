@@ -397,7 +397,8 @@ CREATE TABLE telemetry_traces (
                                   request_id VARCHAR(64) NULL,
 
     -- Actor (admin)
-                                  actor_admin_id INT NULL,
+                                  actor_type VARCHAR(32) NOT NULL,
+                                  actor_id   BIGINT UNSIGNED NULL,
 
     -- Request context
                                   ip_address VARCHAR(45) NULL,
@@ -410,9 +411,9 @@ CREATE TABLE telemetry_traces (
                                   occurred_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
 
     -- Indexes (high-volume)
+                                  INDEX idx_telemetry_actor (actor_type, actor_id),
                                   INDEX idx_telemetry_event_key (event_key),
                                   INDEX idx_telemetry_severity (severity),
-                                  INDEX idx_telemetry_actor (actor_admin_id),
                                   INDEX idx_telemetry_request (request_id),
                                   INDEX idx_telemetry_route (route_name),
                                   INDEX idx_telemetry_occurred_at (occurred_at)
