@@ -287,6 +287,7 @@ Entries MUST NOT be rewritten or reordered.
 - docs(logging): add ASCII overview for logging architecture and boundaries
 - Fix tests failing due to constructor signature changes
 - feat(schema): add encrypted admin TOTP secrets table
+- refactor(container): wire encrypted TOTP services and remove legacy bindings
 
 ---
 

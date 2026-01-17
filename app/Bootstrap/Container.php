@@ -28,6 +28,7 @@ use App\Domain\Contracts\AdminSessionRepositoryInterface;
 use App\Domain\Contracts\AdminRoleRepositoryInterface;
 use App\Domain\Contracts\AdminSessionValidationRepositoryInterface;
 use App\Domain\Contracts\AdminTargetedAuditReaderInterface;
+use App\Domain\Contracts\AdminTotpSecretRepositoryInterface;
 use App\Domain\Contracts\TelemetryAuditLoggerInterface;
 use App\Domain\Contracts\RememberMeRepositoryInterface;
 use App\Domain\Contracts\FailedNotificationRepositoryInterface;
@@ -113,6 +114,7 @@ use App\Infrastructure\Repository\AdminEmailRepository;
 use App\Infrastructure\Repository\AdminNotificationChannelRepository;
 use App\Infrastructure\Repository\AdminNotificationPreferenceRepository;
 use App\Infrastructure\Repository\AdminPasswordRepository;
+use App\Infrastructure\Repository\AdminTotpSecretRepository;
 use App\Infrastructure\Repository\FileTotpSecretRepository;
 use App\Infrastructure\Repository\PdoAdminNotificationHistoryReader;
 use App\Infrastructure\Repository\PdoAdminNotificationPersistenceRepository;
@@ -994,9 +996,12 @@ class Container
                 assert($pdo instanceof PDO);
                 return new PdoStepUpGrantRepository($pdo);
             },
-            TotpSecretRepositoryInterface::class => function (ContainerInterface $c) {
-                $storagePath = __DIR__ . '/../../storage/totp';
-                return new FileTotpSecretRepository($storagePath);
+            AdminTotpSecretRepositoryInterface::class => function (ContainerInterface $c) {
+                $pdo = $c->get(PDO::class);
+                assert($pdo instanceof PDO);
+                return new AdminTotpSecretRepository(
+                    $pdo
+                );
             },
             TotpServiceInterface::class => function (ContainerInterface $c) {
                 return new Google2faTotpService();
