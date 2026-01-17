@@ -284,6 +284,7 @@ Entries MUST NOT be rewritten or reordered.
 - feat(activity): complete admin activity logging for operational actions
 - Enforce telemetry observability-only guardrails
 - fix(logging): remove authentication logging from controllers and enforce canonical auth logging
+- docs(logging): add ASCII overview for logging architecture and boundaries
 
 
 ---
