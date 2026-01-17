@@ -289,6 +289,7 @@ Entries MUST NOT be rewritten or reordered.
 - feat(schema): add encrypted admin TOTP secrets table
 - refactor(container): wire encrypted TOTP services and remove legacy bindings
 - fix(security,totp): replace legacy TOTP storage with encrypted DB-backed flow
+- fix(schema): normalize admin-linked ids and harden notification uniqueness
 
 ---
 
