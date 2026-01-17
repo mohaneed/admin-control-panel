@@ -9,6 +9,7 @@ DROP TABLE IF EXISTS admin_sessions;
 DROP TABLE IF EXISTS admin_passwords;
 DROP TABLE IF EXISTS admin_emails;
 DROP TABLE IF EXISTS admin_remember_me_tokens;
+DROP TABLE IF EXISTS admin_totp_secrets;
 
 DROP TABLE IF EXISTS verification_codes;
 DROP TABLE IF EXISTS admin_notification_preferences;
@@ -84,6 +85,31 @@ CREATE TABLE admin_sessions (
     is_revoked TINYINT(1) DEFAULT 0 NOT NULL,
     CONSTRAINT fk_as_admin_id FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE admin_totp_secrets (
+                                    admin_id BIGINT UNSIGNED NOT NULL,
+
+    -- Encrypted TOTP Seed
+                                    seed_ciphertext VARBINARY(512) NOT NULL,
+                                    seed_iv VARBINARY(16) NOT NULL,
+                                    seed_tag VARBINARY(16) NOT NULL,
+                                    seed_key_id VARCHAR(64) NOT NULL,
+
+    -- Lifecycle
+                                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                    rotated_at TIMESTAMP NULL DEFAULT NULL,
+
+                                    PRIMARY KEY (admin_id),
+
+                                    CONSTRAINT fk_admin_totp_admin
+                                        FOREIGN KEY (admin_id)
+                                            REFERENCES admins(id)
+                                            ON DELETE CASCADE
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci
+    COMMENT='Encrypted TOTP seeds for admins (reversible, governed by CryptoContext::TOTP_SEED_V1)';
+
 
 CREATE TABLE roles (
     id INT AUTO_INCREMENT PRIMARY KEY,
