@@ -690,3 +690,135 @@ This endpoint is currently disabled in the codebase.
 Use `POST /api/admins/query` instead.
 
 **Endpoint:** `GET /api/admins/list`
+
+---
+
+## 📊 Telemetry
+
+System-level telemetry endpoints used for **internal diagnostics, observability, and trace analysis**.
+All telemetry endpoints are **read-only** and protected by explicit permissions.
+
+Telemetry data includes:
+
+* Internal system events
+* Request lifecycle traces
+* Actor attribution (admin / system)
+* Network context (IP, request ID)
+* Optional structured metadata
+
+---
+
+### Telemetry Query (LIST)
+
+Retrieves a paginated list of **telemetry traces** using the **Canonical LIST / QUERY Contract**.
+
+**Endpoint:**
+
+```
+POST api/telemetry/query
+```
+
+**Auth Required:** Yes
+**Permission:**
+
+```
+telemetry.list
+```
+
+---
+
+### Request Model
+
+> Uses **Canonical LIST / QUERY Contract (LOCKED)**.
+
+```json
+{
+  "page": 1,
+  "per_page": 20,
+  "search": {
+    "global": "login",
+    "columns": {
+      "event_key": "AUTH_LOGIN"
+    }
+  },
+  "date": {
+    "from": "2026-01-01",
+    "to": "2026-01-16"
+  }
+}
+```
+
+---
+
+### Allowed Search Aliases
+
+* `event_key`
+* `route_name`
+* `request_id`
+
+### Allowed Column Filters
+
+* `event_key`
+* `route_name`
+* `request_id`
+* `actor_type`
+* `actor_id`
+* `ip_address`
+
+### Date Filter
+
+* Applies to: `occurred_at`
+
+---
+
+### Response Model
+
+> Uses **Canonical Response Envelope**.
+
+```json
+{
+  "data": [
+    {
+      "id": 123,
+      "event_key": "AUTH_LOGIN",
+      "severity": "INFO",
+      "actor_type": "admin",
+      "actor_id": 5,
+      "route_name": "/login",
+      "request_id": "req_abc123",
+      "ip_address": "192.168.1.10",
+      "occurred_at": "2026-01-16 12:45:10.123456",
+      "has_metadata": true
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "perPage": 20,
+    "total": 5420,
+    "filtered": 120
+  }
+}
+```
+
+---
+
+### Activity Logging
+
+* **Action:** `TELEMETRY_LIST`
+* Logged on **successful execution only**
+* Metadata includes:
+
+    * `result_count`
+
+---
+
+### Notes
+
+* Telemetry endpoints are **read-only**
+* Pagination, search, and filtering are **server-side only**
+* Only declared aliases and filters are accepted
+* Any undocumented request shape is rejected
+* Endpoint does **not** emit audit logs (Activity Log only)
+
+---
+
