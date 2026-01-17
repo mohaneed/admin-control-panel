@@ -290,6 +290,8 @@ Entries MUST NOT be rewritten or reordered.
 - refactor(container): wire encrypted TOTP services and remove legacy bindings
 - fix(security,totp): replace legacy TOTP storage with encrypted DB-backed flow
 - fix(schema): normalize admin-linked ids and harden notification uniqueness
+- chore(totp): remove deprecated legacy TOTP repository
+- test(totp): fix broken tests to use AdminTotpSecretStoreInterface
 
 ---
 
