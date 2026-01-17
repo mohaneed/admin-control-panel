@@ -32,11 +32,17 @@ final class SessionRevokeControllerTest extends TestCase
         $telemetryFactory = $helper['factory'];
         $spy = $helper['recorder'];
 
+        $writer = $this->createMock(\App\Modules\ActivityLog\Contracts\ActivityLogWriterInterface::class);
+        $writer->expects($this->once())->method('write');
+        $activityLogService = new \App\Modules\ActivityLog\Service\ActivityLogService($writer);
+        $adminActivityLogService = new \App\Domain\ActivityLog\Service\AdminActivityLogService($activityLogService);
+
         $controller = new SessionRevokeController(
             $revocationService,
             $authzService,
             $validationGuard,
-            $telemetryFactory
+            $telemetryFactory,
+            $adminActivityLogService
         );
 
         $request = $this->createMock(ServerRequestInterface::class);

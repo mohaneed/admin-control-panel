@@ -285,7 +285,7 @@ Entries MUST NOT be rewritten or reordered.
 - Enforce telemetry observability-only guardrails
 - fix(logging): remove authentication logging from controllers and enforce canonical auth logging
 - docs(logging): add ASCII overview for logging architecture and boundaries
-
+- Fix tests failing due to constructor signature changes
 
 ---
 
