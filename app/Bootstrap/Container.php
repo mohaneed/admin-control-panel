@@ -48,6 +48,7 @@ use App\Domain\Ownership\SystemOwnershipRepositoryInterface;
 use App\Domain\Security\Crypto\CryptoKeyRingConfig;
 use App\Domain\Security\Password\PasswordPepperRing;
 use App\Domain\Security\Password\PasswordPepperRingConfig;
+use App\Domain\SecurityEvents\Recorder\SecurityEventRecorder;
 use App\Domain\SecurityEvents\Recorder\SecurityEventRecorderInterface;
 use App\Domain\Service\AdminAuthenticationService;
 use App\Domain\Service\AdminEmailVerificationService;
@@ -158,6 +159,7 @@ use App\Modules\Email\Renderer\EmailRendererInterface;
 use App\Modules\Email\Renderer\TwigEmailRenderer;
 use App\Modules\Email\Transport\EmailTransportInterface;
 use App\Modules\Email\Transport\SmtpEmailTransport;
+use App\Modules\SecurityEvents\Infrastructure\Mysql\SecurityEventLoggerMysqlRepository;
 use App\Modules\Validation\Contracts\ValidatorInterface;
 use App\Modules\Validation\Guard\ValidationGuard;
 use App\Modules\Validation\Validator\RespectValidator;
@@ -1324,6 +1326,15 @@ class Container
                     hkdf: $hkdf
                 );
             },
+            SecurityEventRecorderInterface::class => function (ContainerInterface $c) {
+                $pdo = $c->get(PDO::class);
+
+                assert($pdo instanceof PDO);
+
+                $securityEventLoggerMysqlRepository = new SecurityEventLoggerMysqlRepository($pdo);
+
+                return new SecurityEventRecorder($securityEventLoggerMysqlRepository);
+            }
 
         ]);
 
