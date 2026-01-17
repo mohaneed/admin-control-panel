@@ -629,34 +629,21 @@ class Container
             },
             AuthController::class => function (ContainerInterface $c) {
                 $authService = $c->get(AdminAuthenticationService::class);
-                $config = $c->get(AdminConfigDTO::class);
                 $validationGuard = $c->get(ValidationGuard::class);
-
-                $adminActivityLogService = $c->get(AdminActivityLogService::class);
 
                 // Crypto
                 $cryptoService = $c->get(AdminIdentifierCryptoServiceInterface::class);
 
-                // Telemetry
-                $telemetryFactory = $c->get(\App\Application\Telemetry\HttpTelemetryRecorderFactory::class);
-                $telemetryEmailHasher = $c->get(\App\Application\Telemetry\Contracts\TelemetryEmailHasherInterface::class);
 
                 assert($authService instanceof AdminAuthenticationService);
-                assert($config instanceof AdminConfigDTO);
                 assert($validationGuard instanceof ValidationGuard);
-                assert($adminActivityLogService instanceof AdminActivityLogService);
                 assert($cryptoService instanceof AdminIdentifierCryptoServiceInterface);
 
-                assert($telemetryFactory instanceof \App\Application\Telemetry\HttpTelemetryRecorderFactory);
-                assert($telemetryEmailHasher instanceof \App\Application\Telemetry\Contracts\TelemetryEmailHasherInterface);
 
                 return new AuthController(
                     $authService,
                     $cryptoService,
-                    $validationGuard,
-                    $adminActivityLogService,
-                    $telemetryFactory,
-                    $telemetryEmailHasher
+                    $validationGuard
                 );
             },
 
@@ -665,9 +652,6 @@ class Container
                 $sessionRepo = $c->get(AdminSessionValidationRepositoryInterface::class);
                 $rememberMeService = $c->get(RememberMeService::class);
                 $view = $c->get(Twig::class);
-                $config = $c->get(AdminConfigDTO::class);
-
-                $adminActivityLogService = $c->get(AdminActivityLogService::class);
 
                 // NEW: Get crypto service
                 $cryptoService = $c->get(AdminIdentifierCryptoServiceInterface::class);
@@ -676,8 +660,6 @@ class Container
                 assert($sessionRepo instanceof AdminSessionValidationRepositoryInterface);
                 assert($rememberMeService instanceof RememberMeService);
                 assert($view instanceof Twig);
-                assert($config instanceof AdminConfigDTO);
-                assert($adminActivityLogService instanceof AdminActivityLogService);
                 assert($cryptoService instanceof AdminIdentifierCryptoServiceInterface);
 
                 return new LoginController(
@@ -686,7 +668,6 @@ class Container
                     $rememberMeService,
                     $cryptoService, // NEW
                     $view,
-                    $adminActivityLogService
                 );
             },
             LogoutController::class => function (ContainerInterface $c) {

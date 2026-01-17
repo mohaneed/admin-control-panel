@@ -282,6 +282,8 @@ Entries MUST NOT be rewritten or reordered.
 - refactor(authz): remove non-canonical audit intent from authorization decisions
 - docs(adr,logging): add ADR-011 for deferred Data Access Logs and expand logging governance
 - feat(activity): complete admin activity logging for operational actions
+- Enforce telemetry observability-only guardrails
+- fix(logging): remove authentication logging from controllers and enforce canonical auth logging
 
 
 ---
