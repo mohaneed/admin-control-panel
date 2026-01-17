@@ -78,7 +78,7 @@ final readonly class TelemetryQueryController
         // ─────────────────────────────
         $this->authorizationService->hasPermission(
             $adminId,
-            'telemetry.view'
+            'telemetry.list'
         );
 
         // ─────────────────────────────
