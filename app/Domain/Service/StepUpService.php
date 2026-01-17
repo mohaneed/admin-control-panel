@@ -4,15 +4,12 @@ declare(strict_types=1);
 
 namespace App\Domain\Service;
 
-use App\Domain\Contracts\SecurityEventLoggerInterface;
-use App\Domain\Contracts\TelemetryAuditLoggerInterface;
 use App\Domain\Contracts\AuthoritativeSecurityAuditWriterInterface;
 use App\Context\RequestContext;
 use App\Domain\Contracts\StepUpGrantRepositoryInterface;
-use App\Domain\Contracts\TotpSecretRepositoryInterface;
+use App\Domain\Contracts\AdminTotpSecretStoreInterface;
 use App\Domain\Contracts\TotpServiceInterface;
 use App\Domain\DTO\AuditEventDTO;
-use App\Domain\DTO\SecurityEventDTO;
 use App\Domain\DTO\StepUpGrant;
 use App\Domain\DTO\TotpVerificationResultDTO;
 use App\Domain\Enum\Scope;
@@ -29,7 +26,7 @@ readonly class StepUpService
 {
     public function __construct(
         private StepUpGrantRepositoryInterface $grantRepository,
-        private TotpSecretRepositoryInterface $totpSecretRepository,
+        private AdminTotpSecretStoreInterface $totpSecretStore,
         private TotpServiceInterface $totpService,
         private AuthoritativeSecurityAuditWriterInterface $outboxWriter,
         private SecurityEventRecorderInterface $securityEventRecorder,
@@ -49,7 +46,7 @@ readonly class StepUpService
 
         $sessionId = hash('sha256', $token);
 
-        $secret = $this->totpSecretRepository->get($adminId);
+        $secret = $this->totpSecretStore->retrieve($adminId);
         if ($secret === null) {
             $this->securityEventRecorder->record(
                 new SecurityEventRecordDTO(
@@ -150,7 +147,7 @@ readonly class StepUpService
 
         $this->pdo->beginTransaction();
         try {
-            $this->totpSecretRepository->save($adminId, $secret);
+            $this->totpSecretStore->store($adminId, $secret);
 
             $this->issuePrimaryGrant($adminId, $token, $context);
 
@@ -307,7 +304,6 @@ readonly class StepUpService
                 )
             );
 
-            // Invalidate grant strictly (authoritative)
             $this->pdo->beginTransaction();
             try {
                 $this->grantRepository->revoke($adminId, $sessionId, $scope);
@@ -331,7 +327,6 @@ readonly class StepUpService
 
             return false;
         }
-
 
         if ($grant->expiresAt < new DateTimeImmutable()) {
             return false;

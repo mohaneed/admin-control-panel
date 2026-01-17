@@ -29,6 +29,7 @@ use App\Domain\Contracts\AdminRoleRepositoryInterface;
 use App\Domain\Contracts\AdminSessionValidationRepositoryInterface;
 use App\Domain\Contracts\AdminTargetedAuditReaderInterface;
 use App\Domain\Contracts\AdminTotpSecretRepositoryInterface;
+use App\Domain\Contracts\AdminTotpSecretStoreInterface;
 use App\Domain\Contracts\TelemetryAuditLoggerInterface;
 use App\Domain\Contracts\RememberMeRepositoryInterface;
 use App\Domain\Contracts\FailedNotificationRepositoryInterface;
@@ -38,7 +39,6 @@ use App\Domain\Contracts\RolePermissionRepositoryInterface;
 use App\Domain\Contracts\RoleRepositoryInterface;
 use App\Domain\Contracts\SecurityEventLoggerInterface;
 use App\Domain\Contracts\StepUpGrantRepositoryInterface;
-use App\Domain\Contracts\TotpSecretRepositoryInterface;
 use App\Domain\Contracts\TotpServiceInterface;
 use App\Domain\Contracts\VerificationCodeGeneratorInterface;
 use App\Domain\Contracts\VerificationCodePolicyResolverInterface;
@@ -112,10 +112,8 @@ use App\Infrastructure\Notification\TelegramHandler;
 use App\Infrastructure\Repository\AdminActivityQueryRepository;
 use App\Infrastructure\Repository\AdminEmailRepository;
 use App\Infrastructure\Repository\AdminNotificationChannelRepository;
-use App\Infrastructure\Repository\AdminNotificationPreferenceRepository;
 use App\Infrastructure\Repository\AdminPasswordRepository;
 use App\Infrastructure\Repository\AdminTotpSecretRepository;
-use App\Infrastructure\Repository\FileTotpSecretRepository;
 use App\Infrastructure\Repository\PdoAdminNotificationHistoryReader;
 use App\Infrastructure\Repository\PdoAdminNotificationPersistenceRepository;
 use App\Infrastructure\Repository\PdoAdminNotificationPreferenceRepository;
@@ -135,6 +133,7 @@ use App\Infrastructure\Repository\PdoVerificationCodeRepository;
 use App\Infrastructure\Repository\RolePermissionRepository;
 use App\Domain\Service\PasswordService;
 use App\Infrastructure\Repository\SecurityEventRepository;
+use App\Infrastructure\Service\AdminTotpSecretStore;
 use App\Infrastructure\Service\Google2faTotpService;
 use App\Infrastructure\UX\AdminActivityMapper;
 use App\Modules\ActivityLog\Contracts\ActivityLogWriterInterface;
@@ -1006,9 +1005,19 @@ class Container
             TotpServiceInterface::class => function (ContainerInterface $c) {
                 return new Google2faTotpService();
             },
+            AdminTotpSecretStoreInterface::class => function (ContainerInterface $c) {
+                $adminTotpSecretRepository = $c->get(AdminTotpSecretRepositoryInterface::class);
+                $totpSecretCryptoService = $c->get(TotpSecretCryptoServiceInterface::class);
+                assert($adminTotpSecretRepository instanceof AdminTotpSecretRepositoryInterface);
+                assert($totpSecretCryptoService instanceof TotpSecretCryptoServiceInterface);
+                return new AdminTotpSecretStore(
+                    $adminTotpSecretRepository,
+                    $totpSecretCryptoService
+                );
+            },
             StepUpService::class => function (ContainerInterface $c) {
                 $grantRepo = $c->get(StepUpGrantRepositoryInterface::class);
-                $secretRepo = $c->get(TotpSecretRepositoryInterface::class);
+                $totpSecretStore = $c->get(AdminTotpSecretStoreInterface::class);
                 $totpService = $c->get(TotpServiceInterface::class);
                 $securityEventRecorder = $c->get(SecurityEventRecorderInterface::class);
 
@@ -1017,7 +1026,7 @@ class Container
                 $pdo = $c->get(PDO::class);
 
                 assert($grantRepo instanceof StepUpGrantRepositoryInterface);
-                assert($secretRepo instanceof TotpSecretRepositoryInterface);
+                assert($totpSecretStore instanceof AdminTotpSecretStoreInterface);
                 assert($totpService instanceof TotpServiceInterface);
                 assert($securityEventRecorder instanceof SecurityEventRecorderInterface);
                 assert($outboxWriter instanceof AuthoritativeSecurityAuditWriterInterface);
@@ -1026,7 +1035,7 @@ class Container
 
                 return new StepUpService(
                     $grantRepo,
-                    $secretRepo,
+                    $totpSecretStore,
                     $totpService,
                     $outboxWriter,
                     $securityEventRecorder,    // ✅ real security logging
@@ -1036,9 +1045,9 @@ class Container
             },
             SessionStateGuardMiddleware::class => function (ContainerInterface $c) {
                 $service = $c->get(StepUpService::class);
-                $repo = $c->get(TotpSecretRepositoryInterface::class);
+                $repo = $c->get(AdminTotpSecretStoreInterface::class);
                 assert($service instanceof StepUpService);
-                assert($repo instanceof TotpSecretRepositoryInterface);
+                assert($repo instanceof AdminTotpSecretStoreInterface);
                 return new SessionStateGuardMiddleware($service, $repo);
             },
             ScopeGuardMiddleware::class => function (ContainerInterface $c) {

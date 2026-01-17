@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
-use App\Domain\Contracts\TotpSecretRepositoryInterface;
+use App\Domain\Contracts\AdminTotpSecretStoreInterface;
 use App\Domain\Enum\Scope;
 use App\Domain\Enum\SessionState;
 use App\Context\RequestContext;
@@ -20,7 +20,7 @@ class SessionStateGuardMiddleware implements MiddlewareInterface
 {
     public function __construct(
         private StepUpService $stepUpService,
-        private TotpSecretRepositoryInterface $totpSecretRepository
+        private AdminTotpSecretStoreInterface $totpSecretStore
     ) {
     }
 
@@ -29,9 +29,14 @@ class SessionStateGuardMiddleware implements MiddlewareInterface
         $adminContext = $request->getAttribute(\App\Context\AdminContext::class);
         if (!$adminContext instanceof \App\Context\AdminContext) {
             $response = new \Slim\Psr7\Response();
-            $response->getBody()->write((string)json_encode(['error' => 'Authentication required'], JSON_THROW_ON_ERROR));
-            return $response->withStatus(401)->withHeader('Content-Type', 'application/json');
+            $response->getBody()->write(
+                (string) json_encode(['error' => 'Authentication required'], JSON_THROW_ON_ERROR)
+            );
+            return $response
+                ->withStatus(401)
+                ->withHeader('Content-Type', 'application/json');
         }
+
         $adminId = $adminContext->adminId;
 
         // STRICT Detection: Same as SessionGuardMiddleware
@@ -39,11 +44,15 @@ class SessionStateGuardMiddleware implements MiddlewareInterface
 
         $sessionId = $this->getSessionIdFromRequest($request);
         if ($sessionId === null) {
-             // Inconsistent state: admin_id present but no token found by this guard?
-             // Should only happen if SessionGuard extraction differs or context lost.
-             $response = new \Slim\Psr7\Response();
-             $response->getBody()->write((string)json_encode(['error' => 'Session required'], JSON_THROW_ON_ERROR));
-             return $response->withStatus(401)->withHeader('Content-Type', 'application/json');
+            // Inconsistent state: admin_id present but no token found by this guard?
+            // Should only happen if SessionGuard extraction differs or context lost.
+            $response = new \Slim\Psr7\Response();
+            $response->getBody()->write(
+                (string) json_encode(['error' => 'Session required'], JSON_THROW_ON_ERROR)
+            );
+            return $response
+                ->withStatus(401)
+                ->withHeader('Content-Type', 'application/json');
         }
 
         // Skip check for Step-Up Verification route to allow promotion
@@ -51,38 +60,57 @@ class SessionStateGuardMiddleware implements MiddlewareInterface
         $route = $routeContext->getRoute();
         $routeName = $route ? $route->getName() : null;
 
-        if ($routeName === 'auth.stepup.verify' || $routeName === '2fa.setup' || $routeName === '2fa.verify') {
+        if (
+            $routeName === 'auth.stepup.verify'
+            || $routeName === '2fa.setup'
+            || $routeName === '2fa.verify'
+        ) {
             return $handler->handle($request);
         }
 
         $context = $request->getAttribute(RequestContext::class);
         if (!$context instanceof RequestContext) {
-            throw new \RuntimeException("Request context missing");
+            throw new \RuntimeException('Request context missing');
         }
 
         $state = $this->stepUpService->getSessionState($adminId, $sessionId, $context);
 
         if ($state !== SessionState::ACTIVE) {
             if ($isApi) {
-                 // API: Deny - Step Up Required (Primary/Login)
-                 $this->stepUpService->logDenial($adminId, $sessionId, Scope::LOGIN, $context);
+                // API: Deny - Step Up Required (Primary/Login)
+                $this->stepUpService->logDenial(
+                    $adminId,
+                    $sessionId,
+                    Scope::LOGIN,
+                    $context
+                );
 
-                 $response = new \Slim\Psr7\Response();
-                 $payload = [
-                     'code' => 'STEP_UP_REQUIRED',
-                     'scope' => 'login'
-                 ];
-                 $response->getBody()->write((string)json_encode($payload, JSON_THROW_ON_ERROR));
-                 return $response->withStatus(403)->withHeader('Content-Type', 'application/json');
-            } else {
-                // Web: Redirect to 2FA Setup or Verify
                 $response = new \Slim\Psr7\Response();
-                if ($this->totpSecretRepository->get($adminId) === null) {
-                    return $response->withHeader('Location', '/2fa/setup')->withStatus(302);
-                } else {
-                    return $response->withHeader('Location', '/2fa/verify')->withStatus(302);
-                }
+                $payload = [
+                    'code'  => 'STEP_UP_REQUIRED',
+                    'scope' => 'login',
+                ];
+                $response->getBody()->write(
+                    (string) json_encode($payload, JSON_THROW_ON_ERROR)
+                );
+
+                return $response
+                    ->withStatus(403)
+                    ->withHeader('Content-Type', 'application/json');
             }
+
+            // Web: Redirect to 2FA Setup or Verify
+            $response = new \Slim\Psr7\Response();
+
+            if (!$this->totpSecretStore->exists($adminId)) {
+                return $response
+                    ->withHeader('Location', '/2fa/setup')
+                    ->withStatus(302);
+            }
+
+            return $response
+                ->withHeader('Location', '/2fa/verify')
+                ->withStatus(302);
         }
 
         return $handler->handle($request);
@@ -92,7 +120,7 @@ class SessionStateGuardMiddleware implements MiddlewareInterface
     {
         $cookies = $request->getCookieParams();
         if (isset($cookies['auth_token'])) {
-            return (string)$cookies['auth_token'];
+            return (string) $cookies['auth_token'];
         }
 
         return null;

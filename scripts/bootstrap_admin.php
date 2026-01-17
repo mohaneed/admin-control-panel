@@ -3,16 +3,17 @@
 require __DIR__ . '/../vendor/autoload.php';
 
 use App\Bootstrap\Container;
+use App\Domain\Contracts\AdminTotpSecretStoreInterface;
 use App\Infrastructure\Repository\AdminRepository;
 use App\Infrastructure\Repository\AdminEmailRepository;
 use App\Domain\Contracts\AdminPasswordRepositoryInterface;
-use App\Domain\Contracts\TotpSecretRepositoryInterface;
 use App\Domain\Contracts\TotpServiceInterface;
 use App\Domain\Contracts\AuthoritativeSecurityAuditWriterInterface;
 use App\Domain\DTO\AuditEventDTO;
 use App\Domain\DTO\AdminConfigDTO;
 use App\Domain\Service\PasswordService;
 use App\Domain\Ownership\SystemOwnershipRepositoryInterface;
+use Ramsey\Uuid\Uuid;
 
 // Container (Loads ENV)
 $container = Container::create();
@@ -84,10 +85,10 @@ try {
     $hashResult = $passwordService->hash($password);
     $passRepo->savePassword($adminId, $hashResult['hash'], $hashResult['pepper_id']);
 
-    // 4. TOTP
-    $totpRepo = $container->get(TotpSecretRepositoryInterface::class);
-    assert($totpRepo instanceof TotpSecretRepositoryInterface);
-    $totpRepo->save($adminId, $secret);
+    // 4. TOTP (SECURE)
+    $totpStore = $container->get(AdminTotpSecretStoreInterface::class);
+    assert($totpStore instanceof AdminTotpSecretStoreInterface);
+    $totpStore->store($adminId, $secret);
 
     // 5. System Ownership
     $ownershipRepo = $container->get(SystemOwnershipRepositoryInterface::class);
@@ -97,15 +98,20 @@ try {
     // 6. Audit
     $writer = $container->get(AuthoritativeSecurityAuditWriterInterface::class);
     assert($writer instanceof AuthoritativeSecurityAuditWriterInterface);
+
+    $requestId = Uuid::uuid4()->toString();
+    $correlationId = Uuid::uuid4()->toString();
+
     $writer->write(new AuditEventDTO(
-        $adminId,
-        'system_bootstrap',
-        'system',
-        null,
-        'CRITICAL',
-        ['email_hash' => $blindIndex],
-        bin2hex(random_bytes(16)),
-        new DateTimeImmutable()
+        actor_id: $adminId,
+        action: 'system_bootstrap',
+        target_type: 'system',
+        target_id: null,
+        risk_level: 'CRITICAL',
+        payload: ['email_hash' => $blindIndex],
+        correlation_id: $correlationId,
+        request_id: $requestId,
+        created_at: new DateTimeImmutable()
     ));
 
     $pdo->commit();

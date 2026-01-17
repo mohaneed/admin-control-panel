@@ -93,12 +93,21 @@ final class AdminTotpSecretRepository implements AdminTotpSecretRepositoryInterf
             return null;
         }
 
+        /**
+         * @var array{
+         *   seed_ciphertext: string,
+         *   seed_iv: string,
+         *   seed_tag: string,
+         *   seed_key_id: string
+         * } $row
+         */
         return new EncryptedPayloadDTO(
             ciphertext: $row['seed_ciphertext'],
             iv        : $row['seed_iv'],
             tag       : $row['seed_tag'],
             keyId     : $row['seed_key_id']
         );
+
     }
 
     public function delete(int $adminId): void
