@@ -88,6 +88,12 @@ class ScopeGuardMiddleware implements MiddlewareInterface
         if (!$this->stepUpService->hasGrant($adminId, $sessionId, $requiredScope, $context)) {
              $this->stepUpService->logDenial($adminId, $sessionId, $requiredScope, $context);
 
+            // ADDITIVE START
+            if (!AuthSurface::isApi($request)) {
+                return $this->redirectToStepUp($request, $requiredScope);
+            }
+            // ADDITIVE END
+
              $response = new \Slim\Psr7\Response();
              $payload = [
                  'code' => 'STEP_UP_REQUIRED',
@@ -109,4 +115,26 @@ class ScopeGuardMiddleware implements MiddlewareInterface
         }
         return null;
     }
+
+    private function redirectToStepUp(
+        ServerRequestInterface $request,
+        Scope $requiredScope
+    ): ResponseInterface {
+        $uri = $request->getUri();
+
+        $returnTo = $uri->getPath();
+        $query = $uri->getQuery();
+        if ($query !== '') {
+            $returnTo .= '?' . $query;
+        }
+
+        $location = '/2fa/verify?scope=' . urlencode($requiredScope->value)
+                    . '&return_to=' . urlencode($returnTo);
+
+        $response = new \Slim\Psr7\Response();
+        return $response
+            ->withHeader('Location', $location)
+            ->withStatus(302);
+    }
+
 }

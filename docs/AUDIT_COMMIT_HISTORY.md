@@ -297,6 +297,7 @@ Entries MUST NOT be rewritten or reordered.
 - restore(schema): reintroduce legacy tables removed in d501146a
 - fix(bootstrap, schema): relax actor requirements to allow first-admin initialization
 - feat(actor): introduce canonical Actor model and parallel ActorContext
+- feat(step-up): propagate scope and return_to via UiStepUpController
 
 ---
 

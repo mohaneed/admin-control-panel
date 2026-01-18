@@ -100,7 +100,17 @@ readonly class TwoFactorController
         if (!is_string($template)) {
             $template = '2fa-verify.twig';
         }
-        return $this->view->render($response, $template);
+
+        // ADDITIVE START
+        $scope = $this->resolveRequestedScope($request);
+        $returnTo = $this->resolveReturnTo($request);
+        // ADDITIVE END
+
+        return $this->view->render($response, $template, [
+            // ADDITIVE
+            'scope' => $scope->value,
+            'return_to' => $returnTo,
+        ]);
     }
 
     public function doVerify(Request $request, Response $response): Response
@@ -139,7 +149,19 @@ readonly class TwoFactorController
             throw new \RuntimeException("Request context missing");
         }
 
-        $result = $this->stepUpService->verifyTotp($adminId, $sessionId, $code, $context, Scope::LOGIN);
+        // ADDITIVE START
+        $requestedScope = $this->resolveRequestedScope($request);
+        $returnTo = $this->resolveReturnTo($request);
+        // ADDITIVE END
+
+//        $result = $this->stepUpService->verifyTotp($adminId, $sessionId, $code, $context, Scope::LOGIN);
+        $result = $this->stepUpService->verifyTotp(
+            $adminId,
+            $sessionId,
+            $code,
+            $context,
+            $requestedScope
+        );
 
         // Telemetry (best-effort): Web UI step-up verification
         try {
@@ -150,7 +172,7 @@ readonly class TwoFactorController
                     $result->success ? TelemetryEventTypeEnum::AUTH_STEPUP_SUCCESS : TelemetryEventTypeEnum::AUTH_STEPUP_FAILURE,
                     $result->success ? TelemetrySeverityEnum::INFO : TelemetrySeverityEnum::WARN,
                     [
-                        'scope' => Scope::LOGIN->value,
+                        'scope' => $requestedScope->value,
                         'method' => 'totp',
                         'result' => $result->success ? 'success' : 'failure',
                         'error_reason' => $result->success ? null : ($result->errorReason ?? 'unknown'),
@@ -161,8 +183,15 @@ readonly class TwoFactorController
         }
 
         if ($result->success) {
+            // ADDITIVE START
+            if ($returnTo !== null && $returnTo !== '') {
+                return $response->withHeader('Location', $returnTo)->withStatus(302);
+            }
+            // ADDITIVE END
+
             return $response->withHeader('Location', '/dashboard')->withStatus(302);
         }
+
 
         return $this->view->render($response, $template, ['error' => $result->errorReason ?? 'Invalid code']);
     }
@@ -176,4 +205,52 @@ readonly class TwoFactorController
 
         return null;
     }
+
+    private function resolveRequestedScope(Request $request): Scope
+    {
+        // Priority:
+        // 1) POST body
+        // 2) Query string
+        // 3) Default LOGIN (backward compatible)
+
+        $data = $request->getParsedBody();
+        if (is_array($data) && isset($data['scope']) && is_string($data['scope'])) {
+            try {
+                return Scope::from($data['scope']);
+            } catch (\ValueError) {
+                // ignore invalid scope, fallback to LOGIN
+            }
+        }
+
+        $queryParams = $request->getQueryParams();
+        if (isset($queryParams['scope']) && is_string($queryParams['scope'])) {
+            try {
+                return Scope::from($queryParams['scope']);
+            } catch (\ValueError) {
+                // ignore invalid scope, fallback to LOGIN
+            }
+        }
+
+        return Scope::LOGIN;
+    }
+
+    private function resolveReturnTo(Request $request): ?string
+    {
+        // Priority:
+        // 1) POST body
+        // 2) Query string
+
+        $data = $request->getParsedBody();
+        if (is_array($data) && isset($data['return_to']) && is_string($data['return_to'])) {
+            return $data['return_to'];
+        }
+
+        $queryParams = $request->getQueryParams();
+        if (isset($queryParams['return_to']) && is_string($queryParams['return_to'])) {
+            return $queryParams['return_to'];
+        }
+
+        return null;
+    }
+
 }
