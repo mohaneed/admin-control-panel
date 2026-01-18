@@ -8,8 +8,10 @@ use App\Application\Crypto\AdminIdentifierCryptoServiceInterface;
 use App\Application\Crypto\NotificationCryptoServiceInterface;
 use App\Application\Crypto\PasswordCryptoServiceInterface;
 use App\Application\Crypto\TotpSecretCryptoServiceInterface;
+use App\Context\ActorContext;
 use App\Domain\ActivityLog\Reader\ActivityLogListReaderInterface;
 use App\Domain\Admin\Reader\AdminQueryReaderInterface;
+use App\Domain\Contracts\ActorProviderInterface;
 use App\Domain\Contracts\AdminActivityQueryInterface;
 use App\Domain\Contracts\AdminDirectPermissionRepositoryInterface;
 use App\Domain\Contracts\AdminEmailVerificationRepositoryInterface;
@@ -95,6 +97,7 @@ use App\Http\Controllers\Ui\UiSettingsController;
 use App\Http\Controllers\Ui\SessionListController;
 use App\Domain\Session\Reader\SessionListReaderInterface;
 use App\Infrastructure\ActivityLog\MySQLActivityLogWriter;
+use App\Infrastructure\Context\ActorContextProvider;
 use App\Infrastructure\Crypto\AdminIdentifierCryptoService;
 use App\Infrastructure\Crypto\NotificationCryptoService;
 use App\Infrastructure\Crypto\PasswordCryptoService;
@@ -1371,6 +1374,18 @@ class Container
             TelemetryMetadataViewNormalizer::class => function () {
                 return new TelemetryMetadataViewNormalizer();
             },
+
+            ActorContext::class => function () {
+                return new ActorContext();
+            },
+
+            ActorProviderInterface::class => function ($c) {
+                $actorContext = $c->get(ActorContext::class);
+                assert($actorContext instanceof ActorContext);
+                return new ActorContextProvider(
+                    $actorContext
+                );
+            }
 
         ]);
 
