@@ -25,4 +25,26 @@ class Google2faTotpService implements TotpServiceInterface
     {
         return (bool)$this->google2fa->verifyKey($secret, $code);
     }
+
+    public function generateProvisioningUri(
+        string $issuer,
+        string $accountName,
+        string $secret
+    ): string {
+        $label = rawurlencode($issuer . ':' . $accountName);
+
+        $query = http_build_query([
+            'secret'    => $secret,
+            'issuer'    => $issuer,
+            'algorithm' => 'SHA1',
+            'digits'    => 6,
+            'period'    => 30,
+        ]);
+
+        return sprintf(
+            'otpauth://totp/%s?%s',
+            $label,
+            $query
+        );
+    }
 }

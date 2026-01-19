@@ -316,6 +316,7 @@ Entries MUST NOT be rewritten or reordered.
 - test(infra): guard MySQLTestHelper against non-testing environments
 - feat(error-handling): unify HTTP exception JSON responses
 - feat(admin-create): enforce email-first creation with proper validation and UX feedback
+- feat(2fa): add TOTP enrollment flow with TTL, config, and UI setup
 
 ---
 

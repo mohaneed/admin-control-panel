@@ -1,0 +1,42 @@
+{% extends "layout.twig" %}
+
+{% block title %}2FA Setup{% endblock %}
+
+{% block content %}
+    <h1>Setup Two-Factor Authentication</h1>
+
+    <p>
+        Scan the QR code using your Authenticator App,
+        or enter the secret manually if scanning is not possible.
+    </p>
+
+    <h3>Scan QR Code</h3>
+    <img
+            src="{{ qr_image_url }}"
+            alt="TOTP QR Code"
+            width="200"
+            height="200"
+    >
+
+    <h3>Manual Entry Secret</h3>
+    <pre>{{ secret }}</pre>
+
+    <form method="POST" action="/2fa/setup">
+        <label for="otp">Enter 6-digit code:</label>
+        <input
+                type="text"
+                id="otp"
+                name="otp"
+                inputmode="numeric"
+                pattern="[0-9]{6}"
+                autocomplete="one-time-code"
+                required
+        >
+
+        <button type="submit">Verify & Enable</button>
+    </form>
+
+    {% if error %}
+        <p style="color: red">{{ error }}</p>
+    {% endif %}
+{% endblock %}

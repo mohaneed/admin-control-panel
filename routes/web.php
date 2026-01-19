@@ -76,6 +76,21 @@ return function (App $app) {
             $protectedGroup->get('/', [\App\Http\Controllers\Ui\UiDashboardController::class, 'index']);
             $protectedGroup->get('/dashboard', [\App\Http\Controllers\Ui\UiDashboardController::class, 'index']);
 
+            // ─────────────────────────────
+            // 2FA Setup (Enrollment)
+            // ─────────────────────────────
+
+            $protectedGroup->get(
+                '/2fa/setup',
+                [\App\Http\Controllers\Ui\UiTwoFactorSetupController::class, 'index']
+            )->setName('2fa.setup');
+
+            $protectedGroup->post(
+                '/2fa/setup',
+                [\App\Http\Controllers\Ui\UiTwoFactorSetupController::class, 'enable']
+            )->setName('2fa.enable');
+
+
             $protectedGroup->get('/admins', [\App\Http\Controllers\Ui\UiAdminsController::class, 'index'])
                 ->setName('admins.list')
                 ->add(AuthorizationGuardMiddleware::class);

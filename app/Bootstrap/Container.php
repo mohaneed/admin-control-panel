@@ -47,6 +47,7 @@ use App\Domain\Contracts\VerificationCodePolicyResolverInterface;
 use App\Domain\Contracts\VerificationCodeRepositoryInterface;
 use App\Domain\Contracts\VerificationCodeValidatorInterface;
 use App\Domain\DTO\AdminConfigDTO;
+use App\Domain\DTO\TotpEnrollmentConfig;
 use App\Domain\Ownership\SystemOwnershipRepositoryInterface;
 use App\Domain\Security\Crypto\CryptoKeyRingConfig;
 use App\Domain\Security\Password\PasswordPepperRing;
@@ -213,6 +214,8 @@ class Container
             'MAIL_FROM_NAME',
             'CRYPTO_KEYS',
             'CRYPTO_ACTIVE_KEY_ID',
+            'TOTP_ISSUER',
+            'TOTP_ENROLLMENT_TTL_SECONDS',
         ])->notEmpty();
 
         $cryptoRing = CryptoKeyRingConfig::fromEnv($_ENV);
@@ -231,6 +234,11 @@ class Container
             activeKeyId: $cryptoRing->activeKeyId(),
             hasCryptoKeyRing: !empty($cryptoRing->keys()),
             hasPasswordPepperRing: !empty($passwordPepperConfig->peppers())
+        );
+
+        $totpEnrollmentConfig = new TotpEnrollmentConfig(
+            $_ENV['TOTP_ISSUER'],
+            (int) ($_ENV['TOTP_ENROLLMENT_TTL_SECONDS'] ?? 0)
         );
 
         // Create Email Config DTO
@@ -256,6 +264,9 @@ class Container
             },
             EmailTransportConfigDTO::class => function () use ($emailConfig) {
                 return $emailConfig;
+            },
+            TotpEnrollmentConfig::class => function () use ($totpEnrollmentConfig) {
+                return $totpEnrollmentConfig;
             },
             ValidatorInterface::class => function (ContainerInterface $c) {
                 return new RespectValidator();
