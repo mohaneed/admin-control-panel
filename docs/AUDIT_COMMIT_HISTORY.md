@@ -306,6 +306,9 @@ Entries MUST NOT be rewritten or reordered.
 - docs(auth): document forced password change flow before 2FA
 - feat(auth): add forced change-password flow before step-up
 - feat(ui): add forced change password page (twig)
+- feat(ui/twig): add admin create section to admins page layout
+- chore(ui/routing): wire admin.create scope for UI admin creation
+- feat(ui/admins): add scoped admin create UI with step-up enforcement
 
 ---
 
