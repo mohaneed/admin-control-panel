@@ -10,6 +10,10 @@ use App\Bootstrap\Container;
 use App\Modules\Validation\Exceptions\ValidationFailedException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Slim\Exception\HttpBadRequestException;
+use Slim\Exception\HttpForbiddenException;
+use Slim\Exception\HttpNotFoundException;
+use Slim\Exception\HttpUnauthorizedException;
 use Slim\Factory\AppFactory;
 
 require __DIR__ . '/../vendor/autoload.php';
@@ -20,6 +24,25 @@ $container = Container::create();
 // Create App
 AppFactory::setContainer($container);
 $app = AppFactory::create();
+
+$httpJsonError = function (
+    int $status,
+    string $code,
+    string $message
+) use ($app): ResponseInterface {
+    $payload = json_encode(
+        [
+            'message' => $message,
+            'code'    => $code,
+        ],
+        JSON_THROW_ON_ERROR
+    );
+
+    $response = $app->getResponseFactory()->createResponse($status);
+    $response->getBody()->write($payload);
+
+    return $response->withHeader('Content-Type', 'application/json');
+};
 
 /**
  * 🔒 REQUIRED — Canonical
@@ -33,6 +56,7 @@ $errorMiddleware = $app->addErrorMiddleware(
     false   // logErrorDetails
 );
 
+// 1️⃣ Validation (422)
 $errorMiddleware->setErrorHandler(
     ValidationFailedException::class,
     function (
@@ -93,6 +117,67 @@ $errorMiddleware->setErrorHandler(
     }
 );
 
+// 2️⃣ 400
+$errorMiddleware->setErrorHandler(
+    HttpBadRequestException::class,
+    function (
+        ServerRequestInterface $request,
+        HttpBadRequestException $exception
+    ) use ($httpJsonError) {
+        return $httpJsonError(
+            400,
+            'BAD_REQUEST',
+            $exception->getMessage()
+        );
+    }
+);
+
+// 3️⃣ 401
+$errorMiddleware->setErrorHandler(
+    HttpUnauthorizedException::class,
+    function (
+        ServerRequestInterface $request,
+        HttpUnauthorizedException $exception
+    ) use ($httpJsonError) {
+        return $httpJsonError(
+            401,
+            'UNAUTHORIZED',
+            $exception->getMessage() ?: 'Authentication required.'
+        );
+    }
+);
+
+// 4️⃣ 403
+$errorMiddleware->setErrorHandler(
+    HttpForbiddenException::class,
+    function (
+        ServerRequestInterface $request,
+        HttpForbiddenException $exception
+    ) use ($httpJsonError) {
+        return $httpJsonError(
+            403,
+            'FORBIDDEN',
+            $exception->getMessage() ?: 'Access denied.'
+        );
+    }
+);
+
+// 5️⃣ 404
+$errorMiddleware->setErrorHandler(
+    HttpNotFoundException::class,
+    function (
+        ServerRequestInterface $request,
+        HttpNotFoundException $exception
+    ) use ($httpJsonError) {
+        return $httpJsonError(
+            404,
+            'NOT_FOUND',
+            $exception->getMessage() ?: 'Resource not found.'
+        );
+    }
+);
+
+// 6️⃣ ❗ LAST — catch-all
 $errorMiddleware->setErrorHandler(
     Throwable::class,
     function (

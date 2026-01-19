@@ -314,6 +314,7 @@ Entries MUST NOT be rewritten or reordered.
 - test(auth): cover forced password change flow (pre-2FA)
 - feat(ui/admins): implement admins list page with search, filters, and create entry point
 - test(infra): guard MySQLTestHelper against non-testing environments
+- feat(error-handling): unify HTTP exception JSON responses
 
 ---
 
