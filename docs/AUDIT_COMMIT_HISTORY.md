@@ -309,6 +309,7 @@ Entries MUST NOT be rewritten or reordered.
 - feat(ui/twig): add admin create section to admins page layout
 - chore(ui/routing): wire admin.create scope for UI admin creation
 - feat(ui/admins): add scoped admin create UI with step-up enforcement
+- feat(admin-create): issue one-time temp password with correlated activity and audit logging
 
 ---
 

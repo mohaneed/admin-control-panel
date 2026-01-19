@@ -8,18 +8,26 @@ use App\Application\Crypto\AdminIdentifierCryptoServiceInterface;
 use App\Context\RequestContext;
 use App\Domain\ActivityLog\Action\AdminActivityAction;
 use App\Domain\ActivityLog\Service\AdminActivityLogService;
+use App\Domain\DTO\AuditEventDTO;
+use App\Domain\Contracts\AdminPasswordRepositoryInterface;
+use App\Domain\Contracts\AuthoritativeSecurityAuditWriterInterface;
 use App\Domain\DTO\Request\CreateAdminEmailRequestDTO;
 use App\Domain\DTO\Request\VerifyAdminEmailRequestDTO;
 use App\Domain\DTO\Response\ActionResultResponseDTO;
+use App\Domain\DTO\Response\AdminCreateResponseDTO;
 use App\Domain\DTO\Response\AdminEmailResponseDTO;
 use App\Domain\Enum\IdentifierType;
 use App\Domain\Exception\InvalidIdentifierFormatException;
+use App\Domain\Service\PasswordService;
+use App\Domain\Support\CorrelationId;
 use App\Infrastructure\Repository\AdminEmailRepository;
 use App\Infrastructure\Repository\AdminRepository;
 use App\Modules\Validation\Guard\ValidationGuard;
 use App\Modules\Validation\Schemas\AdminAddEmailSchema;
 use App\Modules\Validation\Schemas\AdminGetEmailSchema;
 use App\Modules\Validation\Schemas\AdminLookupEmailSchema;
+use DateTimeImmutable;
+use PDO;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Random\RandomException;
@@ -33,41 +41,93 @@ class AdminController
         private AdminEmailRepository $adminEmailRepository,
         private ValidationGuard $validationGuard,
         private AdminIdentifierCryptoServiceInterface $cryptoService,
-        private AdminActivityLogService $adminActivityLogService
+        private AdminActivityLogService $adminActivityLogService,
+
+        private AdminPasswordRepositoryInterface $passwordRepository,
+        private PasswordService $passwordService,
+        private AuthoritativeSecurityAuditWriterInterface $auditWriter,
+        private PDO $pdo
     ) {
     }
 
     public function create(Request $request, Response $response): Response
     {
-        $adminId = $this->adminRepository->create();
-        $createdAt = $this->adminRepository->getCreatedAt($adminId);
-
         $adminContext = $request->getAttribute(\App\Context\AdminContext::class);
         if (!$adminContext instanceof \App\Context\AdminContext) {
-            throw new \RuntimeException('AdminContext missing');
+            throw new RuntimeException('AdminContext missing');
         }
 
         $requestContext = $request->getAttribute(RequestContext::class);
         if (!$requestContext instanceof RequestContext) {
-            throw new \RuntimeException('RequestContext missing');
+            throw new RuntimeException('RequestContext missing');
         }
 
-        $this->adminActivityLogService->log(
-            adminContext: $adminContext,
-            requestContext: $requestContext,
-            action: AdminActivityAction::ADMIN_CREATE,
-            entityType: 'admin',
-            entityId: $adminId,
-            metadata: []
-        );
+        $correlationId = CorrelationId::generate();
 
-        $dto = new ActionResultResponseDTO(
+        $this->pdo->beginTransaction();
+
+        try {
+            // 1️⃣ Create admin
+            $adminId = $this->adminRepository->create();
+            $createdAt = $this->adminRepository->getCreatedAt($adminId);
+
+            // 2️⃣ Generate temporary password
+            $tempPassword = bin2hex(random_bytes(8)); // 16 chars – OK مبدئيًا
+
+            // 3️⃣ Hash password
+            $hashResult = $this->passwordService->hash($tempPassword);
+
+            // 4️⃣ Save password with must_change_password = true
+            $this->passwordRepository->savePassword(
+                $adminId,
+                $hashResult['hash'],
+                $hashResult['pepper_id'],
+                true
+            );
+
+            // 5️⃣ Activity Log (زي ما هو)
+            $this->adminActivityLogService->log(
+                adminContext: $adminContext,
+                requestContext: $requestContext,
+                action: AdminActivityAction::ADMIN_CREATE,
+                entityType: 'admin',
+                entityId: $adminId,
+                metadata: [
+                    'correlation_id' => $correlationId,
+                    'temp_password_issued' => true,
+                ]
+            );
+
+            // 6️⃣ Audit Outbox (NEW)
+            $this->auditWriter->write(new AuditEventDTO(
+                actor_id: $adminContext->adminId,
+                action: 'admin_created',
+                target_type: 'admin',
+                target_id: $adminId,
+                risk_level: 'HIGH',
+                payload: ['temp_password_issued' => true],
+                correlation_id: $correlationId,
+                request_id: $requestContext->requestId,
+                created_at: new DateTimeImmutable()
+            ));
+
+            $this->pdo->commit();
+
+        } catch (\Throwable $e) {
+            $this->pdo->rollBack();
+            throw $e;
+        }
+
+        // 7️⃣ Response (temp password shown ONCE)
+        $dto = new AdminCreateResponseDTO(
             adminId: $adminId,
-            createdAt: $createdAt
+            createdAt: $createdAt,
+            tempPassword: $tempPassword
         );
 
         $json = json_encode($dto->jsonSerialize(), JSON_THROW_ON_ERROR);
         $response->getBody()->write($json);
+
         return $response
             ->withHeader('Content-Type', 'application/json')
             ->withStatus(200);

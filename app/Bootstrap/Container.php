@@ -331,18 +331,32 @@ class Container
                 $cryptoService = $c->get(AdminIdentifierCryptoServiceInterface::class);
                 $adminActivityLogService = $c->get(AdminActivityLogService::class);
 
+                $passwordRepository = $c->get(\App\Domain\Contracts\AdminPasswordRepositoryInterface::class);
+                $passwordService = $c->get(\App\Domain\Service\PasswordService::class);
+                $auditWriter = $c->get(\App\Domain\Contracts\AuthoritativeSecurityAuditWriterInterface::class);
+                $pdo = $c->get(PDO::class);
+
                 assert($adminRepo instanceof AdminRepository);
                 assert($emailRepo instanceof AdminEmailRepository);
                 assert($validationGuard instanceof ValidationGuard);
                 assert($cryptoService instanceof AdminIdentifierCryptoServiceInterface);
                 assert($adminActivityLogService instanceof AdminActivityLogService);
 
+                assert($passwordRepository instanceof \App\Domain\Contracts\AdminPasswordRepositoryInterface);
+                assert($passwordService instanceof \App\Domain\Service\PasswordService);
+                assert($auditWriter instanceof \App\Domain\Contracts\AuthoritativeSecurityAuditWriterInterface);
+                assert($pdo instanceof PDO);
+
                 return new AdminController(
                     $adminRepo,
                     $emailRepo,
                     $validationGuard,
                     $cryptoService,
-                    $adminActivityLogService
+                    $adminActivityLogService,
+                    $passwordRepository,
+                    $passwordService,
+                    $auditWriter,
+                    $pdo
                 );
             },
             AdminEmailRepository::class => function (ContainerInterface $c) {
