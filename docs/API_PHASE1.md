@@ -15,6 +15,134 @@ The system uses **server-side sessions** identified by a secure, HttpOnly cookie
 *   **API requests:** The cookie must be included in the request headers (handled by browser or manually if outside browser context).
 *   **CSRF:** Phase 1 relies on strict `SameSite=Strict` cookie attributes.
 
+## Forced Password Change Flow (Initial / Temporary Password)
+
+### Overview
+
+The system supports an enforced password change flow for newly created Admin accounts
+or accounts marked as requiring an immediate password update.
+
+This mechanism is controlled via a persistent flag on the password record and is enforced
+during the authentication process **before any session or 2FA flow is initiated**.
+
+---
+
+### Data Model
+
+**Table:** `admin_passwords`
+
+| Column               | Type       | Description                            |
+|----------------------|------------|----------------------------------------|
+| admin_id             | INT (PK)   | Admin identifier                       |
+| password_hash        | VARCHAR    | Argon2id password hash                 |
+| pepper_id            | VARCHAR    | Pepper identifier used during hashing  |
+| must_change_password | TINYINT(1) | Enforces password change on next login |
+| created_at           | DATETIME   | Record creation timestamp              |
+
+---
+
+### Enforcement Point
+
+The enforcement occurs inside:
+
+```
+
+App\Domain\Service\AdminAuthenticationService::login
+
+```
+
+**Order of operations:**
+
+1. Admin identifier lookup
+2. Verification status check
+3. Password verification
+4. **Must-Change-Password check**
+5. Session creation (only if allowed)
+
+If `must_change_password = true`, authentication is interrupted and no session is created.
+
+---
+
+### Exception Semantics
+
+When a password change is required, the system throws:
+
+```
+
+App\Domain\Exception\MustChangePasswordException
+
+```
+
+This exception:
+- Terminates the login flow
+- Prevents session issuance
+- Does NOT trigger Step-Up / 2FA
+- Is handled explicitly at the controller level
+
+---
+
+### Web Flow Behavior
+
+**Login attempt outcome:**
+
+| Condition                   | Result                                |
+|-----------------------------|---------------------------------------|
+| Credentials invalid         | Generic authentication error          |
+| Identifier not verified     | Redirect to email verification        |
+| must_change_password = true | Redirect to `/auth/change-password`   |
+| Login successful            | Proceed to normal authentication flow |
+
+Redirect example:
+
+```
+
+GET /auth/change-password?email=<email>
+
+```
+
+---
+
+### Change Password Endpoint
+
+**UI Route:**
+
+```
+
+GET  /auth/change-password
+POST /auth/change-password
+
+```
+
+**Purpose:**
+Allows an Admin to replace a temporary or enforced password with a permanent one.
+
+**Behavior:**
+- Requires current password verification
+- Updates password hash
+- Clears `must_change_password`
+- Does NOT create a session
+- Redirects back to `/login`
+
+---
+
+### Security Guarantees
+
+- Password change happens **before session creation**
+- No session exists while `must_change_password = true`
+- No Step-Up / TOTP is involved in this flow
+- Prevents privilege escalation using temporary credentials
+
+---
+
+### Notes (LOCKED)
+
+- This flow is intentional and mandatory
+- The flag is authoritative and stored in the database
+- Clearing the flag requires a successful password update
+- No automatic session issuance is allowed after password change
+
+---
+
 ### Step-Up / TOTP
 Sensitive actions require an elevated session state.
 *   If a user is authenticated but not "stepped up" (i.e., pending 2FA), they will receive a **403 Forbidden** response with a specific error reason (e.g., `STEP_UP_REQUIRED`).
