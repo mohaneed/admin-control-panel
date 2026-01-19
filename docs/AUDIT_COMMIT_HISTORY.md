@@ -301,6 +301,7 @@ Entries MUST NOT be rewritten or reordered.
 - test(step-up): complete UI scoped TOTP flow coverage and security assertions
 - fix(totp): harden return_to sanitization + add open-redirect negative test + ensure scope/return_to propagation
 - db(auth): add must_change_password flag to admin_passwords
+- feat(auth): enforce must-change-password flag at domain level
 
 ---
 

@@ -17,6 +17,7 @@ use App\Domain\DTO\SecurityEventDTO;
 use App\Domain\Enum\VerificationStatus;
 use App\Domain\Exception\AuthStateException;
 use App\Domain\Exception\InvalidCredentialsException;
+use App\Domain\Exception\MustChangePasswordException;
 use DateTimeImmutable;
 use PDO;
 
@@ -88,6 +89,11 @@ readonly class AdminAuthenticationService
             throw new InvalidCredentialsException("Invalid credentials.");
         }
 
+        // 🔒 3.1 Enforce Must-Change-Password
+        if ($record->mustChangePassword) {
+            throw new MustChangePasswordException('Password change required.');
+        }
+
         // 4. Transactional Login (Upgrade + Session)
         $this->pdo->beginTransaction();
         try {
@@ -97,7 +103,8 @@ readonly class AdminAuthenticationService
                 $this->passwordRepository->savePassword(
                     $adminId,
                     $newHash['hash'],
-                    $newHash['pepper_id']
+                    $newHash['pepper_id'],
+                    false // 🔒 explicit: this is NOT a temporary password
                 );
             }
 

@@ -83,7 +83,7 @@ try {
     assert($passwordService instanceof PasswordService);
     
     $hashResult = $passwordService->hash($password);
-    $passRepo->savePassword($adminId, $hashResult['hash'], $hashResult['pepper_id']);
+    $passRepo->savePassword($adminId, $hashResult['hash'], $hashResult['pepper_id'], false);
 
     // 4. TOTP (SECURE)
     $totpStore = $container->get(AdminTotpSecretStoreInterface::class);
