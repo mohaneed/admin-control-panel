@@ -17,8 +17,6 @@ namespace App\Modules\Validation\Schemas;
 
 use App\Modules\Validation\Enum\ValidationErrorCodeEnum;
 use App\Modules\Validation\Rules\EmailRule;
-use App\Modules\Validation\Rules\PasswordRule;
-use App\Modules\Validation\Rules\RequiredStringRule;
 
 final class AdminCreateSchema extends AbstractSchema
 {
@@ -29,17 +27,9 @@ final class AdminCreateSchema extends AbstractSchema
     protected function rules(): array
     {
         return [
-            'name' => [
-                RequiredStringRule::rule(1, 100),
-                ValidationErrorCodeEnum::INVALID_NAME,
-            ],
             'email' => [
                 EmailRule::rule(),
                 ValidationErrorCodeEnum::INVALID_EMAIL,
-            ],
-            'password' => [
-                PasswordRule::rule(),
-                ValidationErrorCodeEnum::INVALID_PASSWORD,
             ],
         ];
     }

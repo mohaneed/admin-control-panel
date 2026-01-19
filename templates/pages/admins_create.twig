@@ -168,8 +168,15 @@
                     }
 
                     if (!response.ok) {
-                        messageBox.textContent = 'Failed to create admin.';
+                        if (data && data.message) {
+                            messageBox.textContent = data.message;
+                        } else {
+                            messageBox.textContent = 'Failed to create admin.';
+                        }
                         messageBox.classList.add('text-red-600');
+
+                        submitBtn.disabled = false;
+                        emailInput.disabled = false;
                         return;
                     }
 

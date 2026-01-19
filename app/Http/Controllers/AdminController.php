@@ -24,6 +24,7 @@ use App\Infrastructure\Repository\AdminEmailRepository;
 use App\Infrastructure\Repository\AdminRepository;
 use App\Modules\Validation\Guard\ValidationGuard;
 use App\Modules\Validation\Schemas\AdminAddEmailSchema;
+use App\Modules\Validation\Schemas\AdminCreateSchema;
 use App\Modules\Validation\Schemas\AdminGetEmailSchema;
 use App\Modules\Validation\Schemas\AdminLookupEmailSchema;
 use DateTimeImmutable;
@@ -52,32 +53,67 @@ class AdminController
 
     public function create(Request $request, Response $response): Response
     {
+        /** @var \App\Context\AdminContext $adminContext */
         $adminContext = $request->getAttribute(\App\Context\AdminContext::class);
         if (!$adminContext instanceof \App\Context\AdminContext) {
             throw new RuntimeException('AdminContext missing');
         }
 
+        /** @var RequestContext $requestContext */
         $requestContext = $request->getAttribute(RequestContext::class);
         if (!$requestContext instanceof RequestContext) {
             throw new RuntimeException('RequestContext missing');
         }
 
+        // 1️⃣ Read + Validate input
+        $data = (array) $request->getParsedBody();
+        $this->validationGuard->check(new AdminCreateSchema(), $data);
+
+        $emailInput = $data[IdentifierType::EMAIL->value] ?? null;
+
+        try {
+            $emailDto = new CreateAdminEmailRequestDTO($emailInput);
+        } catch (InvalidIdentifierFormatException) {
+            throw new HttpBadRequestException($request, 'Invalid email format.');
+        }
+
+        $email = $emailDto->email;
+
+        // 2️⃣ Derive Blind Index
+        $blindIndex = $this->cryptoService->deriveEmailBlindIndex($email);
+
+        // 3️⃣ Uniqueness check (FAIL-FAST)
+        $existingAdminId = $this->adminEmailRepository->findByBlindIndex($blindIndex);
+        if ($existingAdminId !== null) {
+            throw new HttpBadRequestException($request, 'Email already registered.');
+        }
+
         $correlationId = CorrelationId::generate();
 
+        // 4️⃣ Begin transaction
         $this->pdo->beginTransaction();
 
         try {
-            // 1️⃣ Create admin
-            $adminId = $this->adminRepository->create();
+            // 5️⃣ Create admin
+            $adminId   = $this->adminRepository->create();
             $createdAt = $this->adminRepository->getCreatedAt($adminId);
 
-            // 2️⃣ Generate temporary password
-            $tempPassword = bin2hex(random_bytes(8)); // 16 chars – OK مبدئيًا
+            // 6️⃣ Encrypt email
+            $encryptedEmail = $this->cryptoService->encryptEmail($email);
 
-            // 3️⃣ Hash password
+            // 7️⃣ Insert email (PENDING)
+            $this->adminEmailRepository->addEmail(
+                $adminId,
+                $blindIndex,
+                $encryptedEmail
+            );
+
+            // 8️⃣ Generate temp password
+            $tempPassword = bin2hex(random_bytes(8));
+
+            // 9️⃣ Hash + save password
             $hashResult = $this->passwordService->hash($tempPassword);
 
-            // 4️⃣ Save password with must_change_password = true
             $this->passwordRepository->savePassword(
                 $adminId,
                 $hashResult['hash'],
@@ -85,7 +121,7 @@ class AdminController
                 true
             );
 
-            // 5️⃣ Activity Log (زي ما هو)
+            // 🔟 Activity Log
             $this->adminActivityLogService->log(
                 adminContext: $adminContext,
                 requestContext: $requestContext,
@@ -93,24 +129,29 @@ class AdminController
                 entityType: 'admin',
                 entityId: $adminId,
                 metadata: [
-                    'correlation_id' => $correlationId,
+                    'correlation_id'       => $correlationId,
+                    'email_added'          => true,
                     'temp_password_issued' => true,
                 ]
             );
 
-            // 6️⃣ Audit Outbox (NEW)
+            // 1️⃣1️⃣ Audit Event (Authoritative)
             $this->auditWriter->write(new AuditEventDTO(
                 actor_id: $adminContext->adminId,
                 action: 'admin_created',
                 target_type: 'admin',
                 target_id: $adminId,
                 risk_level: 'HIGH',
-                payload: ['temp_password_issued' => true],
+                payload: [
+                    'email_added'          => true,
+                    'temp_password_issued' => true,
+                ],
                 correlation_id: $correlationId,
                 request_id: $requestContext->requestId,
                 created_at: new DateTimeImmutable()
             ));
 
+            // 1️⃣2️⃣ Commit
             $this->pdo->commit();
 
         } catch (\Throwable $e) {
@@ -118,20 +159,21 @@ class AdminController
             throw $e;
         }
 
-        // 7️⃣ Response (temp password shown ONCE)
-        $dto = new AdminCreateResponseDTO(
+        // 1️⃣3️⃣ Response (temp password shown once)
+        $responseDto = new AdminCreateResponseDTO(
             adminId: $adminId,
             createdAt: $createdAt,
             tempPassword: $tempPassword
         );
 
-        $json = json_encode($dto->jsonSerialize(), JSON_THROW_ON_ERROR);
+        $json = json_encode($responseDto->jsonSerialize(), JSON_THROW_ON_ERROR);
         $response->getBody()->write($json);
 
         return $response
             ->withHeader('Content-Type', 'application/json')
             ->withStatus(200);
     }
+
 
     /**
      * @param array<string, string> $args

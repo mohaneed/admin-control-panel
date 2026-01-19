@@ -315,6 +315,7 @@ Entries MUST NOT be rewritten or reordered.
 - feat(ui/admins): implement admins list page with search, filters, and create entry point
 - test(infra): guard MySQLTestHelper against non-testing environments
 - feat(error-handling): unify HTTP exception JSON responses
+- feat(admin-create): enforce email-first creation with proper validation and UX feedback
 
 ---
 
