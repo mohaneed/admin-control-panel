@@ -317,6 +317,7 @@ Entries MUST NOT be rewritten or reordered.
 - feat(error-handling): unify HTTP exception JSON responses
 - feat(admin-create): enforce email-first creation with proper validation and UX feedback
 - feat(2fa): add TOTP enrollment flow with TTL, config, and UI setup
+- docs(adr): add ADR-013 for temporary RBAC seeding exception in endpoint tests
 
 ---
 
