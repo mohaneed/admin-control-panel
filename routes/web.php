@@ -50,6 +50,17 @@ return function (App $app) {
             $guestGroup->post('/verify-email/resend', [\App\Http\Controllers\Ui\UiVerificationController::class, 'resend']);
 
             $guestGroup->get('/error', [\App\Http\Controllers\Ui\UiErrorController::class, 'index']);
+
+            // Change Password (Forced / Initial)
+            $guestGroup->get(
+                '/auth/change-password',
+                [\App\Http\Controllers\Web\ChangePasswordController::class, 'index']
+            );
+
+            $guestGroup->post(
+                '/auth/change-password',
+                [\App\Http\Controllers\Web\ChangePasswordController::class, 'change']
+            );
         })->add($webGuestGuard);
 
         // Step-Up Verification (Session only, no Active check)

@@ -303,6 +303,8 @@ Entries MUST NOT be rewritten or reordered.
 - db(auth): add must_change_password flag to admin_passwords
 - feat(auth): enforce must-change-password flag at domain level
 - fix(auth): enforce forced password change redirect on login
+- docs(auth): document forced password change flow before 2FA
+- feat(auth): add forced change-password flow before step-up
 
 ---
 

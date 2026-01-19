@@ -29,6 +29,7 @@ class RecoveryStateService
     public const ACTION_ROLE_ASSIGNMENT = 'role_assignment';
     public const ACTION_PERMISSION_CHANGE = 'permission_change';
 
+    public const ACTION_PASSWORD_CHANGE = 'password_change';
     private const BLOCKED_ACTIONS = [
         self::ACTION_LOGIN,
         self::ACTION_OTP_VERIFY,
@@ -36,6 +37,7 @@ class RecoveryStateService
         self::ACTION_STEP_UP,
         self::ACTION_ROLE_ASSIGNMENT,
         self::ACTION_PERMISSION_CHANGE,
+        self::ACTION_PASSWORD_CHANGE,
     ];
 
     public function __construct(
