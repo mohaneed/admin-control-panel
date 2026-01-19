@@ -78,6 +78,7 @@ CREATE TABLE admin_passwords (
                                  admin_id INT PRIMARY KEY,
                                  password_hash VARCHAR(255) NOT NULL,
                                  pepper_id VARCHAR(16) NOT NULL,
+                                 must_change_password TINYINT(1) NOT NULL DEFAULT 0,
                                  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                                  CONSTRAINT fk_ap_admin_id
                                      FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE CASCADE
