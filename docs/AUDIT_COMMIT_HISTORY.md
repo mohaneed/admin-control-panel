@@ -318,6 +318,7 @@ Entries MUST NOT be rewritten or reordered.
 - feat(admin-create): enforce email-first creation with proper validation and UX feedback
 - feat(2fa): add TOTP enrollment flow with TTL, config, and UI setup
 - docs(adr): add ADR-013 for temporary RBAC seeding exception in endpoint tests
+- docs(architecture): add canonical architectural conflict resolution policy and link ADR-013
 
 ---
 

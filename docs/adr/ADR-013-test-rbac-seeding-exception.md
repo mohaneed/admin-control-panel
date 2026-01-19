@@ -24,6 +24,12 @@ Key enforced rules include:
 - **Direct SQL / PDO usage is forbidden** in tests
 - Tests must rely on **real container services only**
 
+This ADR is governed by the canonical conflict-handling rules defined in:
+
+`docs/architecture/ARCHITECTURAL_CONFLICT_RESOLUTION_POLICY.md`
+
+This exception is issued under **Resolution Path B — Explicit, Narrow, Temporary Exception**.
+
 ---
 
 ## Problem Statement
@@ -150,6 +156,30 @@ At that point:
 - Tests must rely solely on services
 - This ADR must be marked as **RESOLVED**
 - Any residual SQL usage is a violation
+
+---
+
+## Architectural Conflict Classification
+
+This exception exists due to a formally recognized **Architectural Deadlock** as defined in:
+
+`docs/architecture/ARCHITECTURAL_CONFLICT_RESOLUTION_POLICY.md`
+
+Specifically:
+
+- Phase 1 mandates **real authorization** in endpoint tests.
+- The architecture provides **no RBAC write-side services**.
+- SQL usage is forbidden by default.
+- SystemOwnership bypass is forbidden.
+
+These constraints cannot be simultaneously satisfied.
+
+Per policy:
+- Work MUST stop
+- A blocker MUST be reported
+- A documented temporary exception MAY be issued
+
+This ADR represents the **only approved resolution** for this deadlock.
 
 ---
 
