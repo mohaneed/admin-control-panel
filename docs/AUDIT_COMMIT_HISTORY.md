@@ -321,6 +321,7 @@ Entries MUST NOT be rewritten or reordered.
 - docs(architecture): add canonical architectural conflict resolution policy and link ADR-013
 - feat(step-up): introduce isolated admin scopes with per-scope TTL policy
 - docs(adr): add ADR-014 for verification notification dispatcher
+- feat(verification): introduce VerificationNotificationDispatcher and refactor email verification flow
 
 ---
 

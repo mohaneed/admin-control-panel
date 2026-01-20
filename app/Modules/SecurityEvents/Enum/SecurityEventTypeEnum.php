@@ -37,6 +37,9 @@ enum SecurityEventTypeEnum: string
     case STEP_UP_RISK_MISMATCH = 'step_up_risk_mismatch';
     case STEP_UP_ENROLL_FAILED = 'step_up_enroll_failed';
 
+    case EMAIL_VERIFICATION_FAILED = 'email_verification_failed';
+    case EMAIL_VERIFICATION_SUBJECT_NOT_FOUND = 'email_verification_subject_not_found';
+
     // Authorization
     case PERMISSION_DENIED = 'permission_denied';
 

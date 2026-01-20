@@ -8,6 +8,8 @@ use App\Application\Crypto\AdminIdentifierCryptoServiceInterface;
 use App\Application\Crypto\NotificationCryptoServiceInterface;
 use App\Application\Crypto\PasswordCryptoServiceInterface;
 use App\Application\Crypto\TotpSecretCryptoServiceInterface;
+use App\Application\Verification\VerificationNotificationDispatcher;
+use App\Application\Verification\VerificationNotificationDispatcherInterface;
 use App\Context\ActorContext;
 use App\Domain\ActivityLog\Reader\ActivityLogListReaderInterface;
 use App\Domain\Admin\Reader\AdminQueryReaderInterface;
@@ -733,20 +735,18 @@ class Container
                 $verificationService = $c->get(AdminEmailVerificationService::class);
                 $lookup = $c->get(AdminIdentifierLookupInterface::class);
                 $view = $c->get(Twig::class);
-                $logger = $c->get(LoggerInterface::class);
-                $config = $c->get(AdminConfigDTO::class);
-
-                // NEW: Get crypto service
+                $securityEvents = $c->get(SecurityEventRecorderInterface::class);
                 $cryptoService = $c->get(AdminIdentifierCryptoServiceInterface::class);
+                $verificationDispatcher = $c->get(VerificationNotificationDispatcherInterface::class);
 
                 assert($validator instanceof VerificationCodeValidatorInterface);
                 assert($generator instanceof VerificationCodeGeneratorInterface);
                 assert($verificationService instanceof AdminEmailVerificationService);
                 assert($lookup instanceof AdminIdentifierLookupInterface);
                 assert($view instanceof Twig);
-                assert($logger instanceof LoggerInterface);
-                assert($config instanceof AdminConfigDTO);
+                assert($securityEvents instanceof SecurityEventRecorderInterface);
                 assert($cryptoService instanceof AdminIdentifierCryptoServiceInterface);
+                assert($verificationDispatcher instanceof VerificationNotificationDispatcherInterface);
 
                 return new EmailVerificationController(
                     $validator,
@@ -754,9 +754,17 @@ class Container
                     $verificationService,
                     $lookup,
                     $view,
-                    $logger,
-                    $cryptoService // NEW
+                    $securityEvents,
+                    $cryptoService,
+                    $verificationDispatcher
                 );
+            },
+            VerificationNotificationDispatcherInterface::class => function (ContainerInterface $c) {
+                $emailQueue = $c->get(EmailQueueWriterInterface::class);
+                $logger = $c->get(LoggerInterface::class);
+                assert($emailQueue instanceof EmailQueueWriterInterface);
+                assert($logger instanceof LoggerInterface);
+                return new VerificationNotificationDispatcher($emailQueue, $logger);
             },
             TelegramConnectController::class => function (ContainerInterface $c) {
                 $generator = $c->get(VerificationCodeGeneratorInterface::class);
