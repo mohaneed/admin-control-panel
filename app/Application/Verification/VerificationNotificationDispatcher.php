@@ -15,6 +15,7 @@ declare(strict_types=1);
 
 namespace App\Application\Verification;
 
+use App\Application\Verification\Enum\EmailTemplateEnum;
 use App\Application\Verification\Enum\NotificationSenderTypeEnum;
 use App\Domain\Enum\IdentityTypeEnum;
 use App\Domain\Enum\VerificationPurposeEnum;
@@ -83,19 +84,25 @@ final class VerificationNotificationDispatcher implements VerificationNotificati
     ): void
     {
         $payload = new EmailQueuePayloadDTO(
-            context    : array_merge($context, [
-                'code' => $plainCode,
+            context: array_merge($context, [
+                'verification_code'   => $plainCode,
+                'expires_in_minutes'  => (int) ceil(($context['expires_in'] ?? 600) / 60),
+                'display_name'        => $context['display_name'] ?? 'Administrator',
+                'support_email'       => 'support@maatify.dev',
+                'lang'                => $language,
             ]),
-            templateKey: 'email_verification_code',
+            templateKey: EmailTemplateEnum::VERIFICATION->value,
             language   : $language
         );
 
+
         $this->emailQueue->enqueue(
-            entityType    : $identityType->value,
-            entityId      : $identityId,
-            recipientEmail: $recipientEmail,
-            payload       : $payload,
-            senderType    : NotificationSenderTypeEnum::SENDER_SYSTEM->value
+            entityType     : $identityType->value,
+            entityId       : $identityId,
+            recipientEmail : $recipientEmail,
+            payload        : $payload,
+            senderType     : NotificationSenderTypeEnum::SENDER_SYSTEM->value
         );
     }
+
 }

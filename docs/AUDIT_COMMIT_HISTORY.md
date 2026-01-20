@@ -322,6 +322,7 @@ Entries MUST NOT be rewritten or reordered.
 - feat(step-up): introduce isolated admin scopes with per-scope TTL policy
 - docs(adr): add ADR-014 for verification notification dispatcher
 - feat(verification): introduce VerificationNotificationDispatcher and refactor email verification flow
+- feat(verification): introduce EmailTemplateEnum and align verification email payload with Twig templates
 
 ---
 
