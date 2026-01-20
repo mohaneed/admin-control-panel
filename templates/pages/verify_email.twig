@@ -1,20 +1,216 @@
 {% extends "layout.twig" %}
 
+{% block title %}Verify Email{% endblock %}
+
 {% block content %}
-<h1>Verify Email</h1>
-{% if error %}
-    <div style="color: red;">{{ error }}</div>
-{% endif %}
-{% if message %}
-    <div style="color: green;">{{ message }}</div>
-{% endif %}
-<form method="post" action="/verify-email">
-    <input type="hidden" name="email" value="{{ email }}">
-    <label>Code: <input type="text" name="otp" required></label><br>
-    <button type="submit">Verify</button>
-</form>
-<form method="post" action="/verify-email/resend">
-    <input type="hidden" name="email" value="{{ email }}">
-    <button type="submit">Resend Code</button>
-</form>
+    <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4 py-12">
+        <div class="max-w-md w-full">
+            <!-- Logo Section -->
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-white">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+                    </svg>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-800">Verify Your Email</h1>
+                <p class="text-gray-600 mt-2">Enter the verification code sent to your email</p>
+            </div>
+
+            <!-- Main Form Card -->
+            <div class="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
+                <div class="px-8 py-6">
+                    {% if error %}
+                        <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                            </svg>
+                            <p class="text-sm text-red-800">{{ error }}</p>
+                        </div>
+                    {% endif %}
+
+                    {% if message %}
+                        <div class="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                            </svg>
+                            <p class="text-sm text-green-800">{{ message }}</p>
+                        </div>
+                    {% endif %}
+
+                    <form action="/verify-email" method="post" class="space-y-5">
+                        <!-- Email Input -->
+                        <div>
+                            <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
+                                Email Address
+                            </label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-400">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+                                    </svg>
+                                </div>
+                                <input
+                                        type="email"
+                                        id="email"
+                                        name="email"
+                                        value="{{ email }}"
+                                        required
+                                        class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                        placeholder="your@email.com"
+                                >
+                            </div>
+                        </div>
+
+                        <!-- OTP Code Input -->
+                        <div>
+                            <label for="otp" class="block text-sm font-medium text-gray-700 mb-2">
+                                Verification Code
+                            </label>
+                            <input
+                                    type="text"
+                                    id="otp"
+                                    name="otp"
+                                    required
+                                    autocomplete="one-time-code"
+                                    inputmode="numeric"
+                                    pattern="[0-9]*"
+                                    maxlength="6"
+                                    class="w-full px-4 py-3 text-center text-2xl font-mono tracking-widest border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                    placeholder="000000"
+                            >
+                            <p class="mt-2 text-xs text-gray-500">Enter the 6-digit code sent to your email</p>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <button
+                                type="submit"
+                                class="w-full px-4 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 shadow-sm hover:shadow-md"
+                        >
+                            Verify Email
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Resend Section -->
+                <div class="px-8 py-4 bg-gray-50 border-t border-gray-200">
+                    <div class="text-center">
+                        <p class="text-sm text-gray-600 mb-3">Didn't receive the code?</p>
+
+                        <form action="/verify-email/resend" method="post" id="resend-form" class="inline-block">
+                            <input type="hidden" name="email" value="{{ email }}" id="resend_email">
+                            <button
+                                    type="submit"
+                                    id="resend-btn"
+                                    class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all duration-200"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                                </svg>
+                                <span>Resend Code</span>
+                                <span id="countdown" class="hidden text-xs font-normal text-gray-500"></span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Help Text -->
+            <div class="mt-6 text-center text-sm text-gray-600">
+                <p>Need help? <a href="/support" class="text-blue-600 hover:text-blue-700 font-medium">Contact Support</a></p>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        /* Auto-focus animation */
+        @keyframes pulse-border {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5);
+            }
+            50% {
+                box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+            }
+        }
+
+        #otp:focus {
+            animation: pulse-border 2s ease-in-out infinite;
+        }
+
+        /* Remove number input arrows */
+        input[type="text"]::-webkit-outer-spin-button,
+        input[type="text"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+    </style>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const otpInput = document.getElementById('otp');
+            const emailInput = document.getElementById('email');
+            const resendBtn = document.getElementById('resend-btn');
+            const resendForm = document.getElementById('resend-form');
+            const resendEmailInput = document.getElementById('resend_email');
+            const countdown = document.getElementById('countdown');
+
+            // Sync email between main form and resend form
+            emailInput.addEventListener('input', function() {
+                resendEmailInput.value = this.value;
+            });
+
+            // Auto-submit when 6 digits entered
+            otpInput.addEventListener('input', function(e) {
+                // Only allow numbers
+                this.value = this.value.replace(/[^0-9]/g, '');
+
+                // Auto-submit when 6 digits
+                if (this.value.length === 6) {
+                    this.form.submit();
+                }
+            });
+
+            // Paste handling for OTP
+            otpInput.addEventListener('paste', function(e) {
+                e.preventDefault();
+                const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+                const cleanedText = pastedText.replace(/[^0-9]/g, '').substring(0, 6);
+                this.value = cleanedText;
+
+                if (cleanedText.length === 6) {
+                    this.form.submit();
+                }
+            });
+
+            // Resend cooldown (60 seconds)
+            let cooldownTime = 0;
+
+            function startCooldown() {
+                cooldownTime = 60;
+                resendBtn.disabled = true;
+                resendBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                countdown.classList.remove('hidden');
+
+                const interval = setInterval(function() {
+                    cooldownTime--;
+                    countdown.textContent = `(${cooldownTime}s)`;
+
+                    if (cooldownTime <= 0) {
+                        clearInterval(interval);
+                        resendBtn.disabled = false;
+                        resendBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                        countdown.classList.add('hidden');
+                    }
+                }, 1000);
+            }
+
+            // Handle resend form submission
+            resendForm.addEventListener('submit', function(e) {
+                if (cooldownTime > 0) {
+                    e.preventDefault();
+                    return false;
+                }
+                startCooldown();
+            });
+        });
+    </script>
 {% endblock %}

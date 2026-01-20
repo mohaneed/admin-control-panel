@@ -323,6 +323,7 @@ Entries MUST NOT be rewritten or reordered.
 - docs(adr): add ADR-014 for verification notification dispatcher
 - feat(verification): introduce VerificationNotificationDispatcher and refactor email verification flow
 - feat(verification): introduce EmailTemplateEnum and align verification email payload with Twig templates
+- feat(ui): refine verify email page layout and UX
 
 ---
 
