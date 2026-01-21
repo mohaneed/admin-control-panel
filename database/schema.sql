@@ -43,8 +43,20 @@ SET FOREIGN_KEY_CHECKS=1;
 
 CREATE TABLE admins (
                         id INT AUTO_INCREMENT PRIMARY KEY,
-                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+                        display_name VARCHAR(100) NULL,
+
+                        status ENUM('ACTIVE','SUSPENDED','DISABLED')
+                                                  NOT NULL
+                            DEFAULT 'ACTIVE',
+
+                        created_at DATETIME
+                                                  NOT NULL
+                            DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci;
+
 
 CREATE TABLE system_ownership (
                                   id INT AUTO_INCREMENT PRIMARY KEY,

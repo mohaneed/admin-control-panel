@@ -330,6 +330,7 @@ Entries MUST NOT be rewritten or reordered.
 - fix(auth): enforce credential verification before account state checks
 - docs(auth): align authentication flow with credential-first enforcement
 - feat(architecture/logging): add unified canonical logging design
+- chore(db): add admin display_name and lifecycle status
 
 
 ---
