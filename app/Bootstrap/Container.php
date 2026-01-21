@@ -12,6 +12,7 @@ use App\Application\Verification\VerificationNotificationDispatcher;
 use App\Application\Verification\VerificationNotificationDispatcherInterface;
 use App\Context\ActorContext;
 use App\Domain\ActivityLog\Reader\ActivityLogListReaderInterface;
+use App\Domain\Admin\Reader\AdminProfileReaderInterface;
 use App\Domain\Admin\Reader\AdminQueryReaderInterface;
 use App\Domain\Contracts\ActorProviderInterface;
 use App\Domain\Contracts\AdminActivityQueryInterface;
@@ -100,6 +101,7 @@ use App\Http\Controllers\Ui\UiSettingsController;
 use App\Http\Controllers\Ui\SessionListController;
 use App\Domain\Session\Reader\SessionListReaderInterface;
 use App\Infrastructure\ActivityLog\MySQLActivityLogWriter;
+use App\Infrastructure\Admin\Reader\PdoAdminProfileReader;
 use App\Infrastructure\Context\ActorContextProvider;
 use App\Infrastructure\Crypto\AdminIdentifierCryptoService;
 use App\Infrastructure\Crypto\NotificationCryptoService;
@@ -785,10 +787,28 @@ class Container
                 assert($validationGuard instanceof ValidationGuard);
                 return new TelegramWebhookController($handler, $logger, $validationGuard);
             },
+
+            AdminProfileReaderInterface::class => function (ContainerInterface $c) {
+                $pdo = $c->get(PDO::class);
+                $cryptoService = $c->get(AdminIdentifierCryptoServiceInterface::class);
+                assert($pdo instanceof PDO);
+                assert($cryptoService instanceof AdminIdentifierCryptoServiceInterface);
+                return new PdoAdminProfileReader(
+                    $pdo,
+                    $cryptoService
+                );
+            },
+
             UiAdminsController::class => function (ContainerInterface $c) {
                 $view = $c->get(Twig::class);
+                $profileReader = $c->get(AdminProfileReaderInterface::class);
+
                 assert($view instanceof Twig);
-                return new UiAdminsController($view);
+                assert($profileReader instanceof AdminProfileReaderInterface);
+                return new UiAdminsController(
+                    $view,
+                    $profileReader
+                );
             },
             UiDashboardController::class => function (ContainerInterface $c) {
                 $webDashboard = $c->get(DashboardController::class);

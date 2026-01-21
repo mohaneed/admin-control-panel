@@ -99,6 +99,10 @@ return function (App $app) {
                 ->setName('admin.create')
                 ->add(AuthorizationGuardMiddleware::class);
 
+            $protectedGroup->get('/admins/{id}/profile', [\App\Http\Controllers\Ui\UiAdminsController::class, 'profile'])
+                ->setName('admins.profile.view')
+                ->add(AuthorizationGuardMiddleware::class);
+
             $protectedGroup->get('/roles', [\App\Http\Controllers\Ui\UiRolesController::class, 'index']);
             $protectedGroup->get('/permissions', [\App\Http\Controllers\Ui\UiPermissionsController::class, 'index']);
             $protectedGroup->get('/settings', [\App\Http\Controllers\Ui\UiSettingsController::class, 'index']);
