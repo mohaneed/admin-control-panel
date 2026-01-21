@@ -57,23 +57,7 @@ readonly class AdminAuthenticationService
             throw new InvalidCredentialsException("Invalid credentials.");
         }
 
-        // 2. Check Verification Status
-        $status = $this->verificationRepository->getVerificationStatus($adminId);
-        if ($status !== VerificationStatus::VERIFIED) {
-            $this->securityLogger->log(new SecurityEventDTO(
-                $adminId,
-                'login_failed',
-                'warning',
-                ['reason' => 'not_verified'],
-                $context->ipAddress,
-                $context->userAgent,
-                new DateTimeImmutable(),
-                $context->requestId
-            ));
-            throw new AuthStateException("Identifier is not verified.");
-        }
-
-        // 3. Verify Password
+        // 2. Verify Password
         $record = $this->passwordRepository->getPasswordRecord($adminId);
         if ($record === null || !$this->passwordService->verify($password, $record->hash, $record->pepperId)) {
             $this->securityLogger->log(new SecurityEventDTO(
@@ -89,15 +73,31 @@ readonly class AdminAuthenticationService
             throw new InvalidCredentialsException("Invalid credentials.");
         }
 
-        // 🔒 3.1 Enforce Must-Change-Password
+        // 3. Check Verification Status
+        $status = $this->verificationRepository->getVerificationStatus($adminId);
+        if ($status !== VerificationStatus::VERIFIED) {
+            $this->securityLogger->log(new SecurityEventDTO(
+                $adminId,
+                'login_failed',
+                'warning',
+                ['reason' => 'not_verified'],
+                $context->ipAddress,
+                $context->userAgent,
+                new DateTimeImmutable(),
+                $context->requestId
+            ));
+            throw new AuthStateException("Identifier is not verified.");
+        }
+
+        // 🔒 4 Enforce Must-Change-Password
         if ($record->mustChangePassword) {
             throw new MustChangePasswordException('Password change required.');
         }
 
-        // 4. Transactional Login (Upgrade + Session)
+        // 5. Transactional Login (Upgrade + Session)
         $this->pdo->beginTransaction();
         try {
-            // 4.1 Upgrade-on-Login
+            // 5.1 Upgrade-on-Login
             if ($this->passwordService->needsRehash($record->hash, $record->pepperId)) {
                 $newHash = $this->passwordService->hash($password);
                 $this->passwordRepository->savePassword(
@@ -108,7 +108,7 @@ readonly class AdminAuthenticationService
                 );
             }
 
-            // 4.2 Create Session
+            // 5.2 Create Session
             $token = $this->sessionRepository->createSession($adminId);
             $sessionId = hash('sha256', $token);
 
