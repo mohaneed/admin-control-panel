@@ -301,11 +301,6 @@ CREATE TABLE failed_notifications (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 /* ===========================
- * AUDIT / LOGGING
- * =========================== */
-SET FOREIGN_KEY_CHECKS=0;
-
-/* ===========================
  * AUDIT / LOGGING (CANONICAL)
  * =========================== */
 

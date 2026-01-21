@@ -339,6 +339,7 @@ Entries MUST NOT be rewritten or reordered.
 - feat(admin-profile): add admin profile edit flow with audited updates and session revocation
 - refactor(schema): unify logging tables and fix canonical inconsistencies
 - docs(logging): lock canonical schema, layering bindings, and read-side rules
+- chore(db): remove legacy logging section header from schema
 
 
 ---
