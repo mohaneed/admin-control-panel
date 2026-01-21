@@ -54,12 +54,15 @@ App\Domain\Service\AdminAuthenticationService::login
 **Order of operations:**
 
 1. Admin identifier lookup
-2. Verification status check
-3. Password verification
-4. **Must-Change-Password check**
+2. Password verification
+3. Verification status check
+4. Must-Change-Password check
 5. Session creation (only if allowed)
 
 If `must_change_password = true`, authentication is interrupted and no session is created.
+
+Verification and password enforcement checks are performed
+only after successful credential verification.
 
 ---
 

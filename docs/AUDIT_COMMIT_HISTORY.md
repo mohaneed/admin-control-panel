@@ -327,6 +327,8 @@ Entries MUST NOT be rewritten or reordered.
 - fix(auth/step-up): correct 2FA setup routing and middleware flow
 - feat(schema): extend admin_sessions with pending TOTP enrollment state
 - feat(2fa): complete TOTP enrollment with session-bound state and primary grant issuance
+- fix(auth): enforce credential verification before account state checks
+- docs(auth): align authentication flow with credential-first enforcement
 
 
 ---

@@ -18,11 +18,12 @@ The login process is deterministic, fail-closed, and audit-bound.
 2. **Blind Index Calculation**: Email is converted to Blind Index (HMAC-SHA256).
 3. **Identity Lookup**: Blind Index is queried against the database.
    - If Not Found: Generic failure. Security Event `login_failed` (reason: `user_not_found`).
-4. **Verification Status Check**:
-   - If `status !== VERIFIED`: `AuthStateException` is thrown. Security Event `login_failed` (reason: `not_verified`).
-5. **Credential Verification**:
+4. **Credential Verification**:
    - Password hash is retrieved and verified (Argon2id).
    - If Invalid: `InvalidCredentialsException`. Security Event `login_failed` (reason: `invalid_password`).
+5. **Verification Status Check**:
+   - If `status !== VERIFIED`: `AuthStateException` is thrown. Security Event `login_failed` (reason: `not_verified`).
+
 6. **Session Creation (Transactional)**:
    - A new opaque session token is generated.
    - `admin_sessions` table is updated.
@@ -32,11 +33,17 @@ The login process is deterministic, fail-closed, and audit-bound.
    - `auth_token` cookie is set with `HttpOnly`, `SameSite=Strict`, `Path=/`, and `Secure` (if HTTPS).
    - Expiration matches backend session TTL.
 
+> No account state (verification, password enforcement, step-up, or recovery)
+> is evaluated or revealed before successful credential verification.
+
 ### Forbidden Behavior
 
 - No "User not found" messages are ever displayed to the user.
 - No partial sessions are created on failure.
 - No "Account Locked" hints are exposed (Internal logging only).
+- No account state is revealed before password verification.
+- Redirects (verify-email, change-password) are considered account state disclosure.
+
 
 ---
 

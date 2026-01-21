@@ -149,6 +149,19 @@ The system is eligible for freeze.
 **Decision:** Accepted. No security impact. LOCKED.
 
 ---
+### 6.3 Credential-First Enforcement Clarification
+
+The authentication flow enforces credential verification
+prior to any account state evaluation (email verification,
+password enforcement, or recovery routing).
+
+This clarification aligns the implementation with
+best-practice security posture and prevents account state disclosure.
+
+**Impact:** Behavioral clarification only.
+**Freeze Status:** Unaffected.
+
+---
 
 ## 7. Freeze Decision
 
