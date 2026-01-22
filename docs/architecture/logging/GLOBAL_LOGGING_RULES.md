@@ -1,484 +1,345 @@
 # 🌐 Global Logging Rules
 
-**Project:** maatify/admin-control-panel  
-**Status:** CANONICAL  
-**Audience:** Backend Developers, Security Reviewers, Auditors  
+**Project:** maatify/admin-control-panel
+**Status:** CANONICAL (Binding — Subordinate to unified-logging-system.*)
+**Audience:** Backend Developers, Security Reviewers, Auditors
 **Last Updated:** 2026-01
 
+**Terminology Source of Truth:**
+
+* `docs/architecture/logging/LOG_DOMAINS_OVERVIEW.md`
+
+**Architecture Source of Truth:**
+
+* `unified-logging-system.ar.md`
+* `unified-logging-system.en.md`
+
+If a conflict exists, the Unified Logging System documents win.
+
 ---
 
-## 1. Purpose
+## 1) Purpose
 
-This document defines the **global, canonical rules** for all logging
-within the Admin Control Panel.
+This document defines the **global, canonical rules** for all logging within the Admin Control Panel.
 
 It exists to enforce:
-- Clear separation of concerns
-- Correct semantic usage of log types
-- Elimination of ambiguous or misleading logs
-- Long-term audit and security correctness
 
-Any deviation from these rules is considered a **critical architectural violation**.
+* Strict separation of semantic intent
+* Correct usage of the six canonical logging domains
+* Elimination of misleading, duplicated, or polluted logs
+* Long-term audit, security, and compliance correctness
 
----
-
-## 2. Log Categories (Authoritative)
-
-The system recognizes **exactly four** functional logging categories:
-
-| Category        | Purpose                               | Authority Level        |
-|-----------------|---------------------------------------|------------------------|
-| Audit Logs      | Authoritative record of state changes | **Authoritative**      |
-| Security Events | Observational security signals        | **Non-authoritative**  |
-| Activity Logs   | Admin operational actions             | **Non-authoritative**  |
-| Telemetry       | Metrics and diagnostics               | **Non-authoritative**  |
-
-Additionally, the system uses **PSR-3 Logger** as a **diagnostic channel**
-(not a business logging category).
-
-No other logging category is allowed.
+Any deviation from these rules is a **critical architectural violation**.
 
 ---
 
-## 3. Audit Logs
+## 2) Canonical Logging Domains (Authoritative)
 
-### 3.1 Definition
+The system recognizes **exactly six** logging domains.
 
-Audit Logs represent **authoritative, irreversible state changes** that affect:
-- Security posture
-- Authority
-- Access rights
-- Persistent system state
+| Domain                    | Purpose                                             | Authority Level   |
+|---------------------------|-----------------------------------------------------|-------------------|
+| **Authoritative Audit**   | Governance & security posture changes               | **Authoritative** |
+| **Audit Trail**           | Data exposure: views / reads / exports / navigation | Non-authoritative |
+| **Security Signals**      | Auth & policy anomalies                             | Non-authoritative |
+| **Operational Activity**  | Operational mutations (CRUD, approvals)             | Non-authoritative |
+| **Diagnostics Telemetry** | Technical observability & diagnostics               | Non-authoritative |
+| **Delivery Operations**   | Jobs, queues, notifications, webhooks lifecycle     | Non-authoritative |
 
-They MUST be:
-- Transactional
-- Fail-closed
-- Authoritative source of truth
-
-### 3.2 Storage
-
-Audit logs are written to:
-
-```
-
-audit_outbox
-
-```
-
-The outbox is the **only authoritative audit source**.
-
-Downstream consumers MAY materialize audit records into other tables
-for querying, but those tables are NOT authoritative.
-
-### 3.3 When to Use Audit Logs
-
-Audit Logs MUST be used for:
-- Session creation and revocation
-- Step-Up grant issuance and revocation
-- Permission or role assignment
-- Admin creation or deletion
-- Credential changes
-- Security posture changes
-
-### 3.4 When NOT to Use Audit Logs
-
-Audit Logs MUST NOT be used for:
-- Failed login attempts
-- Invalid credentials
-- Step-Up failures
-- Permission denials
-- Any event that does NOT change system state
+No additional logging domain is allowed.
 
 ---
 
-## 4. Security Events
+## 3) One-Domain Rule (Hard Rule)
+
+Every logged event MUST belong to **exactly one** domain based on its **primary intent**.
+
+If a real-world action appears to involve multiple domains:
+
+* it MUST be represented as **multiple distinct events**
+* each event is logged separately in its proper domain
+* the same intent MUST NOT be logged twice
+
+Domains are **not interchangeable**.
+
+---
+
+## 4) Authoritative Audit
 
 ### 4.1 Definition
 
-Security Events are **observational signals** that indicate:
-- Suspicious behavior
-- Failed security actions
-- Risk indicators
-- Abuse patterns
+Authoritative Audit represents **compliance-grade, governance-critical** changes that affect:
 
-They DO NOT represent state changes.
+* security posture
+* authority and privileges
+* access governance
+* irreversible compliance-sensitive state
 
-### 4.2 Characteristics
+### 4.2 Authoritative Pipeline (Hard Rule)
 
-Security Events:
-- Are best-effort
-- MUST NOT affect control flow
-- MUST NOT be transactional
-- MUST NOT block user actions
+Authoritative Audit MUST be written via the authoritative pipeline:
 
-### 4.3 Storage
+* **Authoritative source:** `authoritative_audit_outbox`
+* **Materialized query table:** `authoritative_audit_log`
 
-Security Events are written to:
+Rules:
 
-```
+* The outbox is the **only source of truth**
+* Log tables are **materialized views only**
+* Failures MUST propagate (fail-closed)
 
-security_events
+### 4.3 When to Use Authoritative Audit
 
-```
+* Privileged account creation or deletion (admins)
+* Role or permission assignment / revocation
+* System ownership changes
+* Policy-critical session revocation
+* Governance-grade security configuration changes
 
-### 4.4 Event Structure
+### 4.4 When NOT to Use Authoritative Audit
 
-All Security Events MUST use:
-- `SecurityEventRecordDTO`
-- `SecurityEventRecorderInterface`
-- Typed enums for:
-  - Event Type
-  - Severity
-  - Actor Type
-
-### 4.5 Severity Rules
-
-| Severity | Meaning              |
-|----------|----------------------|
-| INFO     | Informational signal |
-| WARNING  | Suspicious behavior  |
-| ERROR    | Security failure     |
-| CRITICAL | High-risk incident   |
-
-Severity reflects **risk**, not authority.
-
-### 4.6 Examples
-
-Security Events include:
-- Login failure
-- Invalid password
-- Step-Up not enrolled
-- Step-Up invalid code
-- Step-Up risk mismatch
-- Permission denied
+* Login failures
+* Invalid credentials
+* Step-up failures
+* Permission denials
+* Any non-governance operational event
 
 ---
 
-## 5. Activity Logs
+## 5) Audit Trail (Data Exposure & Navigation)
 
 ### 5.1 Definition
 
-Activity Logs track **admin operational actions** for visibility and review.
+Audit Trail answers:
 
-They answer:
-> “What did this admin do?”
+> Who accessed what data, when, and how?
+
+It is the **only** domain for:
+
+* reads
+* views
+* exports
+* downloads
+* navigation that exposes sensitive data
 
 ### 5.2 Storage
 
-Activity Logs are written to:
+Audit Trail MUST be written to:
 
-```
+* `audit_trail` (MySQL hot table)
 
-activity_logs
+### 5.3 Hard Rule
 
-````
-
-### 5.3 When to Use Activity Logs
-
-Activity Logs SHOULD be used for:
-- Viewing records
-- Triggering actions
-- Performing administrative operations
-- Manual admin workflows
-
-### 5.4 When NOT to Use Activity Logs
-
-Activity Logs MUST NOT be used for:
-- Authentication
-- Authorization
-- Security failures
-- Any automatic system action
+Any event that represents **data exposure** MUST be logged as **Audit Trail**.
 
 ---
 
-## 5.5 Clarification: Activity Logs vs Data Exposure
-
-### 5.5.1 Core Distinction
-
-Activity Logs are designed to track **intentional admin actions**, not data exposure.
-
-They answer:
-> **What action did the admin intentionally perform?**
-
-They do **NOT** answer:
-- What data was viewed
-- What sensitive records were accessed
-- What customer information was exposed
-
----
-
-### 5.5.2 What Activity Logs MAY Represent
-
-Activity Logs MAY represent:
-- An admin triggered an action
-- An admin performed a manual operation
-- An admin initiated a workflow
-- An admin explicitly modified system state
-
-Examples:
-- Session revoked
-- Admin role updated
-- Settings changed
-- Manual bulk operation triggered
-
----
-
-### 5.5.3 What Activity Logs MUST NOT Represent
-
-Activity Logs MUST NOT be used to represent:
-- Viewing customer data
-- Listing sensitive records
-- Opening or reading personal information
-- Accessing confidential resources
-- Any form of **data exposure**
-
-Logging such actions as Activity Logs creates:
-- False operational narratives
-- Incomplete forensic trails
-- Compliance risk
-- Misleading accountability
-
----
-
-## 5.6 🚫 Forbidden Substitution: Activity Logs as Data Access Logs
-
-Using Activity Logs to simulate **data access tracking** is strictly forbidden.
-
-Examples of forbidden usage:
-- Logging “customer viewed” as an Activity Log
-- Logging “record opened” as an Activity Log
-- Logging “export generated” as an Activity Log
-
-> **Activity ≠ Access**
-
-This distinction is **non-negotiable**.
-
----
-
-## 6. Telemetry
+## 6) Security Signals
 
 ### 6.1 Definition
 
-Telemetry is used ONLY for:
-- Performance metrics
-- Diagnostics
-- System health
-- Observability
+Security Signals are **observational risk indicators** for:
 
-### 6.2 Rules
+* suspicious behavior
+* failed security actions
+* policy violation attempts
+* abuse patterns
 
-Telemetry:
-- MUST NOT represent security or authority events
-- MUST NOT write to audit tables
-- MUST NOT be used for compliance or review
-- MUST tolerate failure (fail-open)
+They are **non-authoritative**.
 
-### 6.3 Examples
+### 6.2 Characteristics (Hard Rules)
 
-Telemetry includes:
-- Request duration
-- Cache hit/miss
-- Background job timing
-- Error rates
+Security Signals:
 
----
+* are best-effort
+* MUST NOT affect control flow
+* MUST NOT be transactional
+* MUST NOT block user actions
 
-## 6.5 PSR-3 Diagnostic Logging
+### 6.3 Storage
 
-### 6.5.1 Definition
+Security Signals MUST be written to:
 
-The PSR-3 Logger is used exclusively for **diagnostic and operational
-error reporting**.
+* `security_signals`
 
-It exists to capture:
-- Silent failures
-- Unexpected runtime conditions
-- Infrastructure or dependency issues
-- Exceptions that are intentionally swallowed
+### 6.4 Severity Levels
 
-PSR-3 logs are **NOT business events** and **NOT part of any audit or
-security trail**.
+Severity reflects **risk**, not authority.
+
+| Severity | Meaning                   |
+|----------|---------------------------|
+| INFO     | Informational             |
+| WARNING  | Suspicious behavior       |
+| ERROR    | Security-relevant failure |
+| CRITICAL | High-risk incident        |
 
 ---
 
-### 6.5.2 When to Use PSR-3 Logger
-
-PSR-3 Logger MUST be used when:
-- An exception is caught and intentionally NOT rethrown
-- A best-effort operation fails silently
-- A non-critical dependency fails (cache, telemetry, async dispatch)
-- An unexpected state occurs that does not affect user flow
-- Logging itself fails (nested logging failure)
-
----
-
-### 6.5.3 When NOT to Use PSR-3 Logger
-
-PSR-3 Logger MUST NOT be used for:
-- Security events
-- Authorization or authentication failures
-- Audit logging
-- Activity tracking
-- Business-level failures
-- Expected validation errors
-
-If the system *expects* the failure, PSR-3 is NOT the correct channel.
-
----
-
-### 6.5.4 Severity Mapping
-
-PSR-3 log levels reflect **operational impact**, not business severity:
-
-| PSR-3 Level       | Usage                               |
-|-------------------|-------------------------------------|
-| debug             | Development-time diagnostics        |
-| info              | Normal but noteworthy condition     |
-| warning           | Recoverable issue                   |
-| error             | Non-recoverable operational failure |
-| critical          | Infrastructure-level failure        |
-| alert / emergency | Reserved for system-wide outages    |
-
----
-
-### 6.5.5 Example
-
-```php
-try {
-    $telemetryRecorder->record($event);
-} catch (\Throwable $e) {
-    $logger->warning(
-        'Telemetry write failed',
-        [
-            'exception' => $e,
-            'event_type' => $event->type,
-        ]
-    );
-}
-````
-
----
-
-### 6.5.6 Core Rule
-
-> **PSR-3 logs describe system problems — not user behavior.**
-
-Using PSR-3 as a substitute for:
-
-* Audit
-* Security Events
-* Activity Logs
-
-is a **hard violation**.
-
----
-
-## 7. 🚧 Future Category (Deferred): Data Access Logs
+## 7) Operational Activity (Mutations Only)
 
 ### 7.1 Definition
 
-Data Access Logs are a **distinct, dedicated logging category** intended to track:
+Operational Activity tracks **state-changing actions** that are not governance-grade.
 
-> **Who accessed sensitive data, and when**
+### 7.2 Storage
 
-They exist for:
+Operational Activity MUST be written to:
 
-* Privacy investigations
-* Insider threat analysis
-* Compliance audits
-* Data leakage tracing
+* `operational_activity`
 
----
+### 7.3 Hard Prohibition
 
-### 7.2 Status
+Operational Activity MUST NOT represent:
 
-⚠️ **NOT IMPLEMENTED**
-⚠️ **NOT AVAILABLE FOR USE**
-⚠️ **MUST NOT be emulated using existing log categories**
+* views
+* reads
+* exports
+* downloads
+* navigation
 
-Any attempt to approximate Data Access Logs using:
-
-* Activity Logs
-* Audit Logs
-* Security Events
-* Telemetry
-
-is a **hard architectural violation**.
+**Reads are Audit Trail.
+Mutations are Operational Activity.**
 
 ---
 
-### 7.3 Why a Separate Category Is Required
+## 8) Diagnostics Telemetry
 
-Data access tracking has unique requirements:
+### 8.1 Definition
 
-* High cardinality
-* Read-heavy events
-* Different retention rules
-* Different privacy constraints
-* Different query patterns
+Diagnostics Telemetry exists **only** for technical observability:
 
-Mixing it with Activity Logs or Audit Logs:
+* performance metrics
+* diagnostics
+* system health
+* sanitized error summaries
 
-* Breaks semantics
-* Pollutes timelines
-* Creates false causality
+### 8.2 Rules
 
----
+Diagnostics Telemetry:
 
-### 7.4 Explicit Rule
+* MUST NOT represent business events
+* MUST NOT represent security posture changes
+* MUST tolerate failure (fail-open)
 
-> **Activity Logs track actions.**
-> **Audit Logs track state changes.**
-> **Security Events track risk.**
-> **Telemetry tracks system behavior.**
-> **Data Access Logs track exposure.**
+### 8.3 Storage
 
-These categories are **not interchangeable**.
+Diagnostics Telemetry MUST be written to:
+
+* `diagnostics_telemetry`
 
 ---
 
-### 7.5 Implementation Policy
+## 9) Delivery Operations
 
-Data Access Logs:
+### 9.1 Definition
 
-* Require a dedicated ADR
-* Require explicit schema design
-* Require privacy review
-* Require retention policy definition
+Delivery Operations track **asynchronous execution lifecycle**:
 
-Until then:
+* jobs
+* queues
+* notifications
+* webhooks
+* retries and outcomes
 
-> **NO data access logging is allowed.**
+### 9.2 Storage
 
----
+Delivery Operations MUST be written to:
 
-## 8. Forbidden Patterns (Hard Rules)
-
-The following are **explicitly forbidden**:
-
-* ❌ Telemetry writing to `audit_logs`
-* ❌ Audit logging for failures
-* ❌ Security Events affecting control flow
-* ❌ Activity Logs for authentication or authorization
-* ❌ Double-writing the same event to multiple log types
-* ❌ Using logs as a source of truth
-* ❌ Logging “view”, “read”, or “open” operations as Activity Logs
-* ❌ Inferring data exposure from operational logs
-
-Any of the above requires immediate remediation.
+* `delivery_operations`
 
 ---
 
-## 9. Enforcement
+## 10) PSR-3 Diagnostic Channel (Not a Domain)
 
-* All new code MUST comply with this document
-* Code reviews MUST validate logging semantics
-* Violations block merges
-* This document supersedes legacy behavior
+### 10.1 Definition
+
+PSR-3 logging is **not** a business logging domain.
+
+It is used only for:
+
+* infrastructure failures
+* dependency outages
+* swallowed exceptions at policy boundaries
+* logging system failures
+
+### 10.2 Core Rule
+
+> PSR-3 logs describe **system problems**, not user behavior.
+
+PSR-3 MUST NOT replace any logging domain.
 
 ---
 
-## 10. Change Policy
+## 11) Normalized Context & Safety Rules (Hard)
+
+### 11.1 Normalized Context
+
+All domain logs MUST include normalized context:
+
+* `actor_type` (validated enum-like)
+* `actor_id`
+* `request_id` (single request scope)
+* `correlation_id` (multi-request workflow scope)
+* `route_name`
+* `ip_address`
+* `user_agent`
+* `occurred_at` (**UTC only**)
+
+### 11.2 actor_type Allowed Values
+
+`actor_type` MUST be one of:
+
+* SYSTEM
+* ADMIN
+* USER
+* SERVICE
+* API_CLIENT
+* ANONYMOUS
+
+Any other value is invalid.
+
+---
+
+## 12) Data Safety Rules (Hard)
+
+* NEVER log secrets:
+
+  * passwords
+  * raw OTP codes
+  * access tokens
+  * session secrets
+  * encryption keys
+* URLs:
+
+  * store path only
+  * strip query strings
+  * mask sensitive path segments if needed
+* Metadata:
+
+  * structured
+  * minimal
+  * allowlisted
+  * **maximum size: 64KB**
+* Logs MUST NOT be treated as a source of business truth.
+
+---
+
+## 13) Forbidden Patterns (Hard)
+
+* Cross-domain logging
+* Double-writing the same intent
+* Using Telemetry as Audit
+* Using Audit for failures
+* Security Signals affecting control flow
+* Operational Activity for reads
+* Logging secrets
+* Silent policy violations
+
+Violations block merges and require remediation.
+
+---
+
+## 14) Change Policy
 
 This document is:
 
@@ -486,19 +347,23 @@ This document is:
 * Version-controlled
 * Changeable only via explicit architectural decision
 
-Ad-hoc exceptions are NOT allowed.
+Ad-hoc exceptions are forbidden.
 
 ---
 
-## 11. Summary
+## 15) Summary
 
-> Logs are not interchangeable.
+> Logging domains are not interchangeable.
 
-Each log type exists for a **specific purpose**.
-Misusing logs creates:
+Misuse creates:
 
-* False audit trails
-* Missed security incidents
-* Compliance risks
+* false audit narratives
+* missed security incidents
+* compliance risk
+* broken investigations
 
-Follow the rules strictly.
+Follow these rules strictly.
+
+---
+
+**END OF GLOBAL LOGGING RULES**

@@ -1,548 +1,509 @@
-# UNIFIED_LOGGING_DESIGN.md
+# UNIFIED_LOGGING_DESIGN
 
-**Status:** LOCKED  
-**Project:** maatify/admin-control-panel  
-**Purpose:** Canonical design for all logging subsystems (existing remediation and future extensions)  
-**Audience:** Maintainers, reviewers, AI agents, future contributors  
-**Rule:** ZERO-AMBIGUITY
-
----
-
-## 0) Non-Negotiable Global Rules
-
-1) **No Swallow Inside Any Extractable Module**
-   - Any Module intended to be “library-like” MUST NOT swallow exceptions.
-   - Modules MUST throw **custom exceptions only** (subsystem-specific).
-   - Swallow / fail-open policy is a **Domain / Application responsibility** only.
-
-2) **No Cross-Contamination Between Log Types**
-   - Each log type has a strict purpose and **MUST NOT write into another type’s storage**.
-   - **Audit** tables/flows must never be written by Telemetry/Security/Activity.
-
-3) **Honest Contracts**
-   - Any interface that can fail MUST declare its thrown exceptions (docblock or signature).
-   - “Best-effort” is a **policy**, not a contract lie.
-
-4) **DB is Infrastructure**
-   - Only Infrastructure drivers talk to PDO/DB.
-   - Domain does not know PDO for logging subsystems (target design).
+> **Project:** maatify/admin-control-panel
+> **Status:** CANONICAL (Unified Design + Enforcement Rules)
+> **Scope:** Defines the unified logging architecture, layering, authority boundaries, storage semantics, and forbidden patterns.
+> **Terminology Source of Truth:** `docs/architecture/logging/LOG_DOMAINS_OVERVIEW.md`
+> **Storage Guidance (Optional):** `docs/architecture/logging/LOG_STORAGE_AND_ARCHIVING.md` *(not required for baseline)*
 
 ---
 
-## 1) Canonical Terminology Lock
+## 0) Purpose
 
-### 1.1 Audit (Authoritative)
-- **Authoritative + transactional**
-- Used for security-critical, compliance-grade evidence.
-- MUST be written within real transactions (e.g., outbox inside tx).
-- **Not best-effort.**
-- **Never** used for UX/observability.
+This document defines a single unified approach to logging across the system that:
 
-### 1.2 SecurityEvents (Observational)
-- Observational signals (suspicious login attempts, step-up failures, policy denials…).
-- Best-effort at the policy layer (Domain may swallow).
-- Never relied upon for correctness.
-
-### 1.3 ActivityLog (Operational History)
-- “Who did what” operational history (non-authoritative).
-- Best-effort at the policy layer (Domain may swallow).
-- Never relied upon for correctness.
-
-### 1.4 Telemetry (Observability)
-- Performance/diagnostics/trace-level events.
-- Best-effort at the policy layer (Domain may swallow).
-- Never relied upon for correctness.
-
-### 1.5 Access / Page View Tracking (UX Navigation)
-- Admin moving between pages is a **VIEW** signal.
-- Classified as **Telemetry.Access** (NOT Audit, NOT Security, NOT Activity).
-- Implemented as a dedicated recorder in the Domain, writing to Telemetry storage.
+* prevents domain mixing (conceptual confusion)
+* enforces consistent layering (HTTP → Domain policy → Storage)
+* provides honest failure semantics (no hidden failures except where explicitly permitted)
+* supports scalable retention (baseline first; archiving remains optional guidance)
+* enables future extraction of each logging domain as an independent library
 
 ---
 
-## 2) Canonical Architecture Layers
+## 1) Canonical Domains (6)
 
-### 2.1 The “Module” Layer (Library-like Core)
-**Goal:** Portable, strict, honest, reusable.
+**Domain intent and classification rules are defined only in:**
 
-A subsystem module MUST contain:
-- Contracts (Logger/Reader)
-- DTOs (Entry/Read/Query)
-- Enums (Type/Severity/Action as needed)
-- Exceptions (Storage/Mapping/Validation)
-- Infrastructure reference implementations (PDO/MySQL) — optional but preferred
+* `docs/architecture/logging/LOG_DOMAINS_OVERVIEW.md`
 
-> Note:
-> Enums and ValidationException classes MUST be introduced **only when the subsystem semantics require them**.
-> Subsystems with simple or unambiguous behavior SHOULD avoid unnecessary boilerplate.
+This design supports exactly **six** domains:
 
-**Key rule:** Module throws; Module never swallows.
+1. Authoritative Audit
+2. Audit Trail
+3. Security Signals
+4. Operational Activity
+5. Diagnostics Telemetry
+6. Delivery Operations
 
-### 2.2 The “Domain Recorder” Layer (Policy)
-**Goal:** Best-effort + context hydration + routing.
-
-Domain recorders:
-- Convert domain intent into module DTOs.
-- Attach RequestContext (ip, ua, request_id, correlation_id, admin_id).
-- Decide the failure policy (swallow / retry / degrade).
-- NEVER write SQL directly.
-
-### 2.3 Binding Definitions (Hard Gates)
-
-To eliminate ambiguity:
-
-- **Module Layer** is defined as: `app/Modules/<Subsystem>/...` only.
-- **Domain Recorder Layer** is defined as: `app/Domain/<Subsystem>/Recorder/...` only.
-
-Hard Gates:
-1) **No Swallow Outside Domain Recorder**
-    - Any swallowing of exceptions outside `app/Domain/<Subsystem>/Recorder/...` is a violation.
-
-2) **No PDO in Domain Recorder**
-    - Domain Recorders MUST NOT use PDO or raw SQL.
-    - They MUST call Module contracts only.
-    - Legacy PDO usage (if any) is strictly limited to pre-existing non-logging code paths and MUST NOT be expanded.
-
-3) **Module Drivers Own DB Access**
-    - Only Module Infrastructure drivers (e.g., `app/Modules/<Subsystem>/Infrastructure/Mysql/...`) may talk to PDO/DB for logging subsystems.
+**Hard rule:** Every event belongs to exactly **one** domain.
 
 ---
 
-## 3) Canonical Folder Layout
+## 2) High-Level Architecture
 
-### 3.1 Module Layout (Required)
-For each subsystem:
+All logging domains follow the same conceptual pipeline:
 
-```
+@@@
+HTTP / UI / Controllers
+|
+v
+Domain Recorder (policy + context)
+|
+v
+Domain Logger / Writer (storage adapter interface)
+|
+v
+Storage Driver (MySQL baseline; optional additional backends)
+@@@
 
-app/Modules/<Subsystem>/
-├── Contracts/
-│   ├── <Subsystem>LoggerInterface.php      # throws <Subsystem>StorageException
-│   ├── <Subsystem>ReaderInterface.php      # throws <Subsystem>StorageException / MappingException
-│   └── (Optional) ContextInterface.php
-├── DTO/
-│   ├── <Subsystem>EntryDTO.php
-│   ├── <Subsystem>ReadDTO.php
-│   └── <Subsystem>QueryDTO.php             # MUST be typed (no array filters)
-├── Enums/
-│   ├── <Subsystem>TypeEnum.php
-│   └── <Subsystem>SeverityEnum.php         # if applicable
-├── Exceptions/
-│   ├── <Subsystem>StorageException.php
-│   ├── <Subsystem>MappingException.php
-│   └── <Subsystem>ValidationException.php  # if applicable
-└── Infrastructure/
-    └── Mysql/
-        ├── <Subsystem>LoggerMysqlRepository.php   # PDO writes; throws only
-        └── <Subsystem>ReaderMysqlRepository.php   # PDO reads; throws only
+### 2.1 What “Recorder” Means (Mandatory)
 
-```
+A Recorder is the **single** place where:
 
-### 3.2 Domain Recorder Layout (Required)
-```
+* event policy is applied (what to log, when, what metadata is allowed)
+* request context is normalized (actor, correlation, requestId, routeName, ip, userAgent)
+* DTO construction is centralized
 
-app/Domain/<Subsystem>/Recorder/
-└── <Subsystem>Recorder.php
+Recorders prevent:
 
-```
-
-**No swallow in Module. Swallow lives here (if Best-effort).**
+* controllers/services inventing ad-hoc log shapes
+* cross-domain contamination
+* repeated copy/paste metadata extraction
 
 ---
 
-## 4) Exception Policy (Canonical)
+## 3) Layering Rules (Hard Rules)
 
-### 4.1 Standard Exception Set (Per Subsystem)
-Each subsystem MUST define:
-- `<Subsystem>StorageException`
-  - DB failures, PDO failures, constraints, connectivity.
-- `<Subsystem>MappingException`
-  - JSON encode/decode, row mapping, invalid formats.
-- `<Subsystem>ValidationException` (Optional)
-  - Only if validation is inside module boundaries (prefer Domain validation).
+### 3.1 Allowed Responsibilities by Layer
 
-### 4.2 Throw Rules
-- Infrastructure catches `PDOException` and rethrows `<Subsystem>StorageException`.
-- JSON encode/decode errors -> `<Subsystem>MappingException`.
-- **No RuntimeException leak** from module code.
+**Controllers / HTTP**
 
-### 4.3 Swallow Rules
-- Only Domain Recorder may swallow.
-- Swallow is allowed only for:
-  - Telemetry
-  - SecurityEvents
-  - ActivityLog
-- Audit is **never swallow**.
-  - Any Audit failure MUST propagate and abort the calling operation.
+* MAY call domain recorders (directly or via services that call recorders).
+* MUST NOT build logging DTOs manually.
+* MUST NOT write directly to storage.
 
----
+**Domain Services**
 
-## 5) Storage Ownership Rules (Canonical)
+* MAY call recorders (preferred) or trigger recorder calls through workflow orchestration.
+* MUST NOT write directly to storage drivers.
 
-### 5.1 Table Ownership
-- `audit_outbox` / `audit_logs`:
-  - Owned by an Authoritative Audit pipeline only.
-  - MUST NOT be written by Telemetry/SecurityEvents/ActivityLog.
-- `security_events`:
-  - Owned by SecurityEvents module.
-- `activity_logs`:
-  - Owned by ActivityLog module.
-- `telemetry_traces` (or equivalent):
-  - Owned by Telemetry module.
-- Access/page views MUST go to Telemetry storage (not audit_logs).
+**Recorders**
 
-### 5.2 “No Wrong Table” Rule (Hard Blocker)
-If any subsystem writes into another subsystem’s table, it is a **hard architectural violation** and must be rejected.
+* MUST be pure “policy + DTO construction” using safe context.
+* MUST NOT contain SQL / direct storage logic.
+* MUST enforce data safety and metadata limits (see Section 9 and Section 14).
 
-### 5.3 Canonical Logging Schema Contract (LOCKED)
+**Infrastructure Drivers**
 
-This design is bound to the project’s canonical logging schema. Any implementation MUST conform to these column contracts.
+* MUST be storage-specific only (MySQL, optional backends if enabled).
+* MUST NOT reinterpret policy or classify domains.
+* MUST throw domain-specific storage exceptions (never swallow).
 
-#### 5.3.1 Shared Columns (All Logging Tables)
-The following columns MUST exist and MUST be used consistently across all logging tables where applicable:
+### 3.2 Forbidden Shortcuts
 
-- `actor_type` (VARCHAR(32)) — required
-- `actor_id` (BIGINT) — nullable
-- `correlation_id` (CHAR(36)) — nullable unless explicitly required by subsystem
-- `request_id` (VARCHAR(64)) — nullable (request-scoped)
-- `route_name` (VARCHAR(255)) — nullable
-- `ip_address` (VARCHAR(45)) — nullable
-- `user_agent` (TEXT) — nullable
-- `occurred_at` (DATETIME(6)) — required
-
-**Hard Gate:** Any code referencing legacy fields (e.g., `actor_admin_id`) is a schema violation.
-
-#### 5.3.2 ID Type Lock
-All identifiers stored in logging tables MUST use `BIGINT` (or `BIGINT UNSIGNED` where the table uses UNSIGNED IDs). This includes:
-- `actor_id`
-- `target_id`
-- `entity_id`
-
-#### 5.3.3 Telemetry Event Column Lock (Hard Gate)
-Telemetry write path MUST use:
-- `telemetry_traces.event_key`
-
-**Hard Gate:** `event_type` is not a valid telemetry column name for the write path.
+* Direct `PDO->prepare/execute` from controllers for logging
+* Direct external DB writes from controllers for logging
+* “One Logger to log everything” design
+* Reusing Telemetry to log Data Access (Audit Trail)
+* Reusing Operational Activity for views/reads/exports
+* Writing Security Signals into Audit tables (or vice versa)
 
 ---
 
-## 6) Public API Rules
+## 4) Authority Model
 
-### 6.1 Module API
-- Modules export:
-  - LoggerInterface, ReaderInterface
-  - DTOs
-  - Enums
-  - Exceptions
+### 4.1 Authoritative vs Non-Authoritative
 
-### 6.2 Domain API
-- Application code SHOULD call:
-  - `Domain/<Subsystem>/Recorder/<Subsystem>Recorder`
-- Application code SHOULD NOT call:
-  - module logger repositories directly
-  - PDO drivers directly
+There are two authority classes:
 
----
+#### A) Authoritative (Compliance Grade)
 
-## 7) Query / Read Rules
+* Applies only to **Authoritative Audit**
+* Has integrity expectations and controlled writer pipeline
+* Uses outbox + materialized log pattern
 
-1) Read filters MUST be typed (`QueryDTO`).
-2) No `array $filters` in Reader signatures (canonical ban).
-3) Reader returns DTO objects, not raw arrays.
+#### B) Non-Authoritative (Best-Effort)
 
-### 7.1 Read-Side Requirement Rule (LOCKED)
+Applies to:
 
-A Read-side (ReaderInterface + typed QueryDTO + MySQL reader implementation) is:
+* Audit Trail
+* Security Signals
+* Operational Activity
+* Diagnostics Telemetry
+* Delivery Operations
 
-- **REQUIRED** if the project exposes any query/list/view endpoint for that subsystem (API or UI).
-- **OPTIONAL** if the subsystem is truly write-only in the current scope.
-
-Hard Gates:
-- Documentation MUST NOT claim a read pipeline exists if the module does not ship it.
-- Readers MUST NOT accept `array $filters`. Typed `QueryDTO` is mandatory when a reader exists.
+These logs are operationally important, but not “compliance source of truth”.
 
 ---
 
-## 8) Correlation & Request IDs
+## 5) Storage Semantics (Canonical Baseline)
 
-### 8.1 correlation_id
-- Used to correlate events across subsystems and requests.
-- Generated at the request boundary and reused across recorders.
+### 5.1 Baseline Storage Targets (MySQL)
 
-### 8.2 request_id
-- Request-scoped ID (traceability).
-- Stored in ActivityLog and Telemetry where applicable.
+The baseline schema defines one dedicated MySQL table per domain:
 
----
+* Authoritative Audit:
 
-## 9) Migration Strategy for Current Code
+  * `authoritative_audit_outbox` *(authoritative source)*
+  * `authoritative_audit_log` *(materialized query table; written only by consumer)*
 
-### 9.1 Identify “Split Brain” & Duplicates
-- If both `app/Infrastructure/...` and `app/Modules/...` implement same writer:
-  - Target design: keep the driver in module (PDO) and bind it in a container.
-  - Infrastructure copy should be removed or converted to thin adapter only.
+* Audit Trail:
 
-### 9.2 Normalize Contracts
-- Any interface promising “no throws” while implementation throws is a contract lie.
-- Fix by:
-  - Declaring thrown exceptions in the interface, OR
-  - Moving swallow to Domain recorder explicitly.
+  * `audit_trail`
 
-### 9.3 Extract Swallow Out of Modules (If Exists)
-- If a module currently swallows (e.g., service entry point):
-  - Replace swallow with explicit throw (custom exception).
-  - Create/extend Domain recorder to swallow per policy.
+* Security Signals:
 
-### 9.4 Fix Access/PageView Stub
-- Keep the current stub (interface and empty class) but ensure:
-  - It is classified as Telemetry.Access.
-  - It does not write to Audit tables.
-  - It is called only via Domain recorder.
+  * `security_signals`
 
----
+* Operational Activity:
 
-## 10) “Add New Log Type” Checklist (Mandatory)
+  * `operational_activity`
 
-When introducing a new log type/subsystem:
+* Diagnostics Telemetry:
 
-1) Define its classification:
-   - Audit vs. SecurityEvents vs. ActivityLog vs. Telemetry vs. Telemetry.Access
+  * `diagnostics_telemetry`
 
-2) Create Module skeleton:
-   - Contracts, DTOs, Enums, Exceptions, Infrastructure/Mysql driver.
+* Delivery Operations:
 
-3) Define storage table:
-   - MUST be a dedicated table owned by the subsystem.
+  * `delivery_operations`
 
-4) Create Domain recorder:
-   - Maps context, decides swallow policy, calls module logger.
+### 5.2 Optional Backends (Deferred / Not Required)
 
-5) Add API docs entry (if exposed):
-   - Ensure it appears in docs/API_PHASE1.md (project requirement).
+Additional backends (e.g., Mongo cold store) are OPTIONAL and MUST NOT be assumed.
 
-6) Add tests:
-   - Module driver tests (if applicable)
-   - Domain recorder behavior test (swallow vs. fail-closed)
+If enabled in the future, storage and retention behavior MUST be documented in:
+
+* `docs/architecture/logging/LOG_STORAGE_AND_ARCHIVING.md`
+
+**Baseline rule:** the system MUST remain correct and complete with MySQL-only storage.
 
 ---
 
-## 11) Enforcement Rules for Review (Hard Gates)
+## 6) Failure Semantics (“Honest Contracts”)
 
-A change MUST be rejected if it violates any of:
-- Telemetry writes into audit_logs
-- Module swallows exceptions
-- Interface hides throws (dishonest contract)
-- Reader uses array filters instead of QueryDTO
-- Domain code writes SQL for logging (except existing legacy, explicitly flagged)
+### 6.1 Core Principle
 
----
+Logging must not fail silently in infrastructure unless explicitly permitted by policy.
 
-## 12) Current Known Legacy Debt (Documented, Not Expanded)
+### 6.2 Allowed Swallowing (Very Limited)
 
-Some existing Domain services may use PDO for transaction control.
-This is legacy architecture and is **not expanded** by new work.
-Target state is to move transaction orchestration to application boundary or dedicated infra services.
+* **Non-authoritative recorders MAY swallow storage exceptions** if and only if:
 
----
+  * the swallow is explicit and documented as “best-effort logging”
+  * the infrastructure driver itself remains honest (does not swallow)
+  * the failure is surfaced operationally (PSR-3 warning) and SHOULD be captured via Diagnostics Telemetry **without creating recursive failures** (sanitized)
 
-## 13) Out of Scope (Future Enhancements)
+**Important:** If Diagnostics Telemetry write fails too, it MUST NOT cascade into further writes; PSR-3 is the last-resort operational visibility channel.
 
-This section documents **explicitly excluded topics** from this design.
-Their absence is **intentional**, not accidental.
+### 6.3 Forbidden Swallowing
 
-The purpose of this document is to define **canonical structure, ownership, and failure semantics** — not implementation optimizations or deployment strategies.
+* Infrastructure drivers MUST NOT swallow exceptions silently.
+* “Try/catch empty” in storage drivers is forbidden.
+* Best-effort does not mean “silent”.
 
----
+### 6.4 Authoritative Audit Semantics
 
-### 13.1 Asynchronous / High-Throughput Logging
-
-Out of scope:
-
-- Queues (Redis, RabbitMQ, Kafka, SQS, etc.)
-- Fire-and-forget logging
-- Batch flushing
-- Background workers
-- Sampling strategies
-- Rate limiting of log writes
-
-Rationale:
-- These are **infrastructure and deployment concerns**, not architectural boundaries.
-- The current design intentionally supports **synchronous implementations** to keep semantics explicit and failure modes visible.
-- Asynchronous logging MAY be introduced later **behind existing Module contracts** without changing:
-    - Domain Recorder logic
-    - Failure policy
-    - Ownership rules
+* Authoritative audit MUST preserve integrity.
+* If outbox write fails, this is not “best-effort” — it is a system integrity failure and MUST be handled as such.
 
 ---
 
-### 13.2 Example: Extending with Async Telemetry (Illustrative Only)
+## 7) Canonical Fields & Context (All Domains)
 
-The following example illustrates how asynchronous logging MAY be added
-without violating this design.
+Each log domain event MUST support the following normalized context (where applicable):
 
-```php
-final class AsyncTelemetryLogger implements TelemetryLoggerInterface
-{
-    public function log(TelemetryEntryDTO $dto): void
-    {
-        // enqueue payload to background worker
-        // MUST throw TelemetryStorageException on enqueue failure
-    }
-}
-```
+* `actor_type` (string)
+* `actor_id` (nullable integer)
+* `correlation_id` (nullable string)
+* `request_id` (nullable string)
+* `route_name` (nullable string)
+* `ip_address` (nullable string)
+* `user_agent` (nullable string)
+* `occurred_at` (DATETIME(6))
 
-Usage remains unchanged at the Domain level:
+### 7.1 Timezone Rule (Hard)
 
-```php
-try {
-    $this->telemetryLogger->log($entry);
-} catch (TelemetryStorageException $e) {
-    // Domain decides whether to swallow or escalate
-}
-```
+* `occurred_at` MUST be stored in **UTC** across ALL domains.
+* Application layer MUST convert local time to UTC before insert.
+* Display/UI layer is responsible for timezone rendering per user.
 
-This example is **illustrative only**.
-No asynchronous behavior is mandated or implied by this design.
+### 7.2 Event Identity (Recommended)
 
----
+For non-authoritative domains:
 
-### 13.3 Storage Backend Variants (Non-MySQL)
+* `event_id` (UUID string) is strongly recommended for idempotency and traceability.
 
-Out of scope:
+### 7.3 Correlation vs Request (Canonical Glossary)
 
-- PostgreSQL implementations
-- NoSQL stores (Elasticsearch, ClickHouse, etc.)
-- File-based logging
-- Cloud-native log sinks
+* `request_id`:
 
-Rationale:
-- All Modules are already structured around **Infrastructure drivers**.
-- Swapping storage backends is a matter of providing alternative drivers under:
-  `Infrastructure/<Backend>/`
-- Locking a specific backend is not required to validate:
-    - Layering
-    - Exception policy
-    - Ownership boundaries
+  * Unique ID for a single HTTP request/response cycle.
+  * Used to correlate logs generated inside the same request.
+
+* `correlation_id`:
+
+  * Links events across multiple requests that belong to one business/operational transaction.
+  * Example: multi-step flow spanning multiple requests or async continuation.
 
 ---
 
-### 13.4 Audit Integrity Hardening
+## 8) Domain-Specific Contracts (What Each Domain Must Provide)
 
-Out of scope:
+### 8.1 Authoritative Audit
 
-- Hash chaining
-- WORM / append-only enforcement
-- Cryptographic signatures
-- Tamper detection
-- Legal/compliance retention rules
+* MUST use controlled write pipeline (outbox + consumer)
+* MUST record governance/security posture changes only
+* MUST NOT be used for:
 
-Rationale:
-- These concerns belong to a **dedicated Audit Integrity Model**.
-- This document only defines **who is allowed to write audit data and how**.
-- Integrity hardening will be addressed in a separate, focused design document.
+  * views/reads/exports
+  * security failures
+  * diagnostics telemetry
+  * delivery lifecycle
 
----
+### 8.2 Audit Trail
 
-### 13.5 Log Retention, Rotation, and Archival
+* MUST represent data exposure:
 
-Out of scope:
+  * reads/views/navigation/exports/downloads
+* MUST sanitize URLs and referrers (see Section 9.1 and Section 14.3)
+* SHOULD support “subject tracking” when accessing user/customer data
 
-- TTL policies
-- Table partitioning
-- Archival jobs
-- Compression
-- Purging strategies
+### 8.3 Security Signals
 
-Rationale:
-- Retention policies are operational and regulatory concerns.
-- They vary by environment (dev, staging, prod) and jurisdiction.
-- They do not affect logging **semantics or correctness**.
+* MUST represent auth/authorization/session anomalies
+* MUST include severity
+* SHOULD include safe “reason” and minimal metadata
+* MUST NOT affect control flow (best-effort)
 
----
+### 8.4 Operational Activity
 
-### 13.6 Logging Levels and PSR-3 Compatibility
+* MUST represent mutations and operational actions only
+* MUST NOT include views/reads/exports
 
-Out of scope:
+### 8.5 Diagnostics Telemetry
 
-- PSR-3 log levels (`debug`, `info`, `warning`, etc.)
-- Integration with PSR-3 compatible loggers
-- Generic “logger” abstractions
+* MUST represent technical observability:
 
-Rationale:
-- This system models **domain-specific logging subsystems**, not generic application logging.
-- Each subsystem has stronger semantics than PSR-3 levels.
-- PSR-3 MAY be used at the application boundary, but is intentionally excluded from Modules.
+  * durations, subsystem markers, sanitized errors
+* MUST avoid PII and secrets
 
----
+### 8.6 Delivery Operations
 
-### 13.7 Testing Strategy & CI Enforcement
+* MUST represent lifecycle of async operations:
 
-Out of scope:
-
-- Unit vs. integration test strategy
-- Mocking guidelines
-- CI/CD enforcement rules
-- Coverage thresholds
-
-Rationale:
-- Testing strategy is defined at the project level.
-- This document defines **design constraints**, not process enforcement.
+  * queued/sent/delivered/failed/retrying
+* MUST include attempt counters and safe provider info
+* MUST follow retry policy rules (Section 14.6)
 
 ---
 
-### 13.8 Legacy Refactoring Timelines
+## 9) Data Safety (Hard Rules)
 
-Out of scope:
+Logging must NEVER store:
 
-- Deadlines for removing legacy PDO usage in Domain services
-- Step-by-step refactor plans
+* passwords
+* raw OTP codes
+* access tokens
+* session secrets
+* encryption keys
+* signed URLs containing secrets
 
-Rationale:
-- Legacy handling is explicitly documented in Section 12.
-- This design does not mandate timelines, only **non-expansion of legacy patterns**.
+### 9.1 URL Sanitization (Hard)
+
+* store safe paths only (strip query parameters)
+* never store full URLs that include tokens/codes/signatures
+* path segments MAY contain sensitive tokens in some systems; therefore:
+
+  * any path segments that can contain secrets MUST be masked or hashed
+  * schema and documentation MUST explicitly call this out for fields like `referrer_path`
+
+### 9.2 Metadata Discipline (Hard)
+
+* prefer allowlisted keys
+* avoid dumping raw payloads
+* keep JSON minimal and structured
+* enforce maximum size policy (Section 14.1)
 
 ---
 
-### 13.9 Non-Goals Summary
+## 10) Naming & Taxonomy Rules
 
-This document intentionally does NOT aim to:
+To prevent confusion, each domain must use a consistent naming model:
 
-- Optimize performance
-- Minimize boilerplate
-- Reduce class count
-- Provide implementation shortcuts
-- Serve as a general-purpose logging framework
+* Audit Trail: `event_key` (e.g., `customer.view`, `orders.export`)
+* Security Signals: `signal_type` + severity (e.g., `login_failed`, `permission_denied`)
+* Operational Activity: `action` (e.g., `customer.update`, `settings.change`)
+* Diagnostics Telemetry: `event_key` + metrics (e.g., `http.request`, `db.slow_query`)
+* Delivery Operations: `operation_type` + `channel` + `status`
 
-Its sole goal is to:
-> **Prevent semantic corruption, ownership violations, and unsafe refactors.**
+Avoid free-text strings where structured enums/taxonomy exist.
 
 ---
 
-### 13.10 Recommended Follow-Up Designs (Non-Binding)
+## 11) ASCII Documentation Rules
 
-The following designs are **recommended future work**, ordered by architectural impact.
-This list is **informational only** and does NOT imply priority, commitment, or timeline.
+ASCII diagrams must follow:
 
-1) **Audit Integrity Model**
-    - Tamper resistance
-    - Cryptographic chaining
-    - Append-only enforcement
-    - Compliance-grade immutability
+* `docs/architecture/logging/ASCII_FLOW_LEGENDS.md`
 
-2) **Asynchronous Telemetry Pipeline**
-    - Queue-backed telemetry writers
-    - Fire-and-forget adapters behind existing contracts
-    - Optional sampling strategies
+No alternative symbols, no informal arrows, no custom markers.
+All flow diagrams must use the canonical legend.
 
-3) **Retention & Archival Policies**
-    - Table partitioning
-    - TTL-based pruning
-    - Cold storage strategies
+---
 
-These designs MUST respect all rules defined in this document and MUST NOT introduce:
-- Exception swallowing inside Modules
-- Cross-subsystem storage writes
-- Contract dishonesty
+## 12) Future Library Extraction (Design Constraint)
 
+The code and structure MUST remain compatible with extracting each domain as its own library.
 
-**END OF DOCUMENT — LOCKED**
+This implies:
+
+* domain-specific contracts are isolated
+* shared primitives are minimal
+* no “mega logger” module
+* no domain-specific policy hidden inside generic tooling
+
+---
+
+## 13) Compliance Checklist (Quick)
+
+A logging implementation is compliant only if:
+
+* It is classified into exactly one of the six domains.
+* It routes through a domain recorder (policy + context).
+* Infrastructure does not silently swallow exceptions.
+* Telemetry is not used for access tracking.
+* Operational Activity does not contain reads/views.
+* Audit Trail contains reads/views/exports/navigation.
+* Authoritative Audit uses outbox + consumer pipeline.
+* Optional storage backends (if enabled) are documented explicitly.
+
+---
+
+## 14) Canonical Operational Policies (Clarifications Added)
+
+This section upgrades previously “non-blocking review notes” into **canonical, enforceable documentation** to remove ambiguity and ensure this document is a true source of truth.
+
+### 14.1 Metadata Size Policy (Hard)
+
+* `metadata` MUST have an enforced maximum size at the application layer.
+* Canonical limit: **64 KB per event** (post-serialization).
+* Violations MUST result in:
+
+  * trimming to allowlisted safe keys, OR
+  * rejection for Authoritative Audit events (integrity), OR
+  * best-effort drop with PSR-3 warning for non-authoritative domains (policy decision)
+
+**Forbidden patterns:**
+
+* storing full request bodies
+* storing full stack traces as metadata payloads
+* storing multi-megabyte debug dumps
+
+### 14.2 actor_type Allowed Values (Hard)
+
+To prevent taxonomy drift, `actor_type` MUST be validated against canonical values.
+
+Allowed values:
+
+* `SYSTEM`
+* `ADMIN`
+* `USER`
+* `SERVICE`
+* `API_CLIENT`
+* `ANONYMOUS`
+
+Any new value requires an explicit documented architectural decision.
+
+### 14.3 Audit Trail referrer_path / URL Safety (Hard)
+
+Even “path-only” can contain sensitive segments.
+
+For any stored path or referrer field:
+
+* Strip all query strings
+* Mask or hash sensitive path parameters where tokens/codes/signatures may appear
+* Prefer templated representation:
+
+  * Example: `/reset-password/{hashed}` rather than `/reset-password/abc123`
+
+### 14.4 Authoritative Outbox Processing Guarantees (Canonical)
+
+The outbox pipeline MUST be resilient to consumer failure.
+
+Canonical requirements:
+
+* Consumer MUST be idempotent (keyed by `event_id` or equivalent)
+* Consumer MUST retry with exponential backoff
+* Consumer MUST stop infinite retries and surface failures
+
+Minimum operational policy (baseline):
+
+* Retry: exponential backoff
+* Max attempts: **10**
+* After max attempts: move to a **manual intervention queue** (dead-letter semantics) or mark terminal failure in a dedicated status/field
+
+Monitoring requirement:
+
+* Alert if outbox lag exceeds a policy threshold (example: > 5 minutes)
+
+### 14.5 Archiving Trigger Policy (If Optional Archiving Is Enabled)
+
+Archiving is OPTIONAL and not required for baseline correctness.
+If enabled, an explicit trigger policy MUST be documented and implemented.
+
+Recommended canonical defaults (adjust per deployment):
+
+* Trigger: records older than **90 days** (domain-specific retention may differ)
+* Frequency: daily (off-peak)
+* Batch size: **10,000** rows/run (tunable)
+* Verification: ensure transfer success before delete (hard rule)
+* Rollback safety: if archive fails, hot data stays
+
+### 14.6 Delivery Operations Retry Policy (Canonical)
+
+To avoid infinite loops, Delivery Operations MUST have a bounded retry policy.
+
+Minimum operational policy:
+
+* Max attempts: **5**
+* Backoff: exponential (example schedule: 1m, 5m, 15m, 1h, 6h)
+* After max: status MUST transition to a terminal failure state (example: `failed_permanent`)
+* Terminal failures MUST be discoverable by query/UI
+
+### 14.7 Performance & Scale Guidance (Non-Blocking but Canonical-Aware)
+
+This document does not mandate a specific throughput target, but it mandates design awareness:
+
+* High-volume domains (Telemetry, Security Signals) MUST remain best-effort.
+* Index strategy MUST remain aligned with investigation query patterns (actor/time, event_key/time).
+* If sustained write contention occurs, the system MAY evolve via:
+
+  * partitioning (future ADR)
+  * read replicas for reporting
+  * archiving automation (optional modes)
+
+### 14.8 GDPR / Retention / Right-to-Be-Forgotten (Policy Boundary)
+
+Logs can be compliance-sensitive. Deleting logs may break audit integrity.
+
+Canonical posture:
+
+* Authoritative Audit:
+
+  * MUST NOT be deleted by default (legal/compliance obligation)
+* Other domains:
+
+  * MUST follow retention policy
+  * For “right-to-be-forgotten” requests:
+
+    * prefer anonymization/pseudonymization (policy decision per domain)
+    * never remove integrity-critical governance history
+
+Any GDPR strategy MUST be explicitly documented per deployment, but this design sets the default principle:
+
+* preserve integrity
+* minimize personal data
+* apply retention
+* anonymize where legally required and technically safe
+
+---

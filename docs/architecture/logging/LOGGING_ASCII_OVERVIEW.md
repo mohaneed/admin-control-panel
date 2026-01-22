@@ -1,322 +1,412 @@
-# Logging and Observability - Full ASCII Map (maatify/admin-control-panel)
+# LOGGING_ASCII_OVERVIEW
 
-Purpose: one copy/pasteable reference that explains the whole logging ecosystem using ASCII.
-
-Includes:
-- Audit Logs (authoritative)
-- Security Events (observational security signals)
-- Activity Logs (operational actions)
-- Telemetry (tracing/performance)
-- PSR-3 diagnostic logs
-- Data Access Logs (deferred; not allowed yet)
+> **Project:** maatify/admin-control-panel
+> **Status:** CANONICAL (ASCII overview of unified logging architecture)
+> **Legend Source of Truth:** `docs/architecture/logging/ASCII_FLOW_LEGENDS.md`
+> **Terminology Source of Truth:** `docs/architecture/logging/LOG_DOMAINS_OVERVIEW.md`
+> **Storage Source of Truth:** `docs/architecture/logging/LOG_STORAGE_AND_ARCHIVING.md`
 
 ---
 
-## 0) Legend
+## 0) What This Document Is (And Is Not)
 
-- `-->` calls / depends on
-- `==>` writes to DB
-- `[swallow]` failure is swallowed (fail-open)
-- `[block]` failure blocks the business transaction (fail-closed)
+This file is an **ASCII-only visual overview** of the unified logging system.
 
-Status markers:
-- `OK`    : compliant / intended
-- `WARN`  : partial / legacy drift
-- `VIOL`  : architectural violation (boundary break)
-- `BUG`   : implementation bug (system works, but signal is lost)
+* It shows **flow shapes**, **responsibility boundaries**, and **storage topology**
+* It does NOT redefine terminology or storage rules
+* It acts as a **visual index** tying all canonical logging documents together
 
----
+If any mismatch is found between this file and:
 
-## 1) High-level map (all log types)
+* `ASCII_FLOW_LEGENDS.md`
+* `LOG_DOMAINS_OVERVIEW.md`
+* `LOG_STORAGE_AND_ARCHIVING.md`
+* `GLOBAL_LOGGING_RULES.md`
+* `UNIFIED_LOGGING_DESIGN.md`
 
-```
-                        +-------------------------+
-                        |  Business request flow  |
-                        +-----------+-------------+
-                                    |
-                                    v
-                          Controllers / Services
-                                    |
-    +-------------------+-----------+-----------+-------------------+
-    |                   |                       |                   |
-    v                   v                       v                   v
- Audit Logs         Security Events          Activity Logs        Telemetry
- (authoritative)    (observational)          (operational)        (debug/perf)
-    |                   |                       |                   |
-    v                   v                       v                   v
- audit_outbox        security_events          activity_logs       telemetry_traces
-    |
-    | (outbox consumer)
-    v
- audit_logs
-
- PSR-3 diagnostic logs are filesystem-only and should not be used as a substitute
- for DB-backed security/audit/event tables.
-
- Data Access Logs are deferred and NOT allowed to be emulated.
-```
+Then this file MUST be updated to match them.
 
 ---
 
-## 2) Audit Logs (authoritative, transactional, fail-closed)
+## 1) Unified Logging Pipeline (All Domains)
 
-### 2.1 Canonical authoritative write path (OK)
-
-```
-Domain Service (state change / authority change)
-  |
-  |--> AuthoritativeSecurityAuditWriterInterface
-          |
-          |--> AuthoritativeAuditWriter  [block]
-                  |
-                  |==> INSERT audit_outbox  (in the same DB transaction)
-                          |
-                          |--> outbox consumer/worker
-                                  |
-                                  |==> INSERT audit_logs (authoritative)
-```
-
-Key idea:
-- If the audit write cannot be guaranteed, the business state change must not commit.
-
-### 2.2 Known violations (from audit reports) (VIOL)
+Each logging domain follows the same high-level pipeline shape.
+Only **policy strictness** and **failure semantics** differ by domain.
 
 ```
-AdminController::create
-  |
-  |--> AdminRepository writes admin rows
-  |
-  X Missing DB transaction wrapper
-  X Missing authoritative audit write
 
-AdminController::addEmail
-  |
-  |--> AdminRepository writes identifier/email rows
-  |
-  X Missing authoritative audit write
+┌──────────────────────────────────────┐
+│           HTTP / UI Layer            │
+│   Controllers / Middleware / Routes  │
+└─────────────────────┬────────────────┘
+                      │
+                      v
+┌──────────────────────────────────────┐
+│        Domain Recorder Layer         │
+│  Policy + DTO Construction + Context │
+└─────────────────────┬────────────────┘
+                      │
+                      v
+┌──────────────────────────────────────┐
+│       Domain Logger / Writer         │
+│   Storage Adapter (Interface/Impl)   │
+└─────────────────────┬────────────────┘
+                      │
+                      v
+┌──────────────────────────────────────┐
+│            Storage Layer             │
+│   MySQL Hot (Baseline)               │
+│   + Optional Mongo Archive (Mode A)  │
+└──────────────────────────────────────┘
+
 ```
 
-### 2.3 Forbidden direct writers to audit_logs (VIOL)
+**Canonical notes:**
 
-```
-TelemetryAuditLoggerInterface (legacy)
-  |
-  |--> PdoTelemetryAuditLogger
-          |
-          |==> INSERT audit_logs   (NON-authoritative code touching authoritative table)
-```
-
-Rule of thumb:
-- `audit_logs` must only be populated by the outbox consumer.
+* Recorder is the **only policy boundary**
+* Logger/Writer is **storage-only**
+* No controller or service writes logs directly
+* No domain mixes with another
 
 ---
 
-## 3) Security Events (best-effort, swallow on failure)
+## 2) Domains (6) and Storage Targets
 
-Security events are observational signals (login attempts, step-up challenges, permission denials).
-They MUST NOT block the request flow.
+Canonical meanings are defined in `LOG_DOMAINS_OVERVIEW.md`.
 
-### 3.1 Modern recorder path (OK)
+### 2.1 Authoritative Audit (MySQL ONLY)
 
-```
-Service (e.g., StepUpService)
-  |
-  |--> SecurityEventRecorder (modern)
-          |
-          |-- uses Enums (SecurityEventTypeEnum / SeverityEnum)
-          |
-          |--> SecurityEventLoggerMysqlRepository
-                  |
-                  |==> INSERT security_events
-          |
-          +-- [swallow] catches SecurityEventStorageException
-```
-
-### 3.2 Legacy drift path (WARN)
+* Governance & security posture changes
+* Fail-closed
+* Authoritative pipeline (outbox → materialized log)
+* Never archived in Mode A
 
 ```
-Service (e.g., AdminAuthenticationService / RememberMeService / SessionValidationService)
-  |
-  |--> SecurityEventLoggerInterface (legacy; string event names)
-          |
-          |--> Legacy repository  [swallow]
-                  |
-                  |==> INSERT security_events
-```
+┌───────────────────────────────┐
+│       Authoritative Audit     │
+└───────────────┬───────────────┘
+                │
+                v
+┌──────────────────────────────────────┐
+│ MySQL: authoritative_audit_outbox    │
+└─────────────────────┬────────────────┘
+                      │
+                      v
+┌──────────────────────────────────────┐
+│     Outbox Consumer / Materializer   │
+└─────────────────────┬────────────────┘
+                      │
+                      v
+┌──────────────────────────────────────┐
+│ MySQL: authoritative_audit_log       │
+└──────────────────────────────────────┘
 
-Problems with the legacy path:
-- string event names drift from canonical enums
-- services leak infra concerns (DTO construction, request_id handling)
-- parallel systems (legacy vs modern) cause inconsistency over time
-
-### 3.3 Visibility gap (MISSING) (VIOL-like gap)
-
-```
-ValidationGuard throws ValidationFailedException
-  |
-  X No security event emitted for validation failures
 ```
 
 ---
 
-## 4) Activity Logs (operational actions, not views)
+### 2.2 Archive-Eligible Domains (5 Domains)
 
-Activity logs record staff actions (create, update, revoke, assign) for UI history.
+These domains are **baseline-first** (MySQL) and **optionally archiveable**:
 
-### 4.1 Typical path (OK)
-
-```
-Controller / Service (action)
-  |
-  |--> ActivityLogWriterInterface
-          |
-          |==> INSERT activity_logs
-```
-
-### 4.2 Misuse noted by audit (VIOL)
+* Audit Trail
+* Security Signals
+* Operational Activity
+* Diagnostics Telemetry
+* Delivery Operations
 
 ```
-TelemetryQueryController
-  |
-  |--> ActivityLogWriterInterface
-          |
-          |==> activity_logs: TELEMETRY_LIST (view/list)
+
+┌───────────────────────────────┐
+│   MySQL Hot Table (Baseline)  │
+└───────────────┬───────────────┘
+                │
+                │   (optional Mode A)
+                ├──────────────────────────────▶
+                │                               ┌──────────────────────────────────┐
+                │                               │ Mongo Archive (Quarter Collection) │
+                │                               └──────────────────────────────────┘
+                │
+                v
+┌───────────────────────────────┐
+│   MySQL Delete After Success  │
+└───────────────────────────────┘
+
 ```
 
-This conflicts with the strict rule: do not log view/read/open as Activity Logs.
-If you need to log data exposure, that belongs to Data Access Logs (but that category is deferred).
+**Hard rule:**
+Delete from MySQL is FORBIDDEN unless Mongo write succeeded.
 
 ---
 
-## 5) Telemetry (best-effort tracing, debugging/performance)
+## 3) Detailed Domain Flow Maps
 
-Telemetry is write-only, non-authoritative, and must never affect business logic.
-
-### 5.1 Canonical layered flow (OK)
+### 3.1 Audit Trail (Data Exposure & Navigation)
 
 ```
-HTTP Request
-  |
-  v
-HttpRequestTelemetryMiddleware (App)  [swallow Throwable]
-  |
-  |--> HttpTelemetryRecorderFactory (App)
-  |        |
-  |        |--> HttpTelemetryAdminRecorder / HttpTelemetrySystemRecorder (App)
-  |                 |
-  |                 |--(inject)--> RequestContext (request_id, route_name, ip, ua, actor)
-  |                 |
-  |                 |--> TelemetryRecorderInterface (Domain)
-  |                          |
-  |                          |--> TelemetryRecorder (Domain)
-  |                                  |
-  |                                  |--> TelemetryLoggerInterface (Module)
-  |                                          |
-  |                                          |--> TelemetryLoggerMysqlRepository (PDO)
-  |                                                  |
-  |                                                  |==> INSERT telemetry_traces
-  |
-  v
-Request continues even if telemetry fails (fail-open)
-```
 
-### 5.2 Critical implementation bug (BUG)
+HTTP / UI
+   │
+   v
+AuditTrailRecorder
+   │
+   v
+AuditTrailLogger
+   │
+   ├──▶ MySQL : audit_trail
+   │
+   └──▶ Mongo : audit_trail_YYYYqN
+                (optional Mode A)
 
-```
-DB schema: telemetry_traces.event_key
-Code insert: telemetry_traces.event_type
-
-=> SQL error: Unknown column 'event_type'
-=> telemetry fails 100% of the time
-=> swallowed by design
-=> application works but telemetry_traces remains empty
 ```
 
 ---
 
-## 6) PSR-3 Diagnostic Logs (filesystem)
-
-PSR-3 is diagnostic only.
-It should be used for:
-- unexpected runtime issues
-- internal warnings when swallowing exceptions (carefully)
-
-It must NOT be used as a substitute for:
-- Audit Logs
-- Security Events
-- Activity Logs
-- Telemetry
-
----
-
-## 7) Data Access Logs (DEFERRED - NOT IMPLEMENTED, NOT ALLOWED)
-
-Data Access Logs are a future category intended to capture data exposure/access:
-- who accessed what
-- when
-- under which permissions
-
-Current state:
+### 3.2 Security Signals
 
 ```
-Data Access Logs (DEFERRED)
-  |
-  X NOT IMPLEMENTED
-  X NOT AVAILABLE FOR USE
-  X MUST NOT be simulated by any existing category
-        - Activity Logs (view/read/open)
-        - Security Events
-        - Telemetry
-        - Audit Logs
-```
 
-Until a dedicated ADR + schema + privacy/retention policy exists, NO data access logging is allowed.
+HTTP / UI + Domain Services
+   │
+   v
+SecuritySignalsRecorder
+   │
+   v
+SecuritySignalsLogger
+   │
+   ├──▶ MySQL : security_signals
+   │
+   └──▶ Mongo : security_signals_YYYYqN
+                (optional Mode A)
 
----
-
-## 8) Table ownership and write protection
-
-```
-Table             Allowed writer(s)                                 Status
-----------------  ------------------------------------------------  ------------------------------
-audit_outbox       AuthoritativeAuditWriter (transactional)          OK
-
-audit_logs         Outbox consumer only                              OK
-                  Any direct writer (e.g., TelemetryAuditLogger)      VIOL
-
-security_events    SecurityEventRecorder -> LoggerMysqlRepository     OK
-                  Legacy direct logger injection in services          WARN (migrate)
-
-activity_logs      ActivityLogWriterInterface for ACTIONS             OK
-                  View/list/open logging in activity_logs             VIOL (do not emulate access)
-
-telemetry_traces   TelemetryLoggerMysqlRepository                     BUG (schema mismatch blocks)
 ```
 
 ---
 
-## 9) Boundary rules (short checklist)
+### 3.3 Operational Activity (Mutations Only)
 
-1) Protect `audit_logs`:
-   - only outbox consumer writes `audit_logs`
-   - remove/disable any direct writers
+```
 
-2) Admin authority events:
-   - Admin create and credential changes must be wrapped in transaction + authoritative audit
+HTTP / UI
+   │
+   v
+OperationalActivityRecorder
+   │
+   v
+OperationalActivityLogger
+   │
+   ├──▶ MySQL : operational_activity
+   │
+   └──▶ Mongo : operational_activity_YYYYqN
+                (optional Mode A)
 
-3) Security events:
-   - services should emit via SecurityEventRecorder (enums)
-   - migrate legacy string-based loggers to the recorder
-   - add missing validation failure events (visibility)
+```
 
-4) Activity logs:
-   - actions only
-   - do not log views/read/open
+---
 
-5) Telemetry:
-   - keep fail-open
-   - fix schema mismatch so telemetry actually records
+### 3.4 Diagnostics Telemetry (Tech Observability)
 
-6) Data access logs:
-   - deferred
-   - do not emulate using other log categories
+```
+
+Middleware / Instrumentation / HTTP
+   │
+   v
+DiagnosticsTelemetryRecorder
+   │
+   v
+DiagnosticsTelemetryLogger
+   │
+   ├──▶ MySQL : diagnostics_telemetry
+   │
+   └──▶ Mongo : diagnostics_telemetry_YYYYqN
+                (optional Mode A)
+
+```
+
+---
+
+### 3.5 Delivery Operations (Jobs / Notifications / Webhooks)
+
+```
+
+Queue / Job / Notifier
+   │
+   v
+DeliveryOperationsRecorder
+   │
+   v
+DeliveryOperationsLogger
+   │
+   ├──▶ MySQL : delivery_operations
+   │
+   └──▶ Mongo : delivery_operations_YYYYqN
+                (optional Mode A)
+
+```
+
+---
+
+### 3.6 Authoritative Audit (Compliance-Grade)
+
+```
+
+Domain Policy (Governance / Posture Change)
+   │
+   v
+AuthoritativeAuditRecorder
+   │
+   v
+Outbox Writer
+   │
+   v
+MySQL : authoritative_audit_outbox
+   │
+   v
+Outbox Consumer / Materializer
+   │
+   v
+MySQL : authoritative_audit_log
+
+```
+
+---
+
+## 4) Read Strategy Overview
+
+### 4.1 Baseline (No Archiving Enabled)
+
+```
+Request Range
+|
+v
+MySQL (hot tables only)
+|
+v
+Response
+```
+
+---
+
+### 4.2 Mode A Enabled (Hot + Cold)
+
+```
+
+Request Range
+   │
+   ├──▶ Hot Only   ─────────────▶ MySQL
+   │
+   ├──▶ Cold Only  ─────────────▶ Mongo
+   │
+   └──▶ Mixed      ─────────────▶ MySQL + Mongo
+                                     │
+                                     v
+                                   Merge
+                                     │
+                                     v
+                                  Response
+
+```
+
+---
+
+## 5) Real-World Mapping Appendix (Non-Blocking, Clarifying)
+
+This appendix exists to **reduce ambiguity for reviewers and new developers**.
+It does NOT introduce new rules.
+
+### Example A — `login_failed`
+
+* **Domain:** Security Signals
+* **Why:** Observational auth anomaly
+* **NOT:** Authoritative Audit (no posture change)
+
+---
+
+### Example B — `create_admin`
+
+This is **TWO distinct events**:
+
+1. **Authoritative Audit**
+
+   * Intent: governance / privileged account creation
+2. **Operational Activity**
+
+   * Intent: operational record of entity creation
+
+They MUST be logged as **two separate events**, never merged.
+
+---
+
+### Example C — `export_customer_report`
+
+* **Domain:** Audit Trail
+* **Why:** Data exposure
+* **NOT:** Operational Activity
+* **NOT:** Diagnostics Telemetry
+
+---
+
+## 6) Glossary (Canonical Clarification)
+
+### Audit Trail vs Authoritative Audit
+
+* **Audit Trail**
+
+   * Answers: *Who saw what?*
+   * Concern: data exposure
+   * Non-authoritative
+   * Reads / views / exports
+
+* **Authoritative Audit**
+
+   * Answers: *What changed governance or security posture?*
+   * Concern: compliance & authority
+   * Authoritative source of truth
+   * Mutations with legal / security weight
+
+---
+
+### Security Signals vs Operational Activity
+
+* **Security Signals**
+
+   * Observations, denials, failures
+   * Best-effort
+   * Never changes system state
+
+* **Operational Activity**
+
+   * Successful mutations
+   * Day-to-day admin operations
+   * No reads, no failures
+
+---
+
+## 7) Visual Hard Prohibitions (Reminder)
+
+```
+
+Diagnostics Telemetry  ───▶ Authoritative Audit tables   (FORBIDDEN)
+Operational Activity   ───▶ Views / Reads / Exports      (FORBIDDEN)
+Audit Trail            ───▶ Mutations                    (FORBIDDEN)
+Infrastructure         ───▶ swallow                      (FORBIDDEN)
+Same intent            ───▶ Multiple domains             (FORBIDDEN)
+
+```
+
+---
+
+## 8) Canonical Closing Statement
+
+This file is a **visual index**, not a rulebook.
+
+> If a rule is not defined in the source documents,
+> it does not gain authority by appearing here.
+
+All authority remains with:
+
+* `LOG_DOMAINS_OVERVIEW.md`
+* `GLOBAL_LOGGING_RULES.md`
+* `UNIFIED_LOGGING_DESIGN.md`
+
+**END OF FILE**

@@ -1,418 +1,331 @@
-# Canonical Logger Design Standard (STRICT · Library-First · No-Guessing)
-**PROJECT:** `maatify/admin-control-panel`  
-**STATUS:** LOCKED (non-negotiable)  
-**SCOPE:** Rules for designing **any logger subsystem** (existing or future) as an extractable library with a strict core + project-controlled policy.  
-**GOAL:** Zero interpretation. Zero “smart guessing”. Every decision is dictated here.
+# CANONICAL_LOGGER_DESIGN_STANDARD
+
+> **Project:** maatify/admin-control-panel
+> **Status:** CANONICAL (Binding — Subordinate to unified-logging-system.*)
+> **Scope:** Defines the **mandatory design standard** for building any logging domain as a standalone, extractable library.
+> **Terminology Source of Truth:** `docs/architecture/logging/LOG_DOMAINS_OVERVIEW.md`
+> **ASCII Language Source of Truth:** `docs/architecture/logging/ASCII_FLOW_LEGENDS.md`
+> **Architecture Source of Truth:**
+>
+> * `unified-logging-system.ar.md`
+> * `unified-logging-system.en.md`
+    >   If a conflict exists, the Unified Logging System documents win.
 
 ---
 
-## 0) Global Agreement Lock (What we agreed — and MUST NOT drift)
+## 0) Purpose
 
-This document is the single source of truth for:
-- How we design a logger library.
-- How the project integrates it.
-- What is allowed/forbidden.
-- What is shared vs subsystem-specific.
+This standard exists to guarantee that **every logging domain**:
 
-### 0.1 Key agreements (verbatim meaning)
-1) **The library has NO silent exceptions.**  
-   The library **MUST throw** custom exceptions for all failures.
+* is architecturally isolated
+* has honest and predictable failure semantics
+* enforces strict DTO discipline
+* respects explicit policy boundaries
+* can be extracted later as a standalone library **without redesign**
 
-2) **Silencing (fail-open/swallow) is a PROJECT policy, not a library feature.**  
-   The project decides when/where to swallow exceptions via wrappers.
-
-3) **The library ships ready-to-use MySQL support.**  
-   The consumer can:
-   - **Pass a DB connection (PDO)** and the library works immediately, OR
-   - **Inject storage/driver implementations** via interfaces (wrapper mode).
-
-4) **Enums must be replaceable.**  
-   Library Enums are default implementations only.  
-   The project can replace them with project-specific enums by implementing interfaces.
-
-5) **No array-based public APIs.**  
-   Arrays are allowed ONLY for:
-   - DTO serialization (`toArray()` / `jsonSerialize()`).
-   Everything else must be DTOs and interfaces.
-
-6) **We may create a shared package for repeated primitives.**  
-   It must remain small, domain-agnostic, and app-agnostic.
+This standard applies to **all six logging domains** defined in
+`LOG_DOMAINS_OVERVIEW.md`.
 
 ---
 
-## 1) Terminology Lock (Unbreakable meanings)
+## 1) Domain Isolation (Hard Rule)
 
-### 1.1 Log categories
-- **Audit:** authoritative + transactional (fail-closed). *Not this document’s target.*
-- **SecurityEvents:** observational / best-effort / non-authoritative.
-- **ActivityLog:** operational history / best-effort / non-authoritative.
-- **Telemetry:** observability / best-effort / non-authoritative.
-- **PSR-3 diagnostics:** filesystem/external diagnostic logs; not a substitute.
-- **Data Access Log:** a separate subsystem (deferred) and must NOT be emulated by any other logger.
+A logging module MUST represent **exactly one logging domain**.
 
-### 1.2 “No substitution” rules
-- No observational logger may pretend to be Audit.
-- No logger subsystem may write into another subsystem’s tables.
-- No logger may be used as a business-logic source of truth.
+* A domain module MUST NOT accept events from another domain.
+* A domain module MUST NOT write to another domain’s storage.
+* A domain module MUST NOT reuse another domain logger “for convenience”.
+
+**Important:**
+If a real-world action maps to multiple domains, it is **multiple events**,
+not a shared event.
 
 ---
 
-## 2) The Mandatory Architecture (Two-Core + One-Policy)
+## 2) Mandatory Architectural Layers
 
-Every logger subsystem MUST be designed as:
+Every logging domain implementation MUST contain the following layers:
 
-### 2.1 Core Library (STRICT)
-This is what gets extracted as a standalone package.
+1. **Recorder (Policy Boundary)**
+2. **Contract (Writer / Logger Interface)**
+3. **DTO Layer (Strong Types Only)**
+4. **Infrastructure Driver (Storage Adapter)**
 
-**Core Library MUST:**
-- Ship with ready MySQL implementations (PDO-based).
-- Use interfaces for replaceability (storage, types, severity, etc.).
-- Provide default enums (but not force them).
-- Use DTO-only public APIs.
-- **Throw custom exceptions** (never swallow).
-- Have zero dependency on the project’s HTTP/container/context.
-
-### 2.2 Project Policy Layer (SILENCING LIVES HERE)
-This is project-owned code (Domain/Application), and is NOT part of the extracted library.
-
-**Project Policy Layer MAY:**
-- Catch library exceptions and swallow (fail-open).
-- Emit PSR-3 warnings.
-- Add metrics/fallback behavior.
-
-**Hard lock:**  
-✅ **Only the project policy layer may silence.**  
-❌ The library may not silence anywhere.
-
-### 2.3 App Glue (request-scoped convenience)
-Factories, middleware, controller helpers, context-binding recorders belong here.
-
-**Hard lock:**  
-Core library must not know RequestContext/AdminContext.
+No layer may be skipped or merged.
 
 ---
 
-## 3) “Connection or Wrap” Rule (How library is used)
+### 2.1 Recorder Layer (Policy Boundary)
 
-The library MUST support BOTH usage styles:
+The Recorder is the **only policy-aware component**.
 
-### 3.1 Direct Connection Mode (Out-of-the-box)
-Consumer provides a DB connection:
+#### Mandatory Responsibilities
 
-- Provide `PDO $pdo` to `Mysql<Subsystem>Writer` and/or `Mysql<Subsystem>Reader`.
-- Library immediately works without extra setup beyond constructing objects.
+* Construct domain DTOs
+* Normalize context:
 
-**This is mandatory.** The library is usable by just passing the connection.
+    * `actor_type`, `actor_id`
+    * `request_id`, `correlation_id`
+    * `route_name`
+    * `ip_address`, `user_agent`
+    * `occurred_at` (**UTC only**)
+* Enforce metadata policy:
 
-### 3.2 Wrapper / Injection Mode (Replaceability)
-Consumer provides custom implementations:
+    * allowlisted keys
+    * sanitized values
+    * **maximum size: 64KB**
+* Decide whether storage failures may be swallowed (best-effort domains only)
 
-- Consumer provides `<Subsystem>WriterInterface` / `<Subsystem>ReaderInterface` implementations.
-- Consumer can replace MySQL with:
-  - Redis
-  - file sink
-  - null sink
-  - async queue
-  - HTTP remote logger
-  etc.
+#### Forbidden Responsibilities
 
-**This is mandatory.** The library’s contracts enable full replacement.
-
----
-
-## 4) Replaceable Enums Rule (Enums via Interfaces)
-
-### 4.1 Why
-Project may need:
-- additional events/actions
-- renamed events
-- different grouping
-- versioned keys
-
-### 4.2 Canonical contract
-The library MUST define interfaces such as:
-- `<Subsystem>ActionInterface`
-- `<Subsystem>SeverityInterface` (if severity exists)
-
-Minimum requirement:
-- `public function key(): string;`
-
-**Default enums inside library implement these interfaces**, but are never required for consumers.
+* SQL or storage logic
+* Infrastructure concerns
+* Business decisions unrelated to logging policy
 
 ---
 
-## 5) DTO-Only Rule (No arrays anywhere except DTO serialization)
+### 2.2 Contract Layer (Interfaces)
 
-### 5.1 Strict ban
-Forbidden in public APIs:
-- `write(array $payload)`
-- `paginate(array $filters)`
-- `log(array $meta)`
-- `count(array $filters)`
+Each domain MUST define a stable, explicit contract.
 
-### 5.2 Allowed arrays (only here)
-Allowed ONLY:
-- `DTO::toArray(): array`
-- `DTO::jsonSerialize(): mixed`
+Allowed patterns:
 
-### 5.3 Metadata representation (no raw array input)
-Metadata MUST be one of:
-- `MetaDTO` (preferred typed object), OR
-- `string $metadataJson` (validated JSON string)
+* `DomainLoggerInterface`
+* `DomainWriterInterface`
 
-Raw metadata arrays are not allowed as inputs.
+Method signatures MUST:
 
----
+* accept a **single DTO**
+* return `void`
+* throw domain-specific exceptions
 
-## 6) Exception Policy (STRICT) — Library throws, Project may silence
+Examples (conceptual, not code):
 
-### 6.1 Library exceptions taxonomy (mandatory)
-Each subsystem library MUST define:
-- `<Subsystem>StorageException`  
-  wraps PDO/transport errors and includes **sanitized** context
-- `<Subsystem>MappingException`  
-  thrown for deterministic mapping failure: row → ReadDTO
-- `<Subsystem>ValidationException`  
-  thrown when DTO invariants are violated
+* `record(DomainRecordDto $dto): void`
+* `write(DomainWriteDto $dto): void`
 
-### 6.2 What library MUST do
-- Throw these exceptions.
-- Never swallow exceptions.
-- Never return partial/ambiguous results on failure.
-
-### 6.3 What project MAY do
-- Catch these exceptions and swallow (best-effort).
-- Or rethrow if the project wants fail-closed for that subsystem.
-
-**Hard lock:**  
-✅ Exceptions become “silent” ONLY when the project catches them.  
-❌ Library never makes them silent.
-
-### 6.4 Sanitization rule (mandatory)
-Library exceptions MUST NOT leak sensitive data (tokens/passwords/PII payloads).
-They MAY include:
-- SQLSTATE
-- operation name
-- table/column names
-- safe identifiers (request_id, actor_id if non-PII)
-- correlation IDs (trace_id, session_id)
+❌ Raw arrays are FORBIDDEN.
 
 ---
 
-## 7) Canonical Package Layout (Applies to ANY logger subsystem)
+### 2.3 DTO Layer (Strict Discipline)
 
-For a subsystem named `<Subsystem>`:
+All logging APIs MUST accept DTOs.
 
-```
+#### Naming Rules
 
-Modules/<Subsystem>/
-├── Contracts/
-│   ├── <Subsystem>WriterInterface.php
-│   ├── <Subsystem>ReaderInterface.php
-│   ├── <Subsystem>ActionInterface.php            # or TypeInterface
-│   ├── <Subsystem>SeverityInterface.php          # if applicable
-│   └── ClockInterface.php                        # OPTIONAL (time injection)
-├── DTO/
-│   ├── <Subsystem>WriteDTO.php
-│   ├── <Subsystem>ReadDTO.php
-│   ├── <Subsystem>QueryDTO.php
-│   └── <Subsystem>MetaDTO.php                    # OPTIONAL typed metadata
-├── Enums/
-│   ├── Default<Subsystem>ActionEnum.php
-│   └── Default<Subsystem>SeverityEnum.php
-├── Exceptions/
-│   ├── <Subsystem>StorageException.php
-│   ├── <Subsystem>MappingException.php
-│   ├── <Subsystem>ValidationException.php
-├── Infrastructure/
-│   └── Mysql/
-│       ├── Mysql<Subsystem>Writer.php             # PDO-based
-│       └── Mysql<Subsystem>Reader.php             # PDO-based
-└── README.md
+* DTO class names MUST end with `Dto`
+* Enum names MUST end with `Enum`
 
-```
+#### DTO Properties
 
-**Mandatory naming convention:**
-- Interfaces end with `Interface`
-- DTOs end with `DTO`
+* Immutable (readonly where possible)
+* Serializable into primitives only
+* Contain:
+
+    * domain-specific fields
+    * normalized context fields
+* MUST NOT contain:
+
+    * secrets
+    * raw request payloads
+    * unserialized objects
 
 ---
 
-## 8) Canonical Public Contracts (Signatures are locked)
+### 2.4 Infrastructure Drivers (Storage Adapters)
 
-### 8.1 Writer
-- accepts only WriteDTO
-- throws StorageException
+Infrastructure drivers implement the domain contract and perform **I/O only**.
 
-**Canonical:**
-- `public function write(<Subsystem>WriteDTO $dto): void;`
+#### Hard Rules
 
-### 8.2 Reader
-- accepts only QueryDTO
-- returns typed result DTO
-- throws StorageException / MappingException
+* MUST NOT contain policy logic
+* MUST NOT swallow exceptions
+* MUST NOT log via PSR-3
+* MUST throw **domain-specific storage exceptions**
 
-**Canonical (minimum):**
-- `public function paginate(<Subsystem>QueryDTO $query): PageResultDTO;`
-- `public function count(<Subsystem>QueryDTO $query): int;` (if needed)
+Supported baseline driver:
 
-### 8.3 Action/type interface
-**Canonical minimum:**
-- `public function key(): string;`
+* MySQL (PDO)
 
-### 8.4 DTO serialization
-Every DTO MUST implement:
-- `toArray(): array`
-- `jsonSerialize(): mixed` (or JsonSerializable)
+Archive drivers (if enabled) MUST comply with:
+
+* `LOG_STORAGE_AND_ARCHIVING.md`
 
 ---
 
-## 9) Query Design (Typed, deterministic, no arrays)
+## 3) Failure Semantics (Honest Contracts)
 
-### 9.1 QueryDTO contents (general)
-A QueryDTO MUST be typed and validate invariants.
+### 3.1 Infrastructure MUST Throw
 
-Typical fields (only if applicable):
-- correlation: `requestId`, `traceId`, `sessionId`
-- actor: `actorType`, `actorId`
-- action/type: `ActionInterface` or string key
-- severity
-- time range: `from`, `to` (full timestamps only if that is your rule)
-- pagination: `PageRequestDTO`
-- ordering: typed sort field + direction (enums/interfaces)
+Infrastructure drivers:
 
-### 9.2 Ordering (if supported)
-- Must not accept arbitrary strings.
-- Must use a typed enum/interface for allowed fields.
+* ALWAYS throw on failure
+* NEVER return boolean success flags
+* NEVER silently ignore errors
 
 ---
 
-## 10) Shared Kernel (Optional, allowed, but STRICT)
+### 3.2 Swallow Is a Policy Decision
 
-We MAY create a shared kernel for repeated primitives.
+Only the Recorder (or explicit project policy boundary) may:
 
-### 10.1 Allowed in shared kernel (domain-agnostic + app-agnostic)
-1) Base exception classes:
-   - `StorageExceptionBase`
-   - `MappingExceptionBase`
-   - `ValidationExceptionBase`
-2) PDO helper for prepare/execute (no ORM)
-3) Pagination DTOs:
-   - `PageRequestDTO`
-   - `PageResultDTO`
-4) Serialization interface:
-   - `ArraySerializableInterface` (requires `toArray()`)
+* catch storage exceptions
+* optionally swallow them
 
-### 10.2 Forbidden in shared kernel
-- RequestContext/AdminContext/HTTP/container
-- shared enums across different subsystems
-- “unified mega logger framework”
-- mega DTO that mixes unrelated fields
+Swallowing is allowed ONLY when:
+
+* the domain is defined as best-effort
+* business flow must not be broken
+
+If swallowed:
+
+* failure SHOULD be surfaced via **Diagnostics Telemetry** (sanitized)
 
 ---
 
-## 11) Project Integration Standard (How the app uses the library)
+### 3.3 Authoritative Audit — Special Case
 
-### 11.1 Safe wrapper (policy) pattern (recommended)
-If a subsystem is best-effort at runtime, project implements:
+Authoritative Audit is **NOT best-effort**.
 
-- `Safe<Subsystem>Recorder` (or `BestEffort<Subsystem>Service`)
+Rules:
 
-Responsibilities:
-- take project contexts (RequestContext/AdminContext) + business params
-- construct `<Subsystem>WriteDTO`
-- call library writer
-- catch `<Subsystem>StorageException` and swallow
-- optionally PSR-3 warn
+* failures MUST propagate
+* swallowing is FORBIDDEN by default
+* must use controlled pipeline:
 
-**Hard lock:**  
-This wrapper is where silencing lives. Not in the library.
+    * outbox (transactional)
+    * consumer (materialized log)
 
-### 11.2 Factory pattern (request-scoped convenience)
-Allowed for HTTP usage:
-- `Http<Subsystem>RecorderFactory`
-- returns a recorder bound to request context
-
-Still: this is project glue, not library.
+Integrity failures MUST block the governed change.
 
 ---
 
-## 12) ASCII Execution Flows (Locked)
+## 4) Canonical Context Model (All Domains)
 
-### 12.1 Core library flow (always throws)
-```
+Every domain event MUST support these normalized fields:
 
-Caller
-  │
-  ▼
-<Subsystem>WriterInterface::write(WriteDTO)
-  │
-  ▼
-Mysql<Subsystem>Writer (PDO)
-  │
-  ▼
-Database
-  │
-  └─✖ Failure
-        ↓
-   <Subsystem>StorageException (thrown)
+* `actor_type` (validated, enum-like)
+* `actor_id`
+* `request_id` (single request scope)
+* `correlation_id` (multi-request workflow scope)
+* `route_name`
+* `ip_address`
+* `user_agent`
+* `occurred_at` (UTC)
 
-```
+### actor_type Allowed Values
 
-### 12.2 Project best-effort flow (project silences)
-```
-Application / Domain Layer
-  │
-  ▼
-Safe<Subsystem>Recorder
-  │   (Project-level failure policy)
-  ▼
-Library Writer (throws StorageException)
-  │
-  └─✖ Exception raised
-        ↓
-   Safe<Subsystem>Recorder
-      • catch StorageException
-      • optional PSR-3 warning
-      • swallow (policy decision)
-        ↓
-   Application continues normally
+The Recorder MUST validate `actor_type` against:
 
-```
+* SYSTEM
+* ADMIN
+* USER
+* SERVICE
+* API_CLIENT
+* ANONYMOUS
+
+Any other value is invalid.
 
 ---
 
-## 13) Acceptance Gate (Pass/Fail — no debate)
+## 5) Storage Target Discipline (Hard Rule)
 
-A logger subsystem is ACCEPTED only if:
+A domain module MUST write **only** to its canonical storage target.
 
-### 13.1 Core Library
-- [ ] MySQL writer/reader exist and accept PDO
-- [ ] Public API is DTO-only (no arrays)
-- [ ] Query uses QueryDTO (no filter arrays)
-- [ ] Enums are replaceable via interfaces
-- [ ] Library throws custom exceptions for all failures
-- [ ] Library contains ZERO silent swallow/catch for policy
-- [ ] DTOs immutable + `toArray()` + `jsonSerialize()`
-- [ ] No dependencies on RequestContext/AdminContext/HTTP/container
-- [ ] Tests exist for: DTO invariants, MySQL write failure -> StorageException, mapping failure -> MappingException
+Storage targets MUST align with:
 
-### 13.2 Project Policy
-- [ ] Best-effort swallow exists only in project wrapper
-- [ ] Context enrichment exists only in project code
-- [ ] Optional PSR-3 warnings are emitted only by project code
+* `LOG_DOMAINS_OVERVIEW.md`
+* `LOG_STORAGE_AND_ARCHIVING.md`
 
-### 13.3 Shared Kernel (if used)
-- [ ] domain-agnostic + app-agnostic only
-- [ ] contains only: base exceptions, PDO helper, pagination, serialization interface
+Examples:
+
+* Audit Trail → `audit_trail` (+ `_archive` if enabled)
+* Security Signals → `security_signals` (+ `_archive`)
+* Operational Activity → `operational_activity` (+ `_archive`)
+* Diagnostics Telemetry → `diagnostics_telemetry` (+ `_archive`)
+* Delivery Operations → `delivery_operations` (+ `_archive`)
+* Authoritative Audit → `authoritative_audit_outbox` + `authoritative_audit_log`
+
+Cross-domain writes are FORBIDDEN.
 
 ---
 
-## 14) Meaning of “Done”
-We consider the structure complete when:
-- Any new logger subsystem can be built by following this document without any additional decisions.
-- The library is strict (throws), portable, DTO-only, MySQL-ready, replaceable via interfaces.
-- The project controls silencing via wrappers.
-- Shared kernel is optional but safe.
+## 6) Data Safety & Sanitization (Hard Rules)
+
+### 6.1 Never Log Secrets
+
+Forbidden in ALL domains:
+
+* passwords
+* raw OTP codes
+* access tokens
+* session secrets
+* encryption keys
+* signed URLs containing secrets
 
 ---
+
+### 6.2 URL Sanitization
+
+If URLs or referrers are logged:
+
+* store path only
+* strip query strings
+* mask sensitive path segments (tokens, secrets)
+
+---
+
+### 6.3 Metadata Discipline
+
+Metadata MUST be:
+
+* structured
+* minimal
+* allowlisted where possible
+* size-limited to **64KB**
+* free of PII/secrets
+
+Raw payload dumps are FORBIDDEN.
+
+---
+
+## 7) Taxonomy & Naming Standards
+
+Domains MUST use stable taxonomy keys:
+
+* Audit Trail → `event_key`
+* Security Signals → `signal_type`
+* Operational Activity → `action`
+* Diagnostics Telemetry → `event_key`
+* Delivery Operations → `operation_type`, `channel`, `status`
+
+Free-text strings MUST NOT be used as primary classifiers.
+
+---
+
+## 8) Mandatory Diagram Compliance
+
+All diagrams describing logging behavior MUST comply with:
+
+* `ASCII_FLOW_LEGENDS.md`
+
+Custom arrows, implicit semantics, or informal notation are INVALID.
+
+---
+
+## 9) Canonical Compliance Checklist
+
+A logging domain implementation is compliant ONLY if:
+
+* Domain is explicit and isolated
+* Public API accepts DTOs only
+* Infrastructure throws honest exceptions
+* Recorder is the only swallow boundary (if any)
+* Context normalization is complete and UTC-based
+* Data safety rules are enforced
+* Storage targets are correct and exclusive
+
+---
+
+**END OF CANONICAL LOGGER DESIGN STANDARD**
