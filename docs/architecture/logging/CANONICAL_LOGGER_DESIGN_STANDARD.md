@@ -141,7 +141,8 @@ Infrastructure drivers implement the domain contract and perform **I/O only**.
 
 * MUST NOT contain policy logic
 * MUST NOT swallow exceptions
-* MUST NOT log via PSR-3
+* Infrastructure drivers MUST be logging-silent.  
+  All observability belongs to the Recorder or Host Application.
 * MUST throw **domain-specific storage exceptions**
 
 Supported baseline driver:
@@ -181,6 +182,9 @@ Swallowing is allowed ONLY when:
 If swallowed:
 
 * failure SHOULD be surfaced via **Diagnostics Telemetry** (sanitized)
+
+Swallowing MUST be explicit and local.
+Generic try/catch at higher layers (services/controllers) is FORBIDDEN.
 
 ---
 

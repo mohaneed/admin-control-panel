@@ -167,6 +167,8 @@ throws <Subsystem>StorageException
 
 ## 5. Canonical Safety Boundary (Project Level)
 
+> SafeRecorder exists only at explicit domain policy boundaries, not ad-hoc helpers.
+
 ```
 
 Application / Domain

@@ -119,6 +119,37 @@ Controllers/Services must not log directly.
 
 ---
 
+## 5.1 Failure Semantics (Canonical)
+
+### Non-Authoritative Domains (Best-Effort, Fail-Open)
+
+For the following domains:
+- Audit Trail
+- Security Signals
+- Operational Activity
+- Diagnostics Telemetry
+- Delivery Operations
+
+**Recorder Contract (Hard Rule):**
+- `Recorder::record()` MUST be fail-open and MUST NOT throw under any condition.
+- Therefore, the Recorder MUST catch `Throwable` at the top-level boundary of `record()`.
+- After catching `Throwable`, the Recorder MUST swallow (never rethrow) and MUST surface the failure via a safe operational channel (PSR-3 and/or a last-resort primitive channel).
+
+**Infrastructure Contract (Hard Rule):**
+- Storage drivers / repositories MUST remain honest: they MUST NOT swallow.
+- They MUST throw domain-specific storage exceptions.
+
+**Recursion Guard (Hard Rule):**
+- Failure reporting MUST NOT call any logging recorder/writer again.
+- The last-resort channel MUST be primitive (e.g., `error_log`, syslog, stderr) and MUST NOT depend on DTOs/UUID/JSON encoding.
+
+### Authoritative Audit (Fail-Closed)
+
+- Authoritative Audit is integrity critical.
+- Outbox write failures are NOT best-effort and MUST be handled as system integrity failures.
+
+---
+
 ## 6. Normalized Context
 
 * event_id (UUID)
@@ -164,6 +195,11 @@ URLs:
 * **Max size: 64KB**
 * Enforced at application layer
 
+**Read-Mapping Corruption Tolerance (Explicit Exception):**
+- Reader implementations MAY swallow JSON decode errors for `metadata` ONLY during read-mapping.
+- In case of corruption, `metadata` MUST become `null` and the event MUST still be returned.
+- No other swallowing is permitted in readers.
+
 ---
 
 ## 10. actor_type Allowed Values
@@ -184,6 +220,10 @@ Validated at application layer.
 * MySQL 5.7+
 * Separate tables per domain
 * Deterministic paging: `(occurred_at, id)`
+
+**PDO Numeric Hydration Rule (MySQL):**
+- Numeric columns (e.g., BIGINT) MAY be returned as strings by PDO.
+- Query mappers MUST accept numeric strings and cast safely (e.g., `is_numeric` then `(int)`), instead of relying on `is_int` only.
 
 ---
 

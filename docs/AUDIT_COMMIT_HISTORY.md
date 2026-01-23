@@ -353,6 +353,7 @@ Entries MUST NOT be rewritten or reordered.
 - docs(logging): mandate library-first namespaces for logging modules
 - docs(logging): map Operational Activity domain to BehaviorTrace library
 - refactor(identity): make admin email verification fully email-scoped and DTO-based
+- docs(logging): add canonical unified logging architecture & standards
 
 
 ---

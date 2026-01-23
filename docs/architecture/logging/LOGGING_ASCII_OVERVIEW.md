@@ -30,6 +30,10 @@ Then this file MUST be updated to match them.
 
 ## 1) Unified Logging Pipeline (All Domains)
 
+* Failure semantics:
+  - Authoritative Audit: fail-closed (transactional outbox)
+  - All other domains: fail-open (best-effort)
+
 Each logging domain follows the same high-level pipeline shape.
 Only **policy strictness** and **failure semantics** differ by domain.
 
@@ -114,6 +118,11 @@ These domains are **baseline-first** (MySQL) and **optionally archiveable**:
 * Operational Activity
 * Diagnostics Telemetry
 * Delivery Operations
+
+Note:
+This diagram illustrates Mode A (MySQL → Mongo) for visualization purposes.
+Mode B (MySQL → MySQL archive tables) is equally canonical and defined in
+LOG_STORAGE_AND_ARCHIVING.md, but omitted here for visual simplicity.
 
 ```
 

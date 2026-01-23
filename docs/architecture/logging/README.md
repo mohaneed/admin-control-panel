@@ -103,6 +103,13 @@ Any change to:
 - Security or sanitization rules
 - Storage or archiving guarantees
 
+- Fail-open guarantees (Recorder exception boundary)
+  - `Recorder::record()` MUST NOT throw under any condition.
+  - `Throwable` MUST be caught ONLY at the Recorder boundary (top-level).
+  - Swallowing is forbidden in Infrastructure / Repository / DTO layers (they MUST throw domain custom exceptions).
+  - The only tolerated best-effort swallow is metadata decode corruption during read-mapping (metadata => null).
+
+
 is considered an **Architectural Change**
 and requires a formal review and approval.
 

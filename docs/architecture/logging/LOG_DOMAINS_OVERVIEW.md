@@ -21,6 +21,11 @@ If an event seems to fit multiple domains:
 * Secondary details belong in `metadata` (sanitized) **only if** they do not represent a separate intent.
 * If two intents exist, they MUST be logged as **two distinct events** in their respective domains.
 
+Hard clarification:
+Metadata MUST NOT be used to encode a second intent.
+If an intent deserves its own investigation question,
+it MUST be logged as a separate event in its proper domain.
+
 **Hard rule:**
 
 * Do NOT double-write the same intent into multiple domains.
@@ -64,6 +69,9 @@ The logging system recognizes **exactly six** domains. No additions are allowed.
 * Log tables are materialized views only.
 * Must be minimal, structured, and safe (no secrets).
 * Must be **fail-closed**: the governed change MUST NOT commit without a successful outbox write.
+
+This is the ONLY logging domain that is fail-closed.
+All other domains are best-effort and fail-open by design.
 
 ---
 
@@ -184,6 +192,10 @@ The logging system recognizes **exactly six** domains. No additions are allowed.
 >   - Security Signals
 >   - Authoritative Audit
 >   - Diagnostics Telemetry
+> - Hard rule:
+      BehaviorTrace MUST NEVER be used as a fallback or “generic logger”.
+      Using it outside Operational Activity classification is a violation.
+
 
 ---
 
@@ -264,6 +276,9 @@ It is used for:
 **Hard rule:**
 
 * PSR-3 MUST NOT replace or duplicate any of the six domains.
+
+PSR-3 logs MUST NEVER be used as a substitute for missing domain logs.
+Absence of a domain log is a design error, not a PSR-3 use case.
 
 ---
 

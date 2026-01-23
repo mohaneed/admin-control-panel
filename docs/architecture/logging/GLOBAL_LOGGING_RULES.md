@@ -104,6 +104,11 @@ Rules:
 * Permission denials
 * Any non-governance operational event
 
+Clarification:
+Authoritative Audit is the ONLY domain that is fail-closed.
+All other domains are explicitly fail-open and best-effort by design.
+
+
 ---
 
 ## 5) Audit Trail (Data Exposure & Navigation)
@@ -268,6 +273,9 @@ It is used only for:
 
 PSR-3 MUST NOT replace any logging domain.
 
+Absence of a domain log is a design defect.
+PSR-3 MUST NOT be used to compensate for missing or skipped domain logging.
+
 ---
 
 ## 11) Normalized Context & Safety Rules (Hard)
@@ -320,7 +328,8 @@ Any other value is invalid.
   * minimal
   * allowlisted
   * **maximum size: 64KB**
-* Logs MUST NOT be treated as a source of business truth.
+* Logs MUST NOT be treated as a source of business truth
+  (e.g. permissions, balances, ownership, or state).
 
 ---
 

@@ -113,8 +113,9 @@ class ModuleRecorder {
             // 1. Policy Normalization
             // 2. DTO Construction
             // 3. Logger->write(DTO)
-        } catch (StorageException $e) {
-            // 4. Suppress & Fallback Log
+        } catch (\Throwable $e) {
+            // 4. Suppress (Fail-Open) & Fallback Log
+            // MUST NOT rethrow
         }
     }
 }
@@ -174,6 +175,11 @@ The module MUST provide a **Primitive Reader** for archiving and system access.
 ### Guarantees
 - **Fail-Safe Hydration:** If the DB contains invalid data (e.g., manual edits), the Reader MUST NOT crash. It should sanitize on read.
 
+**Read-Mapping Corruption Tolerance (Explicit Exception):**
+- Readers MAY swallow JSON decode errors for `metadata` ONLY during read-mapping.
+- In case of corruption, `metadata` MUST be set to null and the event returned.
+- No other swallowing is permitted on the read-side.
+
 ### Why Required?
 Even if the application uses a separate UI reader, the module MUST be independently verifiable and exportable.
 
@@ -215,6 +221,13 @@ The Module owns the **Write Semantics** (Schema). The Host owns the **Read Exper
 ### Handling Failures
 - **Swallow:** Connection timeouts, SQL errors, Serialization errors.
 - **Log:** Send exception details to a fallback PSR Logger.
+
+### Recursion Guard (Hard Rule)
+
+- Failure handling MUST NOT trigger any logging Recorder or Writer again.
+- The fallback channel MUST be primitive and dependency-free
+  (e.g., `error_log`, syslog, stderr).
+- Recursive logging attempts are forbidden.
 
 ---
 

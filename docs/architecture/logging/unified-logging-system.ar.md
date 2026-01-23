@@ -149,6 +149,41 @@ HTTP/UI
 
 ---
 
+## 5.1 دلالات الفشل (Failure Semantics — Canonical)
+
+### الدومينات غير الحاكمة (Best-effort / Fail-Open)
+
+تشمل:
+- Audit Trail
+- Security Signals
+- Operational Activity
+- Diagnostics Telemetry
+- Delivery Operations
+
+#### عقد الـ Recorder (قاعدة صارمة)
+- `Recorder::record()` **ممنوع أن يرمي أي Exception** تحت أي ظرف.
+- لذلك **يجب** على الـ Recorder أن يقوم بـ `catch(Throwable)` عند أعلى Boundary داخل `record()`.
+- بعد الإمساك بـ `Throwable`:
+  - يُسمح بالـ swallow (عدم إعادة الرمي)
+  - **لكن يجب** إظهار الفشل تشغيليًا عبر:
+    - PSR-3 logger
+    - أو قناة بدائية أخيرة (مثل `error_log`)
+- يمنع منعًا باتًا كسر الـ control-flow للتطبيق بسبب logging.
+
+#### عقد الـ Infrastructure (قاعدة صارمة)
+- أي Driver / Repository **ممنوع** يبلع Exceptions.
+- يجب رمي Exceptions خاصة بالدومين (Domain-specific storage exceptions).
+- الصدق التشغيلي (Honest failure) إلزامي في طبقة التخزين.
+
+#### منع التكرار اللانهائي (Recursion Guard)
+- ممنوع أن تؤدي محاولة الإبلاغ عن فشل logging إلى استدعاء Recorder أو Writer آخر.
+- قناة الـ fallback الأخيرة **يجب** أن تكون بدائية:
+  - بدون DTO
+  - بدون UUID
+  - بدون JSON encoding
+
+---
+
 ## 6. الحقول المشتركة (Normalized Context)
 
 * event_id (UUID)
@@ -214,6 +249,14 @@ HTTP/UI
 * **الحد الأقصى: 64KB**
 * enforcement في application layer
 
+### استثناء تلف JSON أثناء القراءة (Read-Mapping)
+
+- يُسمح للـ Readers فقط بابتلاع أخطاء JSON decode الخاصة بحقل `metadata` أثناء القراءة.
+- في حالة التلف:
+  - يجب أن تصبح `metadata = null`
+  - ويجب إرجاع الحدث نفسه بدون إسقاطه.
+- أي swallow آخر داخل Readers أو Mappers **ممنوع**.
+
 ---
 
 ## 10. actor_type — القيم المسموحة
@@ -236,6 +279,13 @@ HTTP/UI
 * MySQL 5.7+
 * جداول منفصلة لكل دومين
 * paging ثابت: `(occurred_at, id)`
+
+### قاعدة تحويل الأرقام (PDO / MySQL)
+
+- بعض أعمدة MySQL الرقمية (مثل BIGINT) قد تُعاد من PDO كسلاسل نصية.
+- يجب على Query Mappers اعتبار القيم الرقمية النصية صالحة.
+- التحويل يجب أن يكون آمنًا (مثل `is_numeric` ثم cast)،
+  وليس الاعتماد على `is_int` فقط.
 
 ---
 

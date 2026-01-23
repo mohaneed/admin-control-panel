@@ -23,6 +23,8 @@ The logging system MUST be **fully correct and complete using MySQL only**.
     * Be explicitly enabled
     * Be documented
     * Preserve searchability by columns
+* Any archiving model other than Mode B (MySQL → MySQL) is non-canonical
+    and explicitly unsupported.
 
 This rule exists to ensure portability across constrained or shared hosting environments.
 
@@ -71,7 +73,13 @@ Recommended starting points (non-binding defaults):
 
 ## 3) Optional Archiving Model — Mode B (MySQL → MySQL)
 
-> **Status:** OPTIONAL / DEFERRED
+Note:
+Any references to Mongo-based archiving (Mode A) in other documents
+(e.g. ASCII overviews) are illustrative only.
+This document defines the ONLY supported and approved archiving model.
+
+
+> **Status:** OPTIONAL / DEFERRED  
 > This is the **only supported archiving model**.
 
 ### 3.1 Why Mode B
@@ -130,6 +138,10 @@ Eligibility:
 ---
 
 ### 5.2 Required Checkpointing
+
+Hard rule:
+Checkpoint updates MUST be atomic with archive operations
+to guarantee idempotency and crash safety.
 
 Use the reserved table:
 

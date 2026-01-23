@@ -48,7 +48,12 @@ Definitions are canonical in:
 4. **No raw arrays as public inputs.**
 5. All DTO class names MUST end with `DTO`.
 6. All Enum names MUST end with `Enum`.
-7. “Swallowing” is allowed only at the Recorder boundary (policy), never inside drivers.
+7. “Swallowing” is allowed ONLY at the Recorder boundary and ONLY for
+   Non-Authoritative domains.
+   The Recorder MUST catch `Throwable` at the top-level of `record()`
+   to guarantee fail-open behavior.
+   Swallowing inside Infrastructure, Repository, DTO, or Policy layers
+   is strictly forbidden.
 
 ---
 
@@ -384,6 +389,12 @@ Correlation/     Actor/     Sanitization/   Clock/
 (CorrelationId) (ActorType) (Url/Metadata) (ClockInterface)
 
 ```
+Important:
+- A shared ActorTypeEnum MAY exist ONLY if its allowed values are
+  strictly identical to the canonical actor_type list.
+- Domain-specific ActorTypeEnums MUST NOT extend or override semantics.
+- If a domain requires additional actor classification, it MUST use
+  domain-specific fields, not actor_type.
 
 Hard rule:
 
@@ -432,6 +443,16 @@ Every domain module MUST expose at least:
 4. `StorageException` (domain-specific)
 
 The public write API MUST accept only a `...RecordDTO` (no arrays).
+
+---
+
+## Read-Side Corruption Tolerance (Explicit Exception)
+
+- Query/Reader implementations MAY swallow JSON decode errors
+  for `metadata` fields ONLY during read-mapping.
+- In case of corruption, `metadata` MUST be set to `null`
+  and the record MUST still be returned.
+- No other swallowing is permitted on the read-side.
 
 ---
 

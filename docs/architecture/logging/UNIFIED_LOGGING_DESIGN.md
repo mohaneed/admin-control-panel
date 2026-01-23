@@ -187,8 +187,17 @@ Logging must not fail silently in infrastructure unless explicitly permitted by 
 
 ### 6.2 Allowed Swallowing (Very Limited)
 
-* **Non-authoritative recorders MAY swallow storage exceptions** if and only if:
+**Recorder Exception Boundary (Hard Rule):**
+- For all **Non-Authoritative** domains, `Recorder::record()` MUST be **fail-open** and MUST NOT throw under any condition.
+- Therefore, the Recorder MUST catch **`Throwable` at the top-level boundary** of `record()`.
+- Infrastructure MUST remain honest (never swallow) and MUST throw **domain-specific storage exceptions**.
+- The Recorder MUST swallow after catching `Throwable` (record() MUST NOT throw), and MUST surface the failure via PSR-3 (and/or safe last-resort channel) without recursion.
 
+**Recursion Guard (Hard Rule):**
+- Failure reporting MUST NOT call any logging domain recorder/writer again.
+- The last-resort channel MUST be primitive (e.g., `error_log`, syslog, stderr) and MUST NOT depend on DTOs/UUID/JSON encoding.
+
+* **Non-authoritative recorders MAY treat storage failures as best-effort** if and only if:
   * the swallow is explicit and documented as “best-effort logging”
   * the infrastructure driver itself remains honest (does not swallow)
   * the failure is surfaced operationally (PSR-3 warning) and SHOULD be captured via Diagnostics Telemetry **without creating recursive failures** (sanitized)
@@ -200,6 +209,13 @@ Logging must not fail silently in infrastructure unless explicitly permitted by 
 * Infrastructure drivers MUST NOT swallow exceptions silently.
 * “Try/catch empty” in storage drivers is forbidden.
 * Best-effort does not mean “silent”.
+* Swallowing is ONLY permitted at the **Recorder boundary** for **Non-Authoritative** domains (best-effort).
+* Any swallowing inside Infrastructure/Repository/DTO layers is forbidden.
+
+**Read-Mapping Corruption Tolerance (Explicit Exception):**
+- Reader implementations MAY swallow JSON decode errors for `metadata` ONLY during read-mapping.
+- In case of corruption, `metadata` MUST become `null` (best-effort hydration), and the event MUST still be returned.
+- No other swallowing is permitted in read-mapping.
 
 ### 6.4 Authoritative Audit Semantics
 
@@ -226,6 +242,10 @@ Each log domain event MUST support the following normalized context (where appli
 * `occurred_at` MUST be stored in **UTC** across ALL domains.
 * Application layer MUST convert local time to UTC before insert.
 * Display/UI layer is responsible for timezone rendering per user.
+
+### 7.1.1 Numeric Hydration Rule (PDO / MySQL)
+- For MySQL drivers, numeric columns (e.g., BIGINT) MAY be returned as strings by PDO.
+- Query mappers MUST treat numeric strings as valid and cast safely (e.g., `is_numeric` + `(int)`), instead of relying on `is_int`.
 
 ### 7.2 Event Identity (Recommended)
 
