@@ -356,7 +356,8 @@ Entries MUST NOT be rewritten or reordered.
 - docs(logging): add canonical unified logging architecture & standards
 - feat(logging): introduce BehaviorTrace module with full canonical compliance
 - fix(diagnostics-telemetry): align failure semantics and PDO hydration with canonical standard
-  feat(logging): add AuditTrail module (read-access & navigation logging)
+- feat(logging): add AuditTrail module (read-access & navigation logging)
+- feat(logging): add SecuritySignals module (non-auth, best-effort)
 
 
 ---
