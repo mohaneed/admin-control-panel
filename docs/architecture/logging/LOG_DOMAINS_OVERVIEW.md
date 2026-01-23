@@ -167,6 +167,24 @@ The logging system recognizes **exactly six** domains. No additions are allowed.
 * Diagnostics or performance → **Diagnostics Telemetry**
 * Delivery or job lifecycle → **Delivery Operations**
 
+> **Reference Implementation (Library):**
+>
+> The canonical reference library for this domain is:
+>
+> **BehaviorTrace**
+>
+> - Purpose: Non-authoritative tracing of operational mutations and day-to-day actions.
+> - Classification: Maps **strictly** to the *Operational Activity* domain.
+> - Constraints:
+    >   - Mutations only (no reads).
+>   - Non-governance, non-security.
+>   - Fail-open, side-effect free.
+> - This library MUST NOT be used for:
+    >   - Audit Trail
+>   - Security Signals
+>   - Authoritative Audit
+>   - Diagnostics Telemetry
+
 ---
 
 ### 1.5 Diagnostics Telemetry (Technical Observability)

@@ -240,33 +240,37 @@ Hard rule:
 
 ---
 
-### 4.4 Operational Activity Module
+### 4.4 Operational Activity Domain — BehaviorTrace Module
 
 **Domain intent:** Mutations + operational actions (create/update/delete/approve/etc).
 **Storage:** MySQL hot + Mongo archive.
 
+> **Library / Module Name:** BehaviorTrace  
+> **Domain Classification:** Operational Activity  
+> **Authoritative Source:** LOG_DOMAINS_OVERVIEW.md
+
 ```
-app/Modules/OperationalActivity/
+app/Modules/BehaviorTrace/
     Contract/
-        OperationalActivityLoggerInterface.php
-        OperationalActivityQueryInterface.php
+        BehaviorTraceLoggerInterface.php
+        BehaviorTraceQueryInterface.php
     DTO/
-        OperationalActivityRecordDTO.php
-        OperationalActivityQueryDTO.php
-        OperationalActivityViewDTO.php
+        BehaviorTraceRecordDTO.php
+        BehaviorTraceQueryDTO.php
+        BehaviorTraceViewDTO.php
     Enum/
-        OperationalActivityActorTypeEnum.php
-        OperationalActivityActionEnum.php (optional; may be string taxonomy)
+        BehaviorTraceActorTypeEnum.php
+        BehaviorTraceActionEnum.php (optional; may be string taxonomy)
     Recorder/
-        OperationalActivityRecorder.php
+        BehaviorTraceRecorder.php
     Infrastructure/
         Mysql/
-            OperationalActivityLoggerMysqlRepository.php
-            OperationalActivityQueryMysqlRepository.php
+            BehaviorTraceLoggerMysqlRepository.php
+            BehaviorTraceQueryMysqlRepository.php
         Mongo/
-            OperationalActivityArchiveMongoRepository.php
+            BehaviorTraceArchiveMongoRepository.php
     Exception/
-        OperationalActivityStorageException.php
+        BehaviorTraceStorageException.php
 ```
 
 Hard rule:
@@ -406,13 +410,13 @@ This structure is extraction-ready. Each domain maps cleanly to a package:
 ┌───────────────────────────────────────────────────────────┐
 │               Extraction-Ready Package Mapping            │
 └───────────────────────────────────────────────────────────┘
-AuthoritativeAudit    → maatify/authoritative-audit
-AuditTrail            → maatify/audit-trail
-SecuritySignals       → maatify/security-signals
-OperationalActivity   → maatify/operational-activity
-DiagnosticsTelemetry  → maatify/diagnostics-telemetry
-DeliveryOperations    → maatify/delivery-operations
-LoggingCommon         → maatify/logging-common
+AuthoritativeAudit                      → maatify/authoritative-audit
+AuditTrail                              → maatify/audit-trail
+SecuritySignals                         → maatify/security-signals
+OperationalActivity (BehaviorTrace)     → maatify/behavior-trace
+DiagnosticsTelemetry                    → maatify/diagnostics-telemetry
+DeliveryOperations                      → maatify/delivery-operations
+LoggingCommon                           → maatify/logging-common
 
 ```
 

@@ -351,6 +351,7 @@ Entries MUST NOT be rewritten or reordered.
 - docs(logging): add canonical logging module blueprint and reference implementation
 - refactor(diagnostics-telemetry): promote module to standalone library namespace
 - docs(logging): mandate library-first namespaces for logging modules
+- docs(logging): map Operational Activity domain to BehaviorTrace library
 
 
 ---
