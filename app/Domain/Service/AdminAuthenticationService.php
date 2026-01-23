@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Domain\Service;
 
 use App\Domain\Admin\Enum\AdminStatusEnum;
-use App\Domain\Contracts\AdminEmailVerificationRepositoryInterface;
 use App\Domain\Contracts\AdminIdentifierLookupInterface;
 use App\Domain\Contracts\AdminPasswordRepositoryInterface;
 use App\Domain\Contracts\AdminSessionRepositoryInterface;
@@ -27,7 +26,6 @@ readonly class AdminAuthenticationService
 {
     public function __construct(
         private AdminIdentifierLookupInterface $lookupRepository,
-        private AdminEmailVerificationRepositoryInterface $verificationRepository,
         private AdminPasswordRepositoryInterface $passwordRepository,
         private AdminSessionRepositoryInterface $sessionRepository,
 
@@ -45,8 +43,9 @@ readonly class AdminAuthenticationService
         $this->recoveryState->enforce(RecoveryStateService::ACTION_LOGIN, null, $context);
 
         // 1. Look up Admin ID by Blind Index
-        $adminId = $this->lookupRepository->findByBlindIndex($blindIndex);
-        if ($adminId === null) {
+        // AdminEmailIdentifierDTO
+        $adminEmailIdentifierDTO = $this->lookupRepository->findByBlindIndex($blindIndex);
+        if ($adminEmailIdentifierDTO === null) {
             $this->securityLogger->log(new SecurityEventDTO(
                 null,
                 'login_failed',
@@ -60,6 +59,7 @@ readonly class AdminAuthenticationService
             throw new InvalidCredentialsException("Invalid credentials.");
         }
 
+        $adminId = $adminEmailIdentifierDTO->adminId;
         // 2. Verify Password
         $record = $this->passwordRepository->getPasswordRecord($adminId);
         if ($record === null || !$this->passwordService->verify($password, $record->hash, $record->pepperId)) {
@@ -117,8 +117,7 @@ readonly class AdminAuthenticationService
         }
 
         // 4. Check Verification Status
-        $status = $this->verificationRepository->getVerificationStatus($adminId);
-        if ($status !== VerificationStatus::VERIFIED) {
+        if ($adminEmailIdentifierDTO->verificationStatus !== VerificationStatus::VERIFIED) {
             $this->securityLogger->log(new SecurityEventDTO(
                 $adminId,
                 'login_failed',

@@ -484,7 +484,6 @@ class Container
             },
             AdminAuthenticationService::class => function (ContainerInterface $c) {
                 $lookup = $c->get(AdminIdentifierLookupInterface::class);
-                $verificationRepo = $c->get(AdminEmailVerificationRepositoryInterface::class);
                 $passwordRepo = $c->get(AdminPasswordRepositoryInterface::class);
                 $sessionRepo = $c->get(AdminSessionRepositoryInterface::class);
                 $securityLogger = $c->get(SecurityEventLoggerInterface::class);
@@ -495,7 +494,6 @@ class Container
                 $adminRepository = $c->get(AdminRepository::class);
 
                 assert($lookup instanceof AdminIdentifierLookupInterface);
-                assert($verificationRepo instanceof AdminEmailVerificationRepositoryInterface);
                 assert($passwordRepo instanceof AdminPasswordRepositoryInterface);
                 assert($sessionRepo instanceof AdminSessionRepositoryInterface);
                 assert($securityLogger instanceof SecurityEventLoggerInterface);
@@ -507,7 +505,6 @@ class Container
 
                 return new AdminAuthenticationService(
                     $lookup,
-                    $verificationRepo,
                     $passwordRepo,
                     $sessionRepo,
                     $securityLogger,

@@ -8,6 +8,7 @@ use App\Application\Crypto\AdminIdentifierCryptoServiceInterface;
 use App\Context\RequestContext;
 use App\Domain\ActivityLog\Action\AdminActivityAction;
 use App\Domain\ActivityLog\Service\AdminActivityLogService;
+use App\Domain\DTO\AdminEmailIdentifierDTO;
 use App\Domain\DTO\AuditEventDTO;
 use App\Domain\Contracts\AdminPasswordRepositoryInterface;
 use App\Domain\Contracts\AuthoritativeSecurityAuditWriterInterface;
@@ -87,8 +88,8 @@ class AdminController
         $blindIndex = $this->cryptoService->deriveEmailBlindIndex($email);
 
         // 3️⃣ Uniqueness check (FAIL-FAST)
-        $existingAdminId = $this->adminEmailRepository->findByBlindIndex($blindIndex);
-        if ($existingAdminId !== null) {
+        $existingAdminEmailIdentifierDTO = $this->adminEmailRepository->findByBlindIndex($blindIndex);
+        if ($existingAdminEmailIdentifierDTO !== null) {
             throw new HttpBadRequestException($request, 'Email already registered.');
         }
 
@@ -273,11 +274,11 @@ class AdminController
 
         $blindIndex = $this->cryptoService->deriveEmailBlindIndex($email);
 
-        $adminId = $this->adminEmailRepository->findByBlindIndex($blindIndex);
+        $adminEmailIdentifierDTO = $this->adminEmailRepository->findByBlindIndex($blindIndex);
 
-        if ($adminId !== null) {
+        if ($adminEmailIdentifierDTO !== null) {
             $responseDto = new ActionResultResponseDTO(
-                adminId: $adminId,
+                adminId: $adminEmailIdentifierDTO->adminId,
                 exists: true,
             );
         } else {

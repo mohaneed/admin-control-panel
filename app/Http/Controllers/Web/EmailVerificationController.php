@@ -85,9 +85,9 @@ readonly class EmailVerificationController
          * 1️⃣ Resolve subject first (email → adminId)
          */
         $blindIndex = $this->cryptoService->deriveEmailBlindIndex($email);
-        $adminId = $this->lookupInterface->findByBlindIndex($blindIndex);
+        $adminEmailIdentifierDTO = $this->lookupInterface->findByBlindIndex($blindIndex);
 
-        if ($adminId === null) {
+        if ($adminEmailIdentifierDTO === null) {
             // Security Event: failed verification (no subject resolved)
             $this->securityEvents->record(
                 new SecurityEventRecordDTO(
@@ -114,6 +114,7 @@ readonly class EmailVerificationController
             ]);
         }
 
+        $adminId = $adminEmailIdentifierDTO->adminId;
         /**
          * 2️⃣ Validate OTP bound to resolved identity
          */
@@ -159,7 +160,7 @@ readonly class EmailVerificationController
                 throw new \RuntimeException('Request context missing');
             }
 
-            $this->verificationService->verify($adminId, $context);
+            $this->verificationService->verify($adminEmailIdentifierDTO->emailId, $context);
         } catch (\Throwable $e) {
             // Idempotent behavior:
             // - already verified
@@ -189,21 +190,21 @@ readonly class EmailVerificationController
 
         if ($email !== '') {
             $blindIndex = $this->cryptoService->deriveEmailBlindIndex($email);
-            $adminId = $this->lookupInterface->findByBlindIndex($blindIndex);
+            $adminEmailIdentifierDTO = $this->lookupInterface->findByBlindIndex($blindIndex);
 
-            if ($adminId !== null) {
+            if ($adminEmailIdentifierDTO !== null) {
                 try {
                     // ✅ توليد واحد فقط
                     $generated = $this->generator->generate(
                         IdentityTypeEnum::Admin,
-                        (string)$adminId,
+                        (string)$adminEmailIdentifierDTO->adminId,
                         VerificationPurposeEnum::EmailVerification
                     );
 
                     // ✅ dispatch مرتبط بالتوليد
                     $this->verificationDispatcher->dispatch(
                         identityType: IdentityTypeEnum::Admin,
-                        identityId: (string)$adminId,
+                        identityId: (string)$adminEmailIdentifierDTO->adminId,
                         purpose: VerificationPurposeEnum::EmailVerification,
                         recipient: $email,
                         plainCode: $generated->plainCode,

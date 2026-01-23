@@ -91,13 +91,15 @@ readonly class ChangePasswordController
 
         // 1️⃣ Resolve Admin ID
         $blindIndex = $this->cryptoService->deriveEmailBlindIndex($email);
-        $adminId = $this->identifierLookup->findByBlindIndex($blindIndex);
+        $adminEmailIdentifierDTO = $this->identifierLookup->findByBlindIndex($blindIndex);
 
-        if ($adminId === null) {
+        if ($adminEmailIdentifierDTO === null) {
             return $this->view->render($response, 'auth/change_password.twig', [
                 'error' => 'Authentication failed.',
             ]);
         }
+
+        $adminId = $adminEmailIdentifierDTO->adminId;
 
         // 2️⃣ Verify current password
         $record = $this->passwordRepository->getPasswordRecord($adminId);

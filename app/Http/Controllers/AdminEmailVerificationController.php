@@ -48,13 +48,15 @@ readonly class AdminEmailVerificationController
             throw new \RuntimeException('RequestContext missing');
         }
 
-        $targetAdminId = (int) $args['id'];
+        $targetEmailId = (int) $args['id'];
 
         try {
             // 🔹 Domain operation
-            $this->service->verify($targetAdminId, $requestContext);
+            $this->service->verify($targetEmailId, $requestContext);
 
-            $status = $this->repository->getVerificationStatus($targetAdminId);
+            $adminEmailIdentifierDTO = $this->repository->getEmailIdentity($targetEmailId);
+
+            $status = $adminEmailIdentifierDTO->verificationStatus;
 
             // ✅ Activity Log — admin verified another admin email
             $this->adminActivityLogService->log(
@@ -62,13 +64,13 @@ readonly class AdminEmailVerificationController
                 requestContext: $requestContext,
                 action: AdminActivityAction::ADMIN_EMAIL_VERIFIED,
                 entityType: 'admin',
-                entityId: $targetAdminId,
+                entityId: $adminEmailIdentifierDTO->adminId,
                 metadata: [
                     'verification_status' => $status->value,
                 ]
             );
 
-            $dto = new VerificationResponseDTO($targetAdminId, $status);
+            $dto = new VerificationResponseDTO($adminEmailIdentifierDTO->adminId, $adminEmailIdentifierDTO->emailId, $status);
 
             $json = json_encode($dto, JSON_THROW_ON_ERROR);
             $response->getBody()->write($json);

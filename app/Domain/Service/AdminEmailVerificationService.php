@@ -22,9 +22,12 @@ readonly class AdminEmailVerificationService
     ) {
     }
 
-    public function verify(int $adminId, RequestContext $context): void
+    public function verify(int $emailId, RequestContext $context): void
     {
-        $currentStatus = $this->repository->getVerificationStatus($adminId);
+        $adminEmailIdentifierDTO = $this->repository->getEmailIdentity($emailId);
+
+        $currentStatus = $adminEmailIdentifierDTO->verificationStatus;
+        $adminId = $adminEmailIdentifierDTO->adminId;
 
         if ($currentStatus === VerificationStatus::VERIFIED) {
             throw new InvalidIdentifierStateException("Identifier is already verified.");
@@ -36,7 +39,7 @@ readonly class AdminEmailVerificationService
 
         $this->pdo->beginTransaction();
         try {
-            $this->repository->markVerified($adminId, (new DateTimeImmutable())->format('Y-m-d H:i:s'));
+            $this->repository->markVerified($emailId, (new DateTimeImmutable())->format('Y-m-d H:i:s'));
 
             $this->auditWriter->write(new AuditEventDTO(
                 $adminId,
@@ -62,10 +65,12 @@ readonly class AdminEmailVerificationService
         }
     }
 
-    public function startVerification(int $adminId, RequestContext $context): void
+    public function startVerification(int $emailId, RequestContext $context): void
     {
-        $currentStatus = $this->repository->getVerificationStatus($adminId);
+        $adminEmailIdentifierDTO = $this->repository->getEmailIdentity($emailId);
 
+        $currentStatus = $adminEmailIdentifierDTO->verificationStatus;
+        $adminId = $adminEmailIdentifierDTO->adminId;
         if ($currentStatus === VerificationStatus::VERIFIED) {
             throw new InvalidIdentifierStateException("Cannot reset a verified identifier.");
         }
@@ -96,9 +101,12 @@ readonly class AdminEmailVerificationService
         }
     }
 
-    public function failVerification(int $adminId, RequestContext $context): void
+    public function failVerification(int $emailId, RequestContext $context): void
     {
-        $currentStatus = $this->repository->getVerificationStatus($adminId);
+        $adminEmailIdentifierDTO = $this->repository->getEmailIdentity($emailId);
+
+        $currentStatus = $adminEmailIdentifierDTO->verificationStatus;
+        $adminId = $adminEmailIdentifierDTO->adminId;
 
         if ($currentStatus === VerificationStatus::VERIFIED) {
             throw new InvalidIdentifierStateException("Cannot fail a verified identifier.");

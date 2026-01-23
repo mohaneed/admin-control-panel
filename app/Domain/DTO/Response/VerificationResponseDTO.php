@@ -11,6 +11,7 @@ readonly class VerificationResponseDTO implements JsonSerializable
 {
     public function __construct(
         public int $adminId,
+        public int $emailId,
         public VerificationStatus $status
     ) {
     }
@@ -22,6 +23,7 @@ readonly class VerificationResponseDTO implements JsonSerializable
     {
         return [
             'admin_id' => $this->adminId,
+            'email_id' => $this->emailId,
             'verification_status' => $this->status->value,
         ];
     }

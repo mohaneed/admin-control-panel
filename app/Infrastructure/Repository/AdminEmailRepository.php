@@ -6,6 +6,7 @@ namespace App\Infrastructure\Repository;
 
 use App\Domain\Contracts\AdminEmailVerificationRepositoryInterface;
 use App\Domain\Contracts\AdminIdentifierLookupInterface;
+use App\Domain\DTO\AdminEmailIdentifierDTO;
 use App\Domain\DTO\Crypto\EncryptedPayloadDTO;
 use App\Domain\Enum\VerificationStatus;
 use App\Domain\Exception\IdentifierNotFoundException;
@@ -39,16 +40,36 @@ class AdminEmailRepository implements AdminEmailVerificationRepositoryInterface,
         ]);
     }
 
-    public function findByBlindIndex(string $blindIndex): ?int
+    public function findByBlindIndex(string $blindIndex): ?AdminEmailIdentifierDTO
     {
         $stmt = $this->pdo->prepare(
-            "SELECT admin_id FROM admin_emails WHERE email_blind_index = ?"
+            <<<SQL
+            SELECT
+                id          AS email_id,
+                admin_id    AS admin_id,
+                verification_status
+            FROM admin_emails
+            WHERE email_blind_index = :blind_index
+            LIMIT 1
+            SQL
         );
-        $stmt->execute([$blindIndex]);
 
-        $result = $stmt->fetchColumn();
+        $stmt->execute([
+            'blind_index' => $blindIndex,
+        ]);
 
-        return $result !== false ? (int) $result : null;
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($row === false) {
+            return null;
+        }
+
+        /** @var array{email_id:string|int, admin_id:string|int, verification_status:string} $row */
+        return new AdminEmailIdentifierDTO(
+            (int) $row['email_id'],
+            (int) $row['admin_id'],
+            VerificationStatus::from($row['verification_status'])
+        );
     }
 
     public function getEncryptedEmail(int $adminId): ?EncryptedPayloadDTO
@@ -109,64 +130,101 @@ class AdminEmailRepository implements AdminEmailVerificationRepositoryInterface,
         throw new RuntimeException('Invalid data type from DB: expected string or resource.');
     }
 
-    public function getVerificationStatus(int $adminId): VerificationStatus
+    public function getEmailIdentity(int $emailId): AdminEmailIdentifierDTO
     {
         $stmt = $this->pdo->prepare(
-            "SELECT verification_status FROM admin_emails WHERE admin_id = ?"
+            <<<SQL
+        SELECT
+            id AS email_id,
+            admin_id,
+            verification_status
+        FROM admin_emails
+        WHERE id = :email_id
+        LIMIT 1
+        SQL
         );
-        $stmt->execute([$adminId]);
 
-        $result = $stmt->fetchColumn();
+        $stmt->execute([
+            'email_id' => $emailId,
+        ]);
 
-        if ($result === false) {
+        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+        if (!is_array($row)) {
             throw new IdentifierNotFoundException(
-                "Admin email not found for ID: $adminId"
+                "Admin email not found for ID: {$emailId}"
             );
         }
 
-        return VerificationStatus::from((string) $result);
+        /**
+         * @var array{
+         *   email_id: int|string,
+         *   admin_id: int|string,
+         *   verification_status: string
+         * } $row
+         */
+        return new AdminEmailIdentifierDTO(
+            (int) $row['email_id'],
+            (int) $row['admin_id'],
+            VerificationStatus::from($row['verification_status'])
+        );
     }
 
-    public function markVerified(int $adminId, string $timestamp): void
+
+    public function markVerified(int $emailId, string $timestamp): void
     {
         $stmt = $this->pdo->prepare(
             "UPDATE admin_emails 
              SET verification_status = ?, verified_at = ? 
-             WHERE admin_id = ?"
+             WHERE id = ?"
         );
 
         $stmt->execute([
             VerificationStatus::VERIFIED->value,
             $timestamp,
-            $adminId,
+            $emailId,
         ]);
     }
 
-    public function markFailed(int $adminId): void
+    public function markFailed(int $emailId): void
     {
         $stmt = $this->pdo->prepare(
             "UPDATE admin_emails 
              SET verification_status = ?, verified_at = NULL 
-             WHERE admin_id = ?"
+             WHERE id = ?"
         );
 
         $stmt->execute([
             VerificationStatus::FAILED->value,
-            $adminId,
+            $emailId,
         ]);
     }
 
-    public function markPending(int $adminId): void
+    public function markPending(int $emailId): void
     {
         $stmt = $this->pdo->prepare(
             "UPDATE admin_emails 
              SET verification_status = ?, verified_at = NULL 
-             WHERE admin_id = ?"
+             WHERE id = ?"
         );
 
         $stmt->execute([
             VerificationStatus::PENDING->value,
-            $adminId,
+            $emailId,
+        ]);
+    }
+
+    public function markReplaced(int $emailId): void
+    {
+        $stmt = $this->pdo->prepare(
+            "UPDATE admin_emails 
+             SET verification_status = ?, verified_at = NULL 
+             WHERE id = ?"
+        );
+
+        $stmt->execute([
+            VerificationStatus::REPLACED->value,
+            $emailId,
         ]);
     }
 }
