@@ -346,6 +346,9 @@ Entries MUST NOT be rewritten or reordered.
 - docs(logging): rebuild unified logging architecture documentation (canonical)
 - feat(logging): add canonical logging schemas and optional archives
 - fix(logging): align DTO naming to canonical DTO suffix
+- feat(logging): introduce canonical DiagnosticsTelemetry standalone module
+- docs(diagnostics-telemetry): add canonical architecture definition
+- docs(logging): add canonical logging module blueprint and reference implementation
 
 
 ---

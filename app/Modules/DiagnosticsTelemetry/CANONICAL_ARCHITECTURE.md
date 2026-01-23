@@ -282,3 +282,6 @@ The host owns **query expressiveness**.
    Implementations MUST be injected.
 
 ---
+
+> This module is implemented according to the canonical rules defined in:
+> docs/architecture/logging/LOGGING_MODULE_BLUEPRINT.md

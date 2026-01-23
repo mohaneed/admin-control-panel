@@ -71,6 +71,28 @@ They are **not authoritative**.
 
 ---
 
+## Canonical Blueprints
+
+The following documents define **authoritative architectural blueprints**
+that all logging modules MUST follow:
+
+- **LOGGING_MODULE_BLUEPRINT.md**
+  - Defines the universal, library-grade standard for building logging modules.
+  - Covers recorder ownership, policy isolation, DTO contracts, fail-open semantics,
+    primitive readers, and UI separation rules.
+  - This blueprint is mandatory for all new logging modules.
+
+### Reference Implementation
+
+A full, production-grade reference implementation of this blueprint exists:
+
+- `app/Modules/DiagnosticsTelemetry`
+  - See: `CANONICAL_ARCHITECTURE.md`
+  - Status: Fully compliant / Library-ready
+
+
+---
+
 ## 🚨 Change Policy (Critical)
 
 Any change to:
