@@ -358,6 +358,7 @@ Entries MUST NOT be rewritten or reordered.
 - fix(diagnostics-telemetry): align failure semantics and PDO hydration with canonical standard
 - feat(logging): add AuditTrail module (read-access & navigation logging)
 - feat(logging): add SecuritySignals module (non-auth, best-effort)
+- fix(logging): enforce fail-open boundary by catching Throwable in recorders
 
 
 ---
