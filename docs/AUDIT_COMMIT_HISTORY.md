@@ -359,7 +359,7 @@ Entries MUST NOT be rewritten or reordered.
 - feat(logging): add AuditTrail module (read-access & navigation logging)
 - feat(logging): add SecuritySignals module (non-auth, best-effort)
 - fix(logging): enforce fail-open boundary by catching Throwable in recorders
-
+- feat(logging): add DeliveryOperations module (canonical schema + README + recorder/repository)
 
 ---
 
