@@ -363,6 +363,7 @@ Entries MUST NOT be rewritten or reordered.
 - feat(authoritative-audit): add canonical AuthoritativeAudit outbox logging module
 -feat(admin-emails): implement full admin email management lifecycle
 - feat(application): introduce project-facing services for canonical logging modules
+- fix(auth-ui): bind remember_me checkbox to form payload
 
 ---
 
