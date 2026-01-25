@@ -213,6 +213,43 @@ readonly class UiAdminsController
 
     /**
      * ===============================
+     * Admin Sessions — LIST
+     * GET /admins/{id}/sessions
+     * ===============================
+     *
+     * - Read-only
+     * - UI only
+     * - No mutations
+     * - No audit
+     *
+     * @param   Request                $request
+     * @param   Response               $response
+     * @param   array<string, string>  $args
+     *
+     * @return Response
+     */
+    public function sessions(Request $request, Response $response, array $args): Response
+    {
+        $adminId = $this->extractAdminId($args);
+
+        $displayName = $this->basicInfoReader->getDisplayName($adminId);
+
+        if ($displayName === null) {
+            throw new HttpNotFoundException($request, 'Admin not found');
+        }
+
+        return $this->view->render(
+            $response,
+            'pages/admin/sessions.list.twig',
+            [
+                'admin_id' => $adminId,
+                'display_name' => $displayName,
+            ]
+        );
+    }
+
+    /**
+     * ===============================
      * Internal Helper
      * ===============================
      *

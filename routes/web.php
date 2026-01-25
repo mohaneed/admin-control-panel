@@ -134,6 +134,15 @@ return function (App $app) {
             )->setName('admins.email.list')
                 ->add(AuthorizationGuardMiddleware::class);
 
+            // ─────────────────────────────
+            // Admin Session Control
+            // ─────────────────────────────
+            $protectedGroup->get(
+                '/admins/{id}/sessions',
+                [\App\Http\Controllers\Ui\UiAdminsController::class, 'sessions']
+            )->setName('admins.session.list')
+                ->add(AuthorizationGuardMiddleware::class);
+
             $protectedGroup->get('/roles', [\App\Http\Controllers\Ui\UiRolesController::class, 'index']);
             $protectedGroup->get('/permissions', [\App\Http\Controllers\Ui\UiPermissionsController::class, 'index']);
             $protectedGroup->get('/settings', [\App\Http\Controllers\Ui\UiSettingsController::class, 'index']);

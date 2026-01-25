@@ -364,6 +364,7 @@ Entries MUST NOT be rewritten or reordered.
 -feat(admin-emails): implement full admin email management lifecycle
 - feat(application): introduce project-facing services for canonical logging modules
 - fix(auth-ui): bind remember_me checkbox to form payload
+- feat(admin-sessions): add scoped admin sessions UI with isolated JS logic
 
 ---
 
