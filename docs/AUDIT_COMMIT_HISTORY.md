@@ -361,6 +361,8 @@ Entries MUST NOT be rewritten or reordered.
 - fix(logging): enforce fail-open boundary by catching Throwable in recorders
 - feat(logging): add DeliveryOperations module (canonical schema + README + recorder/repository)
 - feat(authoritative-audit): add canonical AuthoritativeAudit outbox logging module
+-feat(admin-emails): implement full admin email management lifecycle
+- feat(application): introduce project-facing services for canonical logging modules
 
 ---
 
