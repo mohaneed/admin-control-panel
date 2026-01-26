@@ -380,6 +380,7 @@ Entries MUST NOT be rewritten or reordered.
 - refactor(rbac): normalize roles boundaries and UI capabilities contract
 - feat(roles): add role activation toggle with locked API contract
 - feat(roles): add technical role rename capability with full RBAC enforcement
+- feat(roles): add role creation API with validation and authorization
 
 ---
 

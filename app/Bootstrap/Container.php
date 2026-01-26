@@ -45,6 +45,7 @@ use App\Domain\Contracts\PermissionsMetadataRepositoryInterface;
 use App\Domain\Contracts\PermissionsReaderRepositoryInterface;
 use App\Domain\Contracts\RememberMeRepositoryInterface;
 use App\Domain\Contracts\RolePermissionRepositoryInterface;
+use App\Domain\Contracts\Roles\RoleCreateRepositoryInterface;
 use App\Domain\Contracts\Roles\RoleRenameRepositoryInterface;
 use App\Domain\Contracts\Roles\RoleRepositoryInterface;
 use App\Domain\Contracts\Roles\RolesMetadataRepositoryInterface;
@@ -89,6 +90,7 @@ use App\Http\Controllers\AdminSelfAuditController;
 use App\Http\Controllers\AdminTargetedAuditController;
 use App\Http\Controllers\Api\PermissionMetadataUpdateController;
 use App\Http\Controllers\Api\PermissionsController;
+use App\Http\Controllers\Api\Roles\RoleCreateController;
 use App\Http\Controllers\Api\Roles\RoleMetadataUpdateController;
 use App\Http\Controllers\Api\Roles\RoleRenameController;
 use App\Http\Controllers\Api\Roles\RolesControllerQuery;
@@ -155,6 +157,7 @@ use App\Infrastructure\Repository\PdoStepUpGrantRepository;
 use App\Infrastructure\Repository\PdoSystemOwnershipRepository;
 use App\Infrastructure\Repository\PdoVerificationCodeRepository;
 use App\Infrastructure\Repository\RolePermissionRepository;
+use App\Infrastructure\Repository\Roles\PdoRoleCreateRepository;
 use App\Infrastructure\Repository\Roles\PdoRoleRepository;
 use App\Infrastructure\Service\AdminTotpSecretStore;
 use App\Infrastructure\Service\Google2faTotpService;
@@ -1417,6 +1420,12 @@ class Container
                 return new PdoRoleRepository($pdo);
             },
 
+            RoleCreateRepositoryInterface::class => function ($c) {
+                $pdo = $c->get(PDO::class);
+                assert($pdo instanceof PDO);
+                return new PdoRoleCreateRepository($pdo);
+            },
+
             RolesControllerQuery::class => function ($c) {
                 $reader = $c->get(RolesReaderRepositoryInterface::class);
                 $validationGuard = $c->get(ValidationGuard::class);
@@ -1451,6 +1460,14 @@ class Container
                 assert($validationGuard instanceof ValidationGuard);
                 assert($repo instanceof RoleRenameRepositoryInterface);
                 return new RoleRenameController($validationGuard, $repo);
+            },
+
+            RoleCreateController::class => function ($c) {
+                $validationGuard = $c->get(ValidationGuard::class);
+                $repo = $c->get(RoleCreateRepositoryInterface::class);
+                assert($validationGuard instanceof ValidationGuard);
+                assert($repo instanceof RoleCreateRepositoryInterface);
+                return new RoleCreateController($validationGuard, $repo);
             },
 
             // ─────────────────────────────

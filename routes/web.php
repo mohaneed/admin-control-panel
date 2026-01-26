@@ -241,6 +241,10 @@ return function (App $app) {
                 ->setName('roles.rename')
                 ->add(AuthorizationGuardMiddleware::class);
 
+            $group->post('/roles/create', [\App\Http\Controllers\Api\Roles\RoleCreateController::class, '__invoke'])
+                ->setName('roles.create')
+                ->add(AuthorizationGuardMiddleware::class);
+
             // Notifications / Admins / Etc.
             $group->post('/admins/create', [AdminController::class, 'create'])
                 ->setName('admin.create')

@@ -263,14 +263,146 @@ Examples:
 
 ---
 
+## ➕ Create Role
+
+Creates a **new technical role** with optional UI metadata.
+
+> ⚠️ This endpoint is **NOT** responsible for:
+>
+> * assigning permissions to the role
+> * binding admins to the role
+> * modifying existing roles
+>
+> Role creation is **isolated**, explicit, and auditable.
+
+---
+
+### Endpoint
+
+```http
+POST /api/roles/create
+```
+
+**Auth Required:** Yes
+**Permission:** `roles.create`
+
+---
+
+### Request Body
+
+```json
+{
+  "name": "admins.manage",
+  "display_name": "Admin Management",
+  "description": "Full access to admin management features"
+}
+```
+
+---
+
+### Validation Rules
+
+#### `name` (required)
+
+* Must be a non-empty string
+* Length: `3 → 190`
+* Must match canonical role key format:
+
+```text
+^[a-z][a-z0-9_.-]*$
+```
+
+Examples:
+
+* `admins.manage`
+* `roles.metadata.update`
+* `reports.view.daily`
+
+---
+
+#### `display_name` (optional)
+
+* String
+* Length: `1 → 128`
+* UI-only label
+* No authorization impact
+
+---
+
+#### `description` (optional)
+
+* String
+* Length: `1 → 255`
+* UI-only help text
+* No authorization impact
+
+---
+
+### Behavior Rules
+
+* Creates a **new role row**
+* Technical role key (`name`) is **immutable after creation**
+* Role is created with:
+
+  * `is_active = true`
+* No permissions are assigned
+* No admins are bound
+* Operation is **not idempotent**
+* Duplicate role keys are rejected
+
+---
+
+### Authorization Impact
+
+* Newly created role **does not grant any permissions**
+* Role has **zero effect** on authorization until:
+
+  * permissions are assigned
+  * admins are bound
+* Safe by default
+
+---
+
+### Responses
+
+#### ✅ 201 Created
+
+```json
+{
+  "id": 12
+}
+```
+
+---
+
+### Possible Errors
+
+| Code | Reason                   |
+|------|--------------------------|
+| 400  | Validation failed        |
+| 403  | Permission denied        |
+| 409  | Role name already exists |
+| 500  | Role creation failed     |
+
+---
+
+### Design Notes
+
+* Role creation is **structural**, not behavioral
+* Roles are **RBAC aggregators**, not lifecycle entities
+* UI metadata is **optional and presentation-only**
+* Authorization remains **fully decoupled**
+* No cascading side effects
+
+---
 ### 🔒 Status
 
-**LOCKED — Roles Query, Metadata, Toggle & Rename Contract**
+**LOCKED — Roles Management Contract (Query · Metadata · Toggle · Rename · Create)**
 
-Any change requires updating:
+Any change requires updating **all** of the following:
 
 * Controllers
-* Repository contracts
+* Repository contracts & logic
 * Validation schemas
 * Authorization mapping
 * UI capabilities
@@ -287,7 +419,7 @@ Any change requires updating:
 | Role activation toggle   | ✅ DONE |
 | Role rename API          | ✅ DONE |
 | UI capabilities contract | ✅ DONE |
-| Role creation            | ⏳ NEXT |
+| Role creation            | ✅ DONE |
 | Role-permission mapping  | ⏳ NEXT |
 | Admin-role assignment    | ⏳ NEXT |
 
