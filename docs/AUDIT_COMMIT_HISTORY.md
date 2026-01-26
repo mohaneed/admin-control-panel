@@ -371,6 +371,7 @@ Entries MUST NOT be rewritten or reordered.
 - chore(di): register new logging architecture interfaces and adapters
 - refactor(logging): switch telemetry usage to DiagnosticsTelemetryService
 - refactor(logging): purge legacy in-app logging usage (prep for new architecture)
+- test(logging): remove legacy logger test suites (pre-clean baseline)
 
 ---
 
