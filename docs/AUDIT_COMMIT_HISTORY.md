@@ -374,6 +374,7 @@ Entries MUST NOT be rewritten or reordered.
 - test(logging): remove legacy logger test suites (pre-clean baseline)
 - feat(roles): add roles listing and UI metadata management
 - feat(rbac): add lifecycle status to roles table
+- feat(rbac): enforce role lifecycle via is_active during authorization
 
 ---
 

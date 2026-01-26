@@ -18,8 +18,16 @@ class AdminRoleRepository implements AdminRoleRepositoryInterface
 
     public function getRoleIds(int $adminId): array
     {
-        $stmt = $this->pdo->prepare('SELECT role_id FROM admin_roles WHERE admin_id = :admin_id');
+        $stmt = $this->pdo->prepare(
+            'SELECT ar.role_id
+         FROM admin_roles ar
+         INNER JOIN roles r ON r.id = ar.role_id
+         WHERE ar.admin_id = :admin_id
+           AND r.is_active = 1'
+        );
+
         $stmt->execute(['admin_id' => $adminId]);
+
         return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
     }
 
