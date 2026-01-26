@@ -13,11 +13,9 @@
 
 declare(strict_types=1);
 
-namespace App\Domain\ActivityLog\Action;
+namespace App\Domain\Admin\Enum;
 
-use App\Modules\ActivityLog\Contracts\ActivityActionInterface;
-
-enum AdminActivityAction: string implements ActivityActionInterface
+enum AdminActivityActionEnum: string
 {
     // 🔐 Authentication
     case LOGIN_SUCCESS = 'admin.auth.login.success';

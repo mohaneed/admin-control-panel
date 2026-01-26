@@ -15,8 +15,8 @@ declare(strict_types=1);
 
 namespace App\Context;
 
-use App\Modules\SecurityEvents\Contracts\SecurityEventContextInterface;
-use App\Modules\Telemetry\Contracts\TelemetryContextInterface;
+use App\Modules\SharedCommon\Contracts\SecurityEventContextInterface;
+use App\Modules\SharedCommon\Contracts\TelemetryContextInterface;
 
 /**
  * Request-scoped context carrying request metadata for logging,

@@ -6,20 +6,13 @@ namespace App\Http\Controllers;
 
 use App\Application\Crypto\AdminIdentifierCryptoServiceInterface;
 use App\Context\RequestContext;
-use App\Domain\ActivityLog\Action\AdminActivityAction;
-use App\Domain\ActivityLog\Service\AdminActivityLogService;
 use App\Domain\Admin\DTO\AdminEmailListItemDTO;
 use App\Domain\Admin\Reader\AdminBasicInfoReaderInterface;
 use App\Domain\Admin\Reader\AdminEmailReaderInterface;
-use App\Domain\DTO\AdminEmailIdentifierDTO;
-use App\Domain\DTO\AuditEventDTO;
 use App\Domain\Contracts\AdminPasswordRepositoryInterface;
-use App\Domain\Contracts\AuthoritativeSecurityAuditWriterInterface;
 use App\Domain\DTO\Request\CreateAdminEmailRequestDTO;
-use App\Domain\DTO\Request\VerifyAdminEmailRequestDTO;
 use App\Domain\DTO\Response\ActionResultResponseDTO;
 use App\Domain\DTO\Response\AdminCreateResponseDTO;
-use App\Domain\DTO\Response\AdminEmailResponseDTO;
 use App\Domain\Enum\IdentifierType;
 use App\Domain\Enum\VerificationStatus;
 use App\Domain\Exception\InvalidIdentifierFormatException;
@@ -30,9 +23,6 @@ use App\Infrastructure\Repository\AdminRepository;
 use App\Modules\Validation\Guard\ValidationGuard;
 use App\Modules\Validation\Schemas\AdminAddEmailSchema;
 use App\Modules\Validation\Schemas\AdminCreateSchema;
-use App\Modules\Validation\Schemas\AdminGetEmailSchema;
-use App\Modules\Validation\Schemas\AdminLookupEmailSchema;
-use DateTimeImmutable;
 use JsonException;
 use PDO;
 use Psr\Http\Message\ResponseInterface as Response;
@@ -49,11 +39,8 @@ class AdminController
         private AdminEmailRepository $adminEmailRepository,
         private ValidationGuard $validationGuard,
         private AdminIdentifierCryptoServiceInterface $cryptoService,
-        private AdminActivityLogService $adminActivityLogService,
-
         private AdminPasswordRepositoryInterface $passwordRepository,
         private PasswordService $passwordService,
-        private AuthoritativeSecurityAuditWriterInterface $auditWriter,
         private PDO $pdo,
 
         private AdminEmailReaderInterface $emailReader,
@@ -140,36 +127,6 @@ class AdminController
                 $hashResult['pepper_id'],
                 true
             );
-
-            // 🔟 Activity Log
-            $this->adminActivityLogService->log(
-                adminContext: $adminContext,
-                requestContext: $requestContext,
-                action: AdminActivityAction::ADMIN_CREATE,
-                entityType: 'admin',
-                entityId: $adminId,
-                metadata: [
-                    'correlation_id'       => $correlationId,
-                    'email_added'          => true,
-                    'temp_password_issued' => true,
-                ]
-            );
-
-            // 1️⃣1️⃣ Audit Event (Authoritative)
-            $this->auditWriter->write(new AuditEventDTO(
-                actor_id: $adminContext->adminId,
-                action: 'admin_created',
-                target_type: 'admin',
-                target_id: $adminId,
-                risk_level: 'HIGH',
-                payload: [
-                    'email_added'          => true,
-                    'temp_password_issued' => true,
-                ],
-                correlation_id: $correlationId,
-                request_id: $requestContext->requestId,
-                created_at: new DateTimeImmutable()
-            ));
 
             // 1️⃣2️⃣ Commit
             $this->pdo->commit();
@@ -260,18 +217,6 @@ class AdminController
         if (!$requestContext instanceof RequestContext) {
             throw new \RuntimeException('RequestContext missing');
         }
-
-        $this->adminActivityLogService->log(
-            adminContext: $adminContext,
-            requestContext: $requestContext,
-            action: $existing ? AdminActivityAction::ADMIN_EMAIL_REPLACED : AdminActivityAction::ADMIN_EMAIL_ADDED,
-            entityType: 'admin',
-            entityId: $adminId,
-            metadata: [
-                'identifier_type' => 'email',
-                'identifier_id' => $emailId,
-            ]
-        );
 
         $responseDto = new ActionResultResponseDTO(
             adminId: $adminId,

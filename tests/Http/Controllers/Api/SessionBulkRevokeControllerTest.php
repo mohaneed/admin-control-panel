@@ -34,15 +34,11 @@ final class SessionBulkRevokeControllerTest extends TestCase
 
         $writer = $this->createMock(\App\Modules\ActivityLog\Contracts\ActivityLogWriterInterface::class);
         $writer->expects($this->once())->method('write');
-        $activityLogService = new \App\Modules\ActivityLog\Service\ActivityLogService($writer);
-        $adminActivityLogService = new \App\Domain\ActivityLog\Service\AdminActivityLogService($activityLogService);
 
         $controller = new SessionBulkRevokeController(
             $revocationService,
             $authzService,
             $validationGuard,
-            $telemetryFactory,
-            $adminActivityLogService
         );
 
         $request = $this->createMock(ServerRequestInterface::class);

@@ -12,8 +12,6 @@ use App\Application\Crypto\TotpSecretCryptoServiceInterface;
 use App\Application\Verification\VerificationNotificationDispatcher;
 use App\Application\Verification\VerificationNotificationDispatcherInterface;
 use App\Context\ActorContext;
-use App\Domain\ActivityLog\Reader\ActivityLogListReaderInterface;
-use App\Domain\ActivityLog\Recorder\ActivityRecorder;
 use App\Domain\Admin\Reader\AdminBasicInfoReaderInterface;
 use App\Domain\Admin\Reader\AdminEmailReaderInterface;
 use App\Domain\Admin\Reader\AdminProfileReaderInterface;
@@ -61,8 +59,6 @@ use App\Domain\Ownership\SystemOwnershipRepositoryInterface;
 use App\Domain\Security\Crypto\CryptoKeyRingConfig;
 use App\Domain\Security\Password\PasswordPepperRing;
 use App\Domain\Security\Password\PasswordPepperRingConfig;
-use App\Domain\SecurityEvents\Recorder\SecurityEventRecorder;
-use App\Domain\SecurityEvents\Recorder\SecurityEventRecorderInterface;
 use App\Domain\Service\AdminAuthenticationService;
 use App\Domain\Service\AdminEmailVerificationService;
 use App\Domain\Service\AdminNotificationRoutingService;
@@ -77,8 +73,6 @@ use App\Domain\Service\VerificationCodePolicyResolver;
 use App\Domain\Service\VerificationCodeValidator;
 use App\Domain\Service\SessionRevocationService;
 use App\Domain\Service\AuthorizationService;
-use App\Domain\Telemetry\Contracts\TelemetryMetadataReaderInterface;
-use App\Domain\Telemetry\Reader\PdoTelemetryMetadataReader;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminNotificationHistoryController;
 use App\Http\Controllers\AdminNotificationPreferenceController;
@@ -117,7 +111,6 @@ use App\Infrastructure\Crypto\NotificationCryptoService;
 use App\Infrastructure\Crypto\PasswordCryptoService;
 use App\Infrastructure\Crypto\TotpSecretCryptoService;
 use App\Infrastructure\Query\ListFilterResolver;
-use App\Infrastructure\Reader\ActivityLog\PdoActivityLogListReader;
 use App\Infrastructure\Reader\PDOPermissionsReaderRepository;
 use App\Infrastructure\Reader\Session\PdoSessionListReader;
 use App\Http\Middleware\RememberMeMiddleware;
@@ -158,9 +151,6 @@ use App\Infrastructure\Service\AdminTotpSecretStore;
 use App\Infrastructure\Service\Google2faTotpService;
 use App\Infrastructure\Updater\PDOPermissionsMetadataRepository;
 use App\Infrastructure\UX\AdminActivityMapper;
-use App\Modules\ActivityLog\Contracts\ActivityLogWriterInterface;
-use App\Domain\ActivityLog\Service\AdminActivityLogService;
-use App\Modules\ActivityLog\Infrastructure\Mysql\ActivityLogLoggerMysqlRepository;
 use App\Modules\Crypto\KeyRotation\KeyRotationService;
 use App\Modules\Crypto\KeyRotation\Providers\InMemoryKeyProvider;
 use App\Modules\Crypto\KeyRotation\Policy\StrictSingleActiveKeyPolicy;
@@ -182,11 +172,9 @@ use App\Modules\Email\Renderer\EmailRendererInterface;
 use App\Modules\Email\Renderer\TwigEmailRenderer;
 use App\Modules\Email\Transport\EmailTransportInterface;
 use App\Modules\Email\Transport\SmtpEmailTransport;
-use App\Modules\SecurityEvents\Infrastructure\Mysql\SecurityEventLoggerMysqlRepository;
 use App\Modules\Validation\Contracts\ValidatorInterface;
 use App\Modules\Validation\Guard\ValidationGuard;
 use App\Modules\Validation\Validator\RespectValidator;
-use App\Ui\Support\TelemetryMetadataViewNormalizer;
 use DI\ContainerBuilder;
 use Exception;
 use Maatify\PsrLogger\LoggerFactory;
@@ -356,11 +344,9 @@ class Container
                 $emailRepo = $c->get(AdminEmailRepository::class);
                 $validationGuard = $c->get(ValidationGuard::class);
                 $cryptoService = $c->get(AdminIdentifierCryptoServiceInterface::class);
-                $adminActivityLogService = $c->get(AdminActivityLogService::class);
 
                 $passwordRepository = $c->get(\App\Domain\Contracts\AdminPasswordRepositoryInterface::class);
                 $passwordService = $c->get(\App\Domain\Service\PasswordService::class);
-                $auditWriter = $c->get(\App\Domain\Contracts\AuthoritativeSecurityAuditWriterInterface::class);
                 $pdo = $c->get(PDO::class);
 
                 $emailReader = $c->get(AdminEmailReaderInterface::class);
@@ -370,11 +356,9 @@ class Container
                 assert($emailRepo instanceof AdminEmailRepository);
                 assert($validationGuard instanceof ValidationGuard);
                 assert($cryptoService instanceof AdminIdentifierCryptoServiceInterface);
-                assert($adminActivityLogService instanceof AdminActivityLogService);
 
                 assert($passwordRepository instanceof \App\Domain\Contracts\AdminPasswordRepositoryInterface);
                 assert($passwordService instanceof \App\Domain\Service\PasswordService);
-                assert($auditWriter instanceof \App\Domain\Contracts\AuthoritativeSecurityAuditWriterInterface);
                 assert($pdo instanceof PDO);
 
                 assert($emailReader instanceof AdminEmailReaderInterface);
@@ -386,10 +370,8 @@ class Container
                     $emailRepo,
                     $validationGuard,
                     $cryptoService,
-                    $adminActivityLogService,
                     $passwordRepository,
                     $passwordService,
-                    $auditWriter,
                     $pdo,
                     $emailReader,
                     $basicInfoReader,
@@ -628,37 +610,11 @@ class Container
             LoggerInterface::class => function () {
                 return LoggerFactory::create('slim/app');
             },
-            ActivityLogWriterInterface::class => function (ContainerInterface $c) {
-                $pdo = $c->get(PDO::class);
-                assert($pdo instanceof PDO);
 
-                return new ActivityLogLoggerMysqlRepository($pdo);
-            },
-            ActivityRecorder::class => function (ContainerInterface $c) {
-                $writer = $c->get(ActivityLogWriterInterface::class);
-                assert($writer instanceof ActivityLogWriterInterface);
-                return new ActivityRecorder($writer);
-            },
-            AdminActivityLogService::class => function (ContainerInterface $c) {
-                $recorder = $c->get(ActivityRecorder::class);
-                assert($recorder instanceof ActivityRecorder);
-                return new AdminActivityLogService($recorder);
-            },
-            ActivityLogListReaderInterface::class => function (ContainerInterface $c) {
-                $pdo = $c->get(PDO::class);
-                assert($pdo instanceof PDO);
-
-                return new PdoActivityLogListReader($pdo);
-            },
             TelemetryAuditLoggerInterface::class => function (ContainerInterface $c) {
                 $pdo = $c->get(PDO::class);
                 assert($pdo instanceof PDO);
                 return new PdoTelemetryAuditLogger($pdo);
-            },
-            \App\Domain\Telemetry\Contracts\TelemetryListReaderInterface::class => function (ContainerInterface $c) {
-                $pdo = $c->get(PDO::class);
-                assert($pdo instanceof PDO);
-                return new \App\Domain\Telemetry\Reader\PdoTelemetryListReader($pdo);
             },
             AuthoritativeSecurityAuditWriterInterface::class => function (ContainerInterface $c) {
                 $pdo = $c->get(PDO::class);
@@ -758,7 +714,6 @@ class Container
                 $verificationService = $c->get(AdminEmailVerificationService::class);
                 $lookup = $c->get(AdminIdentifierLookupInterface::class);
                 $view = $c->get(Twig::class);
-                $securityEvents = $c->get(SecurityEventRecorderInterface::class);
                 $cryptoService = $c->get(AdminIdentifierCryptoServiceInterface::class);
                 $verificationDispatcher = $c->get(VerificationNotificationDispatcherInterface::class);
 
@@ -767,7 +722,6 @@ class Container
                 assert($verificationService instanceof AdminEmailVerificationService);
                 assert($lookup instanceof AdminIdentifierLookupInterface);
                 assert($view instanceof Twig);
-                assert($securityEvents instanceof SecurityEventRecorderInterface);
                 assert($cryptoService instanceof AdminIdentifierCryptoServiceInterface);
                 assert($verificationDispatcher instanceof VerificationNotificationDispatcherInterface);
 
@@ -777,7 +731,6 @@ class Container
                     $verificationService,
                     $lookup,
                     $view,
-                    $securityEvents,
                     $cryptoService,
                     $verificationDispatcher
                 );
@@ -914,13 +867,12 @@ class Container
                 $reader = $c->get(AdminNotificationPreferenceReaderInterface::class);
                 $writer = $c->get(AdminNotificationPreferenceWriterInterface::class);
                 $validationGuard = $c->get(ValidationGuard::class);
-                $adminActivityLogService = $c->get(AdminActivityLogService::class);
 
                 assert($reader instanceof AdminNotificationPreferenceReaderInterface);
                 assert($writer instanceof AdminNotificationPreferenceWriterInterface);
                 assert($validationGuard instanceof ValidationGuard);
-                assert($adminActivityLogService instanceof AdminActivityLogService);
-                return new AdminNotificationPreferenceController($reader, $writer, $validationGuard, $adminActivityLogService);
+
+                return new AdminNotificationPreferenceController($reader, $writer, $validationGuard);
             },
             AdminNotificationHistoryController::class => function (ContainerInterface $c) {
                 $reader = $c->get(AdminNotificationHistoryReaderInterface::class);
@@ -933,13 +885,10 @@ class Container
                 $marker = $c->get(AdminNotificationReadMarkerInterface::class);
                 $validationGuard = $c->get(ValidationGuard::class);
 
-                $adminActivityLogService = $c->get(AdminActivityLogService::class);
-
                 assert($marker instanceof AdminNotificationReadMarkerInterface);
                 assert($validationGuard instanceof ValidationGuard);
-                assert($adminActivityLogService instanceof AdminActivityLogService);
 
-                return new AdminNotificationReadController($marker, $validationGuard, $adminActivityLogService);
+                return new AdminNotificationReadController($marker, $validationGuard);
             },
             NotificationQueryController::class => function (ContainerInterface $c) {
                 $repository = $c->get(NotificationReadRepositoryInterface::class);
@@ -952,13 +901,11 @@ class Container
                 $service = $c->get(AdminEmailVerificationService::class);
                 $repo = $c->get(AdminEmailRepository::class);
                 $validationGuard = $c->get(ValidationGuard::class);
-                $adminActivityLogService = $c->get(AdminActivityLogService::class);
 
                 assert($service instanceof AdminEmailVerificationService);
                 assert($repo instanceof AdminEmailRepository);
                 assert($validationGuard instanceof ValidationGuard);
-                assert($adminActivityLogService instanceof AdminActivityLogService);
-                return new AdminEmailVerificationController($service, $repo, $validationGuard, $adminActivityLogService);
+                return new AdminEmailVerificationController($service, $repo, $validationGuard);
             },
             AdminSelfAuditReaderInterface::class => function (ContainerInterface $c) {
                 $pdo = $c->get(PDO::class);
@@ -1029,19 +976,15 @@ class Container
                 $service = $c->get(SessionRevocationService::class);
                 $auth = $c->get(AuthorizationService::class);
                 $validationGuard = $c->get(ValidationGuard::class);
-                // Telemetry
-                $telemetryService = $c->get(\App\Application\Services\DiagnosticsTelemetryService::class);
-
-                $adminActivityLogService = $c->get(AdminActivityLogService::class);
-
 
                 assert($service instanceof SessionRevocationService);
                 assert($auth instanceof AuthorizationService);
                 assert($validationGuard instanceof ValidationGuard);
-                assert($telemetryService instanceof \App\Application\Services\DiagnosticsTelemetryService);
-                assert($adminActivityLogService instanceof AdminActivityLogService);
 
-                return new SessionRevokeController($service, $auth, $validationGuard, $telemetryService, $adminActivityLogService
+                return new SessionRevokeController(
+                    $service,
+                    $auth,
+                    $validationGuard
                 );
             },
             SessionBulkRevokeController::class => function (ContainerInterface $c) {
@@ -1049,23 +992,14 @@ class Container
                 $auth = $c->get(AuthorizationService::class);
                 $validationGuard = $c->get(ValidationGuard::class);
 
-                // Telemetry
-                $telemetryService = $c->get(\App\Application\Services\DiagnosticsTelemetryService::class);
-
-                $adminActivityLogService = $c->get(AdminActivityLogService::class);
-
                 assert($service instanceof SessionRevocationService);
                 assert($auth instanceof AuthorizationService);
                 assert($validationGuard instanceof ValidationGuard);
-                assert($telemetryService instanceof \App\Application\Services\DiagnosticsTelemetryService);
-                assert($adminActivityLogService instanceof AdminActivityLogService);
 
                 return new SessionBulkRevokeController(
                     $service,
                     $auth,
                     $validationGuard,
-                    $telemetryService,
-                    $adminActivityLogService
                 );
             },
 
@@ -1128,7 +1062,6 @@ class Container
                 $grantRepo = $c->get(StepUpGrantRepositoryInterface::class);
                 $totpSecretStore = $c->get(AdminTotpSecretStoreInterface::class);
                 $totpService = $c->get(TotpServiceInterface::class);
-                $securityEventRecorder = $c->get(SecurityEventRecorderInterface::class);
 
                 $outboxWriter = $c->get(AuthoritativeSecurityAuditWriterInterface::class);
                 $recoveryState = $c->get(RecoveryStateService::class);
@@ -1137,7 +1070,6 @@ class Container
                 assert($grantRepo instanceof StepUpGrantRepositoryInterface);
                 assert($totpSecretStore instanceof AdminTotpSecretStoreInterface);
                 assert($totpService instanceof TotpServiceInterface);
-                assert($securityEventRecorder instanceof SecurityEventRecorderInterface);
                 assert($outboxWriter instanceof AuthoritativeSecurityAuditWriterInterface);
                 assert($recoveryState instanceof RecoveryStateService);
                 assert($pdo instanceof PDO);
@@ -1147,7 +1079,6 @@ class Container
                     $totpSecretStore,
                     $totpService,
                     $outboxWriter,
-                    $securityEventRecorder,    // ✅ real security logging
                     $recoveryState,
                     $pdo
                 );
@@ -1414,63 +1345,9 @@ class Container
                 return new PasswordCryptoService($passwordService);
             },
 
-            // Telemetry
-            \App\Modules\Telemetry\Contracts\TelemetryLoggerInterface::class => function (ContainerInterface $c) {
-                $pdo = $c->get(PDO::class);
-                assert($pdo instanceof PDO);
-
-                return new \App\Modules\Telemetry\Infrastructure\Mysql\TelemetryLoggerMysqlRepository($pdo);
-            },
-
-            \App\Domain\Telemetry\Recorder\TelemetryRecorderInterface::class => function (ContainerInterface $c) {
-                $logger = $c->get(\App\Modules\Telemetry\Contracts\TelemetryLoggerInterface::class);
-                assert($logger instanceof \App\Modules\Telemetry\Contracts\TelemetryLoggerInterface);
-
-                return new \App\Domain\Telemetry\Recorder\TelemetryRecorder($logger);
-            },
-
-
-            // Telemetry - Email Hasher (HKDF + rotation)
-            \App\Application\Telemetry\Contracts\TelemetryEmailHasherInterface::class => function (ContainerInterface $c) {
-                $keyRotation = $c->get(\App\Modules\Crypto\KeyRotation\KeyRotationService::class);
-                assert($keyRotation instanceof \App\Modules\Crypto\KeyRotation\KeyRotationService);
-
-                $hkdf = $c->get(\App\Modules\Crypto\HKDF\HKDFService::class);
-                assert($hkdf instanceof \App\Modules\Crypto\HKDF\HKDFService);
-
-                return new \App\Infrastructure\Crypto\TelemetryEmailHashService(
-                    keyRotation: $keyRotation,
-                    hkdf: $hkdf
-                );
-            },
-            SecurityEventRecorderInterface::class => function (ContainerInterface $c) {
-                $pdo = $c->get(PDO::class);
-
-                assert($pdo instanceof PDO);
-
-                $securityEventLoggerMysqlRepository = new SecurityEventLoggerMysqlRepository($pdo);
-
-                return new SecurityEventRecorder($securityEventLoggerMysqlRepository);
-            },
-            // ─────────────────────────────
-            // Telemetry – Metadata Reader
-            // ─────────────────────────────
-            TelemetryMetadataReaderInterface::class => function ($c) {
-                $pdo = $c->get(PDO::class);
-
-                assert($pdo instanceof PDO);
-
-                return new PdoTelemetryMetadataReader(
-                    $pdo
-                );
-            },
-
             // ─────────────────────────────
             // Telemetry – UI Support
             // ─────────────────────────────
-            TelemetryMetadataViewNormalizer::class => function () {
-                return new TelemetryMetadataViewNormalizer();
-            },
 
             ActorContext::class => function () {
                 return new ActorContext();

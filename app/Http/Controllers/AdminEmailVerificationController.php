@@ -6,8 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Context\AdminContext;
 use App\Context\RequestContext;
-use App\Domain\ActivityLog\Action\AdminActivityAction;
-use App\Domain\ActivityLog\Service\AdminActivityLogService;
+use App\Domain\Admin\Enum\AdminActivityActionEnum;
 use App\Domain\DTO\Response\VerificationResponseDTO;
 use App\Domain\Exception\IdentifierNotFoundException;
 use App\Domain\Service\AdminEmailVerificationService;
@@ -16,8 +15,6 @@ use App\Modules\Validation\Guard\ValidationGuard;
 use App\Modules\Validation\Schemas\AdminEmailVerifySchema;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use Random\RandomException;
-use Slim\Exception\HttpBadRequestException;
 use Slim\Exception\HttpNotFoundException;
 
 readonly class AdminEmailVerificationController
@@ -26,7 +23,6 @@ readonly class AdminEmailVerificationController
         private AdminEmailVerificationService $service,
         private AdminEmailRepository $repository,
         private ValidationGuard $validationGuard,
-        private AdminActivityLogService $activityLog,
     ) {}
 
     /* ===============================
@@ -47,7 +43,7 @@ readonly class AdminEmailVerificationController
             $response,
             $args,
             fn(int $emailId, RequestContext $ctx) => $this->service->verify($emailId, $ctx),
-            AdminActivityAction::ADMIN_EMAIL_VERIFIED
+            AdminActivityActionEnum::ADMIN_EMAIL_VERIFIED
         );
     }
 
@@ -69,7 +65,7 @@ readonly class AdminEmailVerificationController
             $response,
             $args,
             fn(int $emailId, RequestContext $ctx) => $this->service->fail($emailId, $ctx),
-            AdminActivityAction::ADMIN_EMAIL_FAILED
+            AdminActivityActionEnum::ADMIN_EMAIL_FAILED
         );
     }
 
@@ -91,7 +87,7 @@ readonly class AdminEmailVerificationController
             $response,
             $args,
             fn(int $emailId, RequestContext $ctx) => $this->service->replace($emailId, $ctx),
-            AdminActivityAction::ADMIN_EMAIL_REPLACED
+            AdminActivityActionEnum::ADMIN_EMAIL_REPLACED
         );
     }
 
@@ -113,7 +109,7 @@ readonly class AdminEmailVerificationController
             $response,
             $args,
             fn(int $emailId, RequestContext $ctx) => $this->service->restart($emailId, $ctx),
-            AdminActivityAction::ADMIN_EMAIL_VERIFICATION_RESTARTED
+            AdminActivityActionEnum::ADMIN_EMAIL_VERIFICATION_RESTARTED
         );
     }
 
@@ -122,12 +118,12 @@ readonly class AdminEmailVerificationController
      * ===============================
      * */
     /**
-     * @param   ServerRequestInterface      $request
-     * @param   ResponseInterface           $response
-     * @param   array<string, string>       $args
-     * @param   callable                    $action
-     * @param   AdminActivityAction|string  $activityAction  Activity action identifier
-     *                                                       (values defined in AdminActivityAction constants)
+     * @param   ServerRequestInterface          $request
+     * @param   ResponseInterface               $response
+     * @param   array<string, string>           $args
+     * @param   callable                        $action
+     * @param   AdminActivityActionEnum|string  $activityAction  Activity action identifier
+     *                                                       (values defined in AdminActivityActionEnum constants)
      *
      * @return ResponseInterface
      * @throws \JsonException
@@ -137,7 +133,7 @@ readonly class AdminEmailVerificationController
         ResponseInterface $response,
         array $args,
         callable $action,
-        AdminActivityAction|string $activityAction
+        AdminActivityActionEnum|string $activityAction
     ): ResponseInterface {
         $emailId = (int) $args['emailId'];
 
@@ -165,18 +161,6 @@ readonly class AdminEmailVerificationController
             // 🔹 Reload identity
             $identity = $this->repository->getEmailIdentity($emailId);
 
-            // 🔹 Activity log
-            $this->activityLog->log(
-                adminContext: $adminContext,
-                requestContext: $requestContext,
-                action: $activityAction,
-                entityType: 'admin',
-                entityId: $identity->adminId,
-                metadata: [
-                    'email_id' => $identity->emailId,
-                    'status'   => $identity->verificationStatus->value,
-                ]
-            );
 
             $dto = new VerificationResponseDTO(
                 adminId: $identity->adminId,

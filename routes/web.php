@@ -6,12 +6,10 @@ use App\Domain\Service\SessionValidationService;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminEmailVerificationController;
 use App\Http\Controllers\AdminNotificationPreferenceController;
-use App\Http\Controllers\Api\ActivityLogQueryController;
 use App\Http\Controllers\Api\AdminQueryController;
 use App\Http\Controllers\Api\PermissionsController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\NotificationQueryController;
-use App\Http\Controllers\Ui\UiTelemetryMetadataController;
 use App\Http\Middleware\AuthorizationGuardMiddleware;
 use App\Http\Middleware\GuestGuardMiddleware;
 use App\Http\Middleware\SessionGuardMiddleware;
@@ -166,11 +164,6 @@ return function (App $app) {
             $protectedGroup->get('/telemetry', [\App\Http\Controllers\Ui\TelemetryListController::class, 'index'])
                 ->setName('telemetry.list');
 
-            $protectedGroup->get(
-                '/telemetry/{id}/metadata',
-                [UiTelemetryMetadataController::class, 'view']
-            )->setName('telemetry.view');
-
             // Allow logout from UI
             $protectedGroup->post('/logout', [\App\Http\Controllers\Web\LogoutController::class, 'logout'])
                 ->setName('auth.logout');
@@ -217,14 +210,6 @@ return function (App $app) {
 
             $group->post('/admins/query', [AdminQueryController::class, '__invoke'])
                 ->setName('admins.query')
-                ->add(AuthorizationGuardMiddleware::class);
-
-            $group->post('/activity-logs/query', [ActivityLogQueryController::class, '__invoke'])
-                ->setName('activity_logs.view')
-                ->add(AuthorizationGuardMiddleware::class);
-
-            $group->post('/telemetry/query', [\App\Http\Controllers\Api\TelemetryQueryController::class, '__invoke'])
-                ->setName('telemetry.list')
                 ->add(AuthorizationGuardMiddleware::class);
 
             // ─────────────────────────────

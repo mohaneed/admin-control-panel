@@ -25,13 +25,7 @@ use App\Domain\DTO\TotpEnrollmentConfig;
 use App\Domain\DTO\TwoFactorEnrollmentViewDTO;
 use App\Domain\Exception\TwoFactorAlreadyEnrolledException;
 use App\Domain\Exception\TwoFactorEnrollmentFailedException;
-use App\Domain\SecurityEvents\DTO\SecurityEventRecordDTO;
-use App\Domain\SecurityEvents\Enum\SecurityEventActorTypeEnum;
-use App\Domain\SecurityEvents\Recorder\SecurityEventRecorderInterface;
 use App\Domain\Support\CorrelationId;
-use App\Modules\SecurityEvents\Enum\SecurityEventSeverityEnum;
-use App\Modules\SecurityEvents\Enum\SecurityEventTypeEnum;
-use App\Domain\Service\StepUpService;
 use PDO;
 
 /**
@@ -50,7 +44,6 @@ final class TwoFactorEnrollmentService
         private readonly TotpServiceInterface $totpService,
         private readonly TotpSecretCryptoServiceInterface $crypto,
         private readonly AuthoritativeSecurityAuditWriterInterface $auditWriter,
-        private readonly SecurityEventRecorderInterface $securityEventRecorder,
         private readonly TotpEnrollmentConfig $totpEnrollmentConfig,
         private readonly StepUpService $stepUpService,
         private readonly PDO $pdo,
@@ -186,21 +179,6 @@ final class TwoFactorEnrollmentService
 
         // Verify OTP code (UI-level failure, retry allowed)
         if (! $this->totpService->verify($secret, $otpCode)) {
-            $this->securityEventRecorder->record(
-                new SecurityEventRecordDTO(
-                    actorType: SecurityEventActorTypeEnum::ADMIN,
-                    actorId  : $adminId,
-                    eventType: SecurityEventTypeEnum::STEP_UP_ENROLL_FAILED,
-                    severity : SecurityEventSeverityEnum::ERROR,
-                    requestId: $context->requestId,
-                    routeName: $context->routeName,
-                    ipAddress: $context->ipAddress,
-                    userAgent: $context->userAgent,
-                    metadata : [
-                        'reason' => 'invalid_otp_during_enrollment',
-                    ]
-                )
-            );
 
             // Do NOT clear pending enrollment — user may retry
             return false;

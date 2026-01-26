@@ -5,18 +5,12 @@ declare(strict_types=1);
 namespace Tests\Http\Controllers;
 
 use App\Application\Crypto\AdminIdentifierCryptoServiceInterface;
-use App\Application\Telemetry\Contracts\TelemetryEmailHasherInterface;
 use App\Application\Telemetry\HttpTelemetryRecorderFactory;
 use App\Context\RequestContext;
-use App\Domain\ActivityLog\Action\AdminActivityAction;
-use App\Domain\ActivityLog\Service\AdminActivityLogService;
 use App\Domain\DTO\AdminLoginResultDTO;
 use App\Domain\Service\AdminAuthenticationService;
 use App\Http\Controllers\AuthController;
-use App\Modules\ActivityLog\Contracts\ActivityLogWriterInterface;
-use App\Modules\ActivityLog\DTO\ActivityLogDTO;
 use App\Modules\ActivityLog\Service\ActivityLogService;
-use App\Modules\Telemetry\Enum\TelemetryEventTypeEnum;
 use App\Modules\Validation\Contracts\SchemaInterface;
 use App\Modules\Validation\Contracts\ValidatorInterface;
 use App\Modules\Validation\DTO\ValidationResultDTO;

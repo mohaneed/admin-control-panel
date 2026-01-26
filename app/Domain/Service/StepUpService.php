@@ -14,11 +14,6 @@ use App\Domain\DTO\StepUpGrant;
 use App\Domain\DTO\TotpVerificationResultDTO;
 use App\Domain\Enum\Scope;
 use App\Domain\Enum\SessionState;
-use App\Domain\SecurityEvents\DTO\SecurityEventRecordDTO;
-use App\Domain\SecurityEvents\Enum\SecurityEventActorTypeEnum;
-use App\Domain\SecurityEvents\Recorder\SecurityEventRecorderInterface;
-use App\Modules\SecurityEvents\Enum\SecurityEventSeverityEnum;
-use App\Modules\SecurityEvents\Enum\SecurityEventTypeEnum;
 use DateTimeImmutable;
 use PDO;
 
@@ -29,7 +24,6 @@ readonly class StepUpService
         private AdminTotpSecretStoreInterface $totpSecretStore,
         private TotpServiceInterface $totpService,
         private AuthoritativeSecurityAuditWriterInterface $outboxWriter,
-        private SecurityEventRecorderInterface $securityEventRecorder,
         private RecoveryStateService $recoveryState,
         private PDO $pdo
     ) {
@@ -48,47 +42,11 @@ readonly class StepUpService
 
         $secret = $this->totpSecretStore->retrieve($adminId);
         if ($secret === null) {
-            $this->securityEventRecorder->record(
-                new SecurityEventRecordDTO(
-                    actorType: SecurityEventActorTypeEnum::ADMIN,
-                    actorId: $adminId,
-                    eventType: SecurityEventTypeEnum::STEP_UP_NOT_ENROLLED,
-                    severity: SecurityEventSeverityEnum::ERROR,
-                    requestId: $context->requestId,
-                    routeName: $context->routeName ?? null,
-                    ipAddress: $context->ipAddress,
-                    userAgent: $context->userAgent,
-                    metadata: [
-                        'reason' => 'no_totp_enrolled',
-                        'session_id' => $sessionId,
-                        'scope' => Scope::LOGIN->value,
-                    ]
-                )
-            );
 
             return new TotpVerificationResultDTO(false, 'TOTP not enrolled');
         }
 
         if (!$this->totpService->verify($secret, $code)) {
-            $this->securityEventRecorder->record(
-                new SecurityEventRecordDTO(
-                    actorType: SecurityEventActorTypeEnum::ADMIN,
-                    actorId: $adminId,
-
-                    eventType: SecurityEventTypeEnum::STEP_UP_INVALID_CODE,
-                    severity: SecurityEventSeverityEnum::ERROR,
-
-                    requestId: $context->requestId,
-                    routeName: $context->routeName,
-                    ipAddress: $context->ipAddress,
-                    userAgent: $context->userAgent,
-
-                    metadata: [
-                        'session_id' => $sessionId,
-                        'scope' => Scope::LOGIN->value,
-                    ]
-                )
-            );
 
             return new TotpVerificationResultDTO(false, 'Invalid code');
         }
@@ -121,26 +79,6 @@ readonly class StepUpService
         $sessionId = hash('sha256', $token);
 
         if (!$this->totpService->verify($secret, $code)) {
-            $this->securityEventRecorder->record(
-                new SecurityEventRecordDTO(
-                    actorType: SecurityEventActorTypeEnum::ADMIN,
-                    actorId: $adminId,
-
-                    eventType: SecurityEventTypeEnum::STEP_UP_ENROLL_FAILED,
-                    severity: SecurityEventSeverityEnum::ERROR,
-
-                    requestId: $context->requestId,
-                    routeName: $context->routeName,
-                    ipAddress: $context->ipAddress,
-                    userAgent: $context->userAgent,
-
-                    metadata: [
-                        'session_id' => $sessionId,
-                        'scope' => Scope::LOGIN->value,
-                        'reason' => 'invalid_code',
-                    ]
-                )
-            );
 
             return false;
         }
@@ -282,27 +220,6 @@ readonly class StepUpService
         }
 
         if (!hash_equals($grant->riskContextHash, $this->getRiskHash($context))) {
-            $this->securityEventRecorder->record(
-                new SecurityEventRecordDTO(
-                    actorType: SecurityEventActorTypeEnum::ADMIN,
-                    actorId: $adminId,
-
-                    eventType: SecurityEventTypeEnum::STEP_UP_RISK_MISMATCH,
-                    severity: SecurityEventSeverityEnum::CRITICAL,
-
-                    requestId: $context->requestId,
-                    routeName: $context->routeName,
-                    ipAddress: $context->ipAddress,
-                    userAgent: $context->userAgent,
-
-                    metadata: [
-                        'session_id' => $sessionId,
-                        'scope' => $scope->value,
-                        'expected_risk' => $grant->riskContextHash,
-                        'actual_risk' => $this->getRiskHash($context),
-                    ]
-                )
-            );
 
             $this->pdo->beginTransaction();
             try {

@@ -370,6 +370,7 @@ Entries MUST NOT be rewritten or reordered.
 - feat(logging): lock application services and introduce recorder contracts
 - chore(di): register new logging architecture interfaces and adapters
 - refactor(logging): switch telemetry usage to DiagnosticsTelemetryService
+- refactor(logging): purge legacy in-app logging usage (prep for new architecture)
 
 ---
 

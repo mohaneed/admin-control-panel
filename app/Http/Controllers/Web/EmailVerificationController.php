@@ -10,15 +10,9 @@ use App\Domain\Contracts\AdminIdentifierLookupInterface;
 use App\Domain\Contracts\VerificationCodeGeneratorInterface;
 use App\Domain\Contracts\VerificationCodeValidatorInterface;
 use App\Domain\Enum\IdentityTypeEnum;
-use App\Domain\Enum\VerificationFailureReasonEnum;
 use App\Domain\Enum\VerificationPurposeEnum;
-use App\Domain\SecurityEvents\DTO\SecurityEventRecordDTO;
-use App\Domain\SecurityEvents\Enum\SecurityEventActorTypeEnum;
-use App\Domain\SecurityEvents\Recorder\SecurityEventRecorderInterface;
 use App\Domain\Service\AdminEmailVerificationService;
 use App\Context\RequestContext;
-use App\Modules\SecurityEvents\Enum\SecurityEventSeverityEnum;
-use App\Modules\SecurityEvents\Enum\SecurityEventTypeEnum;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\Views\Twig;
@@ -31,7 +25,6 @@ readonly class EmailVerificationController
         private AdminEmailVerificationService $verificationService,
         private AdminIdentifierLookupInterface $lookupInterface,
         private Twig $view,
-        private SecurityEventRecorderInterface $securityEvents,
         private AdminIdentifierCryptoServiceInterface $cryptoService,
         private VerificationNotificationDispatcherInterface $verificationDispatcher
     ) {
@@ -89,24 +82,6 @@ readonly class EmailVerificationController
 
         if ($adminEmailIdentifierDTO === null) {
             // Security Event: failed verification (no subject resolved)
-            $this->securityEvents->record(
-                new SecurityEventRecordDTO(
-                    actorType: SecurityEventActorTypeEnum::ADMIN,
-                    actorId: null,
-                    eventType: SecurityEventTypeEnum::EMAIL_VERIFICATION_SUBJECT_NOT_FOUND,
-                    severity: SecurityEventSeverityEnum::WARNING,
-
-                    requestId: $context?->requestId,
-                    routeName: $context?->routeName,
-                    ipAddress: $context?->ipAddress,
-                    userAgent: $context?->userAgent,
-
-                    metadata: [
-                        'reason' => VerificationFailureReasonEnum::INVALID_OTP->value,
-                        'email'  => $email,
-                    ]
-                )
-            );
 
             return $this->view->render($response, $template, [
                 'error' => 'Verification failed.',
@@ -127,23 +102,6 @@ readonly class EmailVerificationController
 
         if (!$result->success) {
             // Security Event: invalid / expired / exceeded attempts
-            $this->securityEvents->record(
-                new SecurityEventRecordDTO(
-                    actorType: SecurityEventActorTypeEnum::ADMIN,
-                    actorId: $adminId,
-                    eventType: SecurityEventTypeEnum::EMAIL_VERIFICATION_FAILED,
-                    severity: SecurityEventSeverityEnum::WARNING,
-
-                    requestId: $context?->requestId,
-                    routeName: $context?->routeName,
-                    ipAddress: $context?->ipAddress,
-                    userAgent: $context?->userAgent,
-
-                    metadata: [
-                        'reason' => VerificationFailureReasonEnum::INVALID_OTP->value,
-                    ]
-                )
-            );
 
             return $this->view->render($response, $template, [
                 'error' => 'Verification failed.',

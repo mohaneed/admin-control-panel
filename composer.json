@@ -35,7 +35,8 @@
       "Maatify\\AuditTrail\\": "app/Modules/AuditTrail/",
       "Maatify\\SecuritySignals\\": "app/Modules/SecuritySignals/",
       "Maatify\\DeliveryOperations\\": "app/Modules/DeliveryOperations/",
-      "Maatify\\AuthoritativeAudit\\": "app/Modules/AuthoritativeAudit/"
+      "Maatify\\AuthoritativeAudit\\": "app/Modules/AuthoritativeAudit/",
+      "Maatify\\SharedCommon\\": "app/Modules/SharedCommon/"
     }
   },
 
