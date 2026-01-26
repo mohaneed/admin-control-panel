@@ -10,10 +10,8 @@ use App\Domain\Contracts\AdminPasswordRepositoryInterface;
 use App\Domain\Contracts\AdminSessionRepositoryInterface;
 use App\Context\RequestContext;
 use App\Domain\Contracts\AuthoritativeSecurityAuditWriterInterface;
-use App\Domain\Contracts\SecurityEventLoggerInterface;
 use App\Domain\DTO\AdminLoginResultDTO;
 use App\Domain\DTO\AuditEventDTO;
-use App\Domain\DTO\SecurityEventDTO;
 use App\Domain\Enum\VerificationStatus;
 use App\Domain\Exception\AuthStateException;
 use App\Domain\Exception\InvalidCredentialsException;
@@ -29,7 +27,6 @@ readonly class AdminAuthenticationService
         private AdminPasswordRepositoryInterface $passwordRepository,
         private AdminSessionRepositoryInterface $sessionRepository,
 
-        private SecurityEventLoggerInterface $securityLogger,
         private AuthoritativeSecurityAuditWriterInterface $outboxWriter,
         private RecoveryStateService $recoveryState,
         private PDO $pdo,
@@ -46,16 +43,6 @@ readonly class AdminAuthenticationService
         // AdminEmailIdentifierDTO
         $adminEmailIdentifierDTO = $this->lookupRepository->findByBlindIndex($blindIndex);
         if ($adminEmailIdentifierDTO === null) {
-            $this->securityLogger->log(new SecurityEventDTO(
-                null,
-                'login_failed',
-                'warning',
-                ['reason' => 'user_not_found', 'blind_index' => $blindIndex],
-                $context->ipAddress,
-                $context->userAgent,
-                new DateTimeImmutable(),
-                $context->requestId
-            ));
             throw new InvalidCredentialsException("Invalid credentials.");
         }
 
@@ -63,33 +50,12 @@ readonly class AdminAuthenticationService
         // 2. Verify Password
         $record = $this->passwordRepository->getPasswordRecord($adminId);
         if ($record === null || !$this->passwordService->verify($password, $record->hash, $record->pepperId)) {
-            $this->securityLogger->log(new SecurityEventDTO(
-                $adminId,
-                'login_failed',
-                'warning',
-                ['reason' => 'invalid_password'],
-                $context->ipAddress,
-                $context->userAgent,
-                new DateTimeImmutable(),
-                $context->requestId
-            ));
             throw new InvalidCredentialsException("Invalid credentials.");
         }
 
         // 🔒 3 Enforce Admin Lifecycle Status
         $status = $this->adminRepository->getStatus($adminId);
         if (! $status->canAuthenticate()) {
-
-            $this->securityLogger->log(new SecurityEventDTO(
-                $adminId,
-                'login_blocked',
-                'warning',
-                ['reason' => 'admin_' . strtolower($status->name)],
-                $context->ipAddress,
-                $context->userAgent,
-                new DateTimeImmutable(),
-                $context->requestId
-            ));
 
             throw new AuthStateException(
                 match ($status) {
@@ -118,16 +84,6 @@ readonly class AdminAuthenticationService
 
         // 4. Check Verification Status
         if ($adminEmailIdentifierDTO->verificationStatus !== VerificationStatus::VERIFIED) {
-            $this->securityLogger->log(new SecurityEventDTO(
-                $adminId,
-                'login_failed',
-                'warning',
-                ['reason' => 'not_verified'],
-                $context->ipAddress,
-                $context->userAgent,
-                new DateTimeImmutable(),
-                $context->requestId
-            ));
             throw new AuthStateException(
                 AuthStateException::REASON_NOT_VERIFIED,
                 'Identifier is not verified.'

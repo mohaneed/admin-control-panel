@@ -8,11 +8,8 @@ use App\Application\Services\DiagnosticsTelemetryService;
 use App\Context\AdminContext;
 use App\Context\RequestContext;
 use App\Domain\Contracts\AdminSessionValidationRepositoryInterface;
-use App\Domain\Contracts\SecurityEventLoggerInterface;
-use App\Domain\DTO\SecurityEventDTO;
 use App\Domain\Service\AdminAuthenticationService;
 use App\Domain\Service\RememberMeService;
-use DateTimeImmutable;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Throwable;
@@ -22,7 +19,6 @@ readonly class LogoutController
     public function __construct(
         private AdminSessionValidationRepositoryInterface $sessionRepository,
         private RememberMeService $rememberMeService,
-        private SecurityEventLoggerInterface $securityEventLogger,
         private AdminAuthenticationService $authService,
         private DiagnosticsTelemetryService $telemetryService
     ) {
@@ -44,20 +40,6 @@ readonly class LogoutController
         if (!$context instanceof RequestContext) {
             throw new \RuntimeException('Request context missing');
         }
-
-        // ─────────────────────────────
-        // Security Event (Authoritative)
-        // ─────────────────────────────
-        $this->securityEventLogger->log(new SecurityEventDTO(
-            $adminId,
-            'admin_logout',
-            'info',
-            [],
-            $context->ipAddress,
-            $context->userAgent,
-            new DateTimeImmutable(),
-            $context->requestId
-        ));
 
         // ─────────────────────────────
         // 🔍 Telemetry (best-effort)

@@ -8,10 +8,8 @@ use App\Domain\Contracts\AdminSessionRepositoryInterface;
 use App\Domain\Contracts\AuthoritativeSecurityAuditWriterInterface;
 use App\Context\RequestContext;
 use App\Domain\Contracts\RememberMeRepositoryInterface;
-use App\Domain\Contracts\SecurityEventLoggerInterface;
 use App\Domain\DTO\AuditEventDTO;
 use App\Domain\DTO\RememberMeTokenDTO;
-use App\Domain\DTO\SecurityEventDTO;
 use App\Domain\Exception\InvalidCredentialsException;
 use DateTimeImmutable;
 use PDO;
@@ -24,7 +22,6 @@ class RememberMeService
     public function __construct(
         private RememberMeRepositoryInterface $rememberMeRepository,
         private AdminSessionRepositoryInterface $sessionRepository,
-        private SecurityEventLoggerInterface $securityEventLogger,
         private AuthoritativeSecurityAuditWriterInterface $auditWriter,
         private PDO $pdo
     ) {
@@ -61,7 +58,6 @@ class RememberMeService
         try {
             $this->rememberMeRepository->save($tokenDto);
 
-            $this->logEvent($adminId, 'remember_me_issued', $context);
             $this->writeAudit($adminId, 'remember_me_issued', ['expiration' => $expiresAt->format('Y-m-d H:i:s')], $context);
 
             $this->pdo->commit();
@@ -103,7 +99,6 @@ class RememberMeService
                 // Suspected theft: Delete this selector immediately
                 $this->rememberMeRepository->deleteBySelector($selector);
 
-                $this->logEvent($tokenDto->adminId, 'remember_me_theft_suspected', $context, ['selector' => $selector]);
                 $this->writeAudit($tokenDto->adminId, 'remember_me_theft_suspected', ['selector' => $selector], $context, 'CRITICAL');
 
                 $this->pdo->commit();
@@ -143,7 +138,6 @@ class RememberMeService
             // Create Session
             $sessionToken = $this->sessionRepository->createSession($tokenDto->adminId);
 
-            $this->logEvent($tokenDto->adminId, 'remember_me_rotated', $context);
             $this->writeAudit($tokenDto->adminId, 'remember_me_rotated', ['old_selector' => $selector], $context);
 
             $this->pdo->commit();
@@ -167,7 +161,6 @@ class RememberMeService
         $this->pdo->beginTransaction();
         try {
             $this->rememberMeRepository->deleteByAdminId($adminId);
-            $this->logEvent($adminId, 'remember_me_revoked', $context);
             $this->writeAudit($adminId, 'remember_me_revoked_all', [], $context, 'HIGH');
             $this->pdo->commit();
         } catch (\Throwable $e) {
@@ -183,7 +176,6 @@ class RememberMeService
             $tokenDto = $this->rememberMeRepository->findBySelector($selector);
             if ($tokenDto !== null) {
                 $this->rememberMeRepository->deleteBySelector($selector);
-                $this->logEvent($tokenDto->adminId, 'remember_me_revoked', $context, ['selector' => $selector]);
                 $this->writeAudit($tokenDto->adminId, 'remember_me_revoked', ['selector' => $selector], $context, 'MEDIUM');
             }
             $this->pdo->commit();
@@ -191,23 +183,6 @@ class RememberMeService
             $this->pdo->rollBack();
             throw $e;
         }
-    }
-
-    /**
-     * @param array<string, bool|float|int|string> $details
-     */
-    private function logEvent(int $adminId, string $eventName, RequestContext $context, array $details = []): void
-    {
-        $this->securityEventLogger->log(new SecurityEventDTO(
-            $adminId,
-            $eventName,
-            'info',
-            $details,
-            $context->ipAddress,
-            $context->userAgent,
-            new DateTimeImmutable(),
-            $context->requestId
-        ));
     }
 
     /**

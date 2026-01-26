@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace App\Domain\Service;
 
 use App\Domain\Contracts\AuthoritativeSecurityAuditWriterInterface;
-use App\Domain\Contracts\SecurityEventLoggerInterface;
 use App\Domain\DTO\AdminConfigDTO;
 use App\Context\RequestContext;
 use App\Domain\DTO\AuditEventDTO;
-use App\Domain\DTO\SecurityEventDTO;
 use App\Domain\Enum\RecoveryTransitionReason;
 use App\Domain\Exception\RecoveryLockException;
 use DateTimeImmutable;
@@ -42,7 +40,6 @@ class RecoveryStateService
 
     public function __construct(
         private AuthoritativeSecurityAuditWriterInterface $auditWriter,
-        private SecurityEventLoggerInterface $securityLogger,
         private PDO $pdo,
         private AdminConfigDTO $config,
         private string $emailBlindIndexKey
@@ -215,20 +212,7 @@ class RecoveryStateService
     private function handleBlockedAction(string $action, ?int $actorId, RequestContext $context): void
     {
         // 1. Emit Security Event
-        try {
-            $this->securityLogger->log(new SecurityEventDTO(
-                $actorId,
-                'recovery_action_blocked',
-                'critical',
-                ['action' => $action, 'reason' => 'recovery_locked_mode'],
-                $context->ipAddress,
-                $context->userAgent,
-                new DateTimeImmutable(),
-                $context->requestId
-            ));
-        } catch (\Throwable $e) {
-            // Best effort
-        }
+
 
         // 2. Write Authoritative Audit Event (Transactional)
         $txStarted = false;
