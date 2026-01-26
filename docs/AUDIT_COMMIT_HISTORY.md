@@ -378,6 +378,7 @@ Entries MUST NOT be rewritten or reordered.
 - chore(test): align test suite with logging purge
 - refactor(security): remove legacy SecurityEvent logging layer
 - refactor(rbac): normalize roles boundaries and UI capabilities contract
+- feat(roles): add role activation toggle with locked API contract
 
 ---
 

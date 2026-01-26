@@ -5,7 +5,7 @@
  * @Library     maatify/admin-control-panel
  * @Project     maatify:admin-control-panel
  * @author      Mohamed Abdulalim (megyptm) <mohamed@maatify.dev>
- * @since       2026-01-26 20:49
+ * @since       2026-01-26 23:18
  * @see         https://www.maatify.dev Maatify.dev
  * @link        https://github.com/Maatify/admin-control-panel view Project on GitHub
  * @note        Distributed in the hope that it will be useful - WITHOUT WARRANTY.
@@ -13,12 +13,13 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Validation\Schemas;
+namespace App\Modules\Validation\Schemas\Roles;
 
 use App\Modules\Validation\Enum\ValidationErrorCodeEnum;
+use App\Modules\Validation\Schemas\AbstractSchema;
 use Respect\Validation\Validator as v;
 
-class RoleMetadataUpdateSchema extends AbstractSchema
+class RoleToggleSchema extends AbstractSchema
 {
     protected function rules(): array
     {
@@ -26,25 +27,16 @@ class RoleMetadataUpdateSchema extends AbstractSchema
             // ─────────────────────────────
             // Route parameter: role id (validated at routing level)
             // ─────────────────────────────
-//            'id' => [
-//                v::intType()->positive(),
-//                ValidationErrorCodeEnum::REQUIRED_FIELD
-//            ],
+            //            'id' => [
+            //                v::intType()->positive(),
+            //                ValidationErrorCodeEnum::REQUIRED_FIELD
+            //            ],
 
             // ─────────────────────────────
-            // Optional metadata fields
+            // Role activation flag
             // ─────────────────────────────
-            'display_name' => [
-                v::optional(
-                    v::stringType()->length(1, 128)
-                ),
-                ValidationErrorCodeEnum::INVALID_DISPLAY_NAME
-            ],
-
-            'description' => [
-                v::optional(
-                    v::stringType()->length(1, 255)
-                ),
+            'is_active' => [
+                v::boolType(),
                 ValidationErrorCodeEnum::INVALID_VALUE
             ],
         ];

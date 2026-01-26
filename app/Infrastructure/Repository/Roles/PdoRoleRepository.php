@@ -6,10 +6,11 @@ namespace App\Infrastructure\Repository\Roles;
 
 use App\Domain\Contracts\Roles\RoleRepositoryInterface;
 use App\Domain\Contracts\Roles\RolesMetadataRepositoryInterface;
+use App\Domain\Contracts\Roles\RoleToggleRepositoryInterface;
 use PDO;
 use RuntimeException;
 
-class PdoRoleRepository implements RoleRepositoryInterface, RolesMetadataRepositoryInterface
+class PdoRoleRepository implements RoleRepositoryInterface, RolesMetadataRepositoryInterface, RoleToggleRepositoryInterface
 {
     private PDO $pdo;
 
@@ -75,4 +76,34 @@ class PdoRoleRepository implements RoleRepositoryInterface, RolesMetadataReposit
             throw new RuntimeException("Failed to update metadata for roles {$roleId}.");
         }
     }
+
+    public function toggle(int $roleId, bool $isActive): void
+    {
+        // ─────────────────────────────
+        // Ensure role exists
+        // ─────────────────────────────
+        $stmtExists = $this->pdo->prepare(
+            'SELECT 1 FROM roles WHERE id = :id'
+        );
+        $stmtExists->execute(['id' => $roleId]);
+
+        if ($stmtExists->fetchColumn() === false) {
+            throw new RuntimeException("Role with id {$roleId} does not exist.");
+        }
+
+        // ─────────────────────────────
+        // Update activation state
+        // ─────────────────────────────
+        $stmt = $this->pdo->prepare(
+            'UPDATE roles SET is_active = :is_active WHERE id = :id'
+        );
+
+        if ($stmt->execute([
+                'id' => $roleId,
+                'is_active' => $isActive ? 1 : 0
+            ]) === false) {
+            throw new RuntimeException("Failed to toggle role {$roleId}.");
+        }
+    }
+
 }

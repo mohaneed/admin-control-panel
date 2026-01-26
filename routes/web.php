@@ -233,6 +233,10 @@ return function (App $app) {
                 ->setName('roles.metadata.update')
                 ->add(AuthorizationGuardMiddleware::class);
 
+            $group->post('/roles/{id}/toggle', [\App\Http\Controllers\Api\Roles\RoleToggleController::class, '__invoke'])
+                ->setName('roles.toggle')
+                ->add(AuthorizationGuardMiddleware::class);
+
             // Notifications / Admins / Etc.
             $group->post('/admins/create', [AdminController::class, 'create'])
                 ->setName('admin.create')

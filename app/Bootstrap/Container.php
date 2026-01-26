@@ -48,6 +48,7 @@ use App\Domain\Contracts\RolePermissionRepositoryInterface;
 use App\Domain\Contracts\Roles\RoleRepositoryInterface;
 use App\Domain\Contracts\Roles\RolesMetadataRepositoryInterface;
 use App\Domain\Contracts\Roles\RolesReaderRepositoryInterface;
+use App\Domain\Contracts\Roles\RoleToggleRepositoryInterface;
 use App\Domain\Contracts\StepUpGrantRepositoryInterface;
 use App\Domain\Contracts\TelemetryAuditLoggerInterface;
 use App\Domain\Contracts\TotpServiceInterface;
@@ -89,6 +90,7 @@ use App\Http\Controllers\Api\PermissionMetadataUpdateController;
 use App\Http\Controllers\Api\PermissionsController;
 use App\Http\Controllers\Api\Roles\RoleMetadataUpdateController;
 use App\Http\Controllers\Api\Roles\RolesControllerQuery;
+use App\Http\Controllers\Api\Roles\RoleToggleController;
 use App\Http\Controllers\Api\SessionBulkRevokeController;
 use App\Http\Controllers\Api\SessionQueryController;
 use App\Http\Controllers\Api\SessionRevokeController;
@@ -1401,6 +1403,12 @@ class Container
                 return new PdoRoleRepository($pdo);
             },
 
+            RoleToggleRepositoryInterface::class => function ($c) {
+                $pdo = $c->get(PDO::class);
+                assert($pdo instanceof PDO);
+                return new PdoRoleRepository($pdo);
+            },
+
             RolesControllerQuery::class => function ($c) {
                 $reader = $c->get(RolesReaderRepositoryInterface::class);
                 $validationGuard = $c->get(ValidationGuard::class);
@@ -1417,6 +1425,16 @@ class Container
                 assert($validationGuard instanceof ValidationGuard);
                 assert($updater instanceof RolesMetadataRepositoryInterface);
                 return new RoleMetadataUpdateController($validationGuard, $updater);
+            },
+
+            RoleToggleController::class => function ($c) {
+                $validationGuard = $c->get(ValidationGuard::class);
+                $repo = $c->get(RoleToggleRepositoryInterface::class);
+
+                assert($validationGuard instanceof ValidationGuard);
+                assert($repo instanceof RoleToggleRepositoryInterface);
+
+                return new RoleToggleController($validationGuard, $repo);
             },
 
             // ─────────────────────────────

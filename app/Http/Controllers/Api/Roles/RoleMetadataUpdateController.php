@@ -17,7 +17,7 @@ namespace App\Http\Controllers\Api\Roles;
 
 use App\Domain\Contracts\Roles\RolesMetadataRepositoryInterface;
 use App\Modules\Validation\Guard\ValidationGuard;
-use App\Modules\Validation\Schemas\RoleMetadataUpdateSchema;
+use App\Modules\Validation\Schemas\Roles\RoleMetadataUpdateSchema;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 
