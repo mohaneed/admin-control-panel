@@ -16,6 +16,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Repository\Roles;
 
 use App\Domain\Contracts\Roles\RoleCreateRepositoryInterface;
+use App\Domain\Exception\EntityAlreadyExistsException;
 use PDO;
 use RuntimeException;
 
@@ -39,7 +40,11 @@ readonly class PdoRoleCreateRepository implements RoleCreateRepositoryInterface
         $stmtCheck->execute(['name' => $name]);
 
         if ($stmtCheck->fetchColumn() !== false) {
-            throw new RuntimeException("Role name '{$name}' already exists.");
+            throw new EntityAlreadyExistsException(
+                entity: 'Role',
+                field: 'name',
+                value: $name
+            );
         }
 
         // ─────────────────────────────

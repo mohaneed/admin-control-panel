@@ -8,6 +8,9 @@ use App\Domain\Contracts\Roles\RoleRenameRepositoryInterface;
 use App\Domain\Contracts\Roles\RoleRepositoryInterface;
 use App\Domain\Contracts\Roles\RolesMetadataRepositoryInterface;
 use App\Domain\Contracts\Roles\RoleToggleRepositoryInterface;
+use App\Domain\Exception\EntityAlreadyExistsException;
+use App\Domain\Exception\EntityNotFoundException;
+use App\Domain\Exception\InvalidOperationException;
 use PDO;
 use RuntimeException;
 
@@ -38,7 +41,11 @@ class PdoRoleRepository implements RoleRepositoryInterface,
         // (controller / validation should prevent this, but we guard anyway)
         // ─────────────────────────────
         if ($displayName === null && $description === null) {
-            throw new RuntimeException('Nothing to update for roles metadata.');
+            throw new InvalidOperationException(
+                'Role',
+                'update_metadata',
+                'no updatable fields provided'
+            );
         }
 
         // ─────────────────────────────
@@ -50,7 +57,7 @@ class PdoRoleRepository implements RoleRepositoryInterface,
         $stmtExists->execute(['id' => $roleId]);
 
         if ($stmtExists->fetchColumn() === false) {
-            throw new RuntimeException("roles with id {$roleId} does not exist.");
+            throw new EntityNotFoundException('role', $roleId);
         }
 
         // ─────────────────────────────
@@ -92,7 +99,7 @@ class PdoRoleRepository implements RoleRepositoryInterface,
         $stmtExists->execute(['id' => $roleId]);
 
         if ($stmtExists->fetchColumn() === false) {
-            throw new RuntimeException("Role with id {$roleId} does not exist.");
+            throw new EntityNotFoundException('role', $roleId);
         }
 
         // ─────────────────────────────
@@ -123,7 +130,7 @@ class PdoRoleRepository implements RoleRepositoryInterface,
         $currentName = $stmtExists->fetchColumn();
 
         if ($currentName === false) {
-            throw new RuntimeException("Role with id {$roleId} does not exist.");
+            throw new EntityNotFoundException('role', $roleId);
         }
 
         // ─────────────────────────────
@@ -142,7 +149,7 @@ class PdoRoleRepository implements RoleRepositoryInterface,
         $stmtDuplicate->execute(['name' => $newName]);
 
         if ($stmtDuplicate->fetchColumn() !== false) {
-            throw new RuntimeException("Role name '{$newName}' already exists.");
+            throw new EntityAlreadyExistsException('Role', 'name', $newName);
         }
 
         // ─────────────────────────────
@@ -159,6 +166,5 @@ class PdoRoleRepository implements RoleRepositoryInterface,
             throw new RuntimeException("Failed to rename role {$roleId}.");
         }
     }
-
 
 }
