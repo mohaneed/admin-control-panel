@@ -381,6 +381,10 @@ Entries MUST NOT be rewritten or reordered.
 - feat(roles): add role activation toggle with locked API contract
 - feat(roles): add technical role rename capability with full RBAC enforcement
 - feat(roles): add role creation API with validation and authorization
+- feat(domain): introduce canonical domain exceptions and register global HTTP error handling
+- feat(roles): expose role activation state and role view capability in UI layer
+- feat(roles): standardize domain exceptions for role creation and mutation
+- feat(roles-ui): modularize roles page and complete create/rename/toggle flows
 
 ---
 

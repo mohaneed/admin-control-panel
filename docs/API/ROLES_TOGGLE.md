@@ -35,9 +35,10 @@ In the UI controller:
 ```php
 $capabilities = [
     'can_create'       => $authorizationService->hasPermission($adminId, 'roles.create'),
-    'can_update_meta' => $authorizationService->hasPermission($adminId, 'roles.metadata.update'),
-    'can_rename'      => $authorizationService->hasPermission($adminId, 'roles.rename'),
-    'can_toggle'      => $authorizationService->hasPermission($adminId, 'roles.toggle'),
+    'can_update_meta'  => $authorizationService->hasPermission($adminId, 'roles.metadata.update'),
+    'can_rename'       => $authorizationService->hasPermission($adminId, 'roles.rename'),
+    'can_toggle'       => $authorizationService->hasPermission($adminId, 'roles.toggle'),
+    'can_view_role'    => $authorizationService->hasPermission($adminId, 'roles.view'),
 ];
 
 return $this->view->render($response, 'pages/roles.twig', [
@@ -424,3 +425,42 @@ Any change requires updating **all** of the following:
 | Admin-role assignment    | ⏳ NEXT |
 
 ---
+## 🔀 Relationship Navigation Rules
+
+- Roles are the central aggregation unit
+- Permissions are never assigned directly to admins
+- Admins receive permissions only through roles
+- Each relationship is managed through a dedicated view
+- Bidirectional navigation is allowed for visibility, not shortcut authorization
+
+Roles are managed through a dedicated Role Details page.
+Relationship management (permissions, admins) is always scoped
+to a specific role context and never performed from the roles list view.
+
+All role-related relationships (permissions, admins)
+are managed strictly within the role context
+(`/roles/{id}`) and are never edited from the roles list.
+
+## 🧭 View-Level Authorization (Roles)
+
+Access to role-related views is governed by explicit **view permissions**.
+
+The roles list view requires:
+- `roles.query`
+
+The role details page (`/roles/{id}`) requires:
+- `roles.view`
+
+Relationship tabs inside the role details page are controlled separately:
+
+### Permissions Tab
+- View assigned permissions: `roles.permissions.view`
+- Assign / unassign permissions: `roles.permissions.assign`
+
+### Admins Tab
+- View assigned admins: `roles.admins.view`
+- Assign / unassign admins: `roles.admins.assign`
+
+These permissions control **UI visibility and actions only**.  
+All backend APIs continue to enforce authorization independently.
+
