@@ -61,6 +61,7 @@ use App\Domain\Contracts\VerificationCodeRepositoryInterface;
 use App\Domain\Contracts\VerificationCodeValidatorInterface;
 use App\Domain\DTO\AdminConfigDTO;
 use App\Domain\DTO\TotpEnrollmentConfig;
+use App\Domain\DTO\Ui\UiConfigDTO;
 use App\Domain\Ownership\SystemOwnershipRepositoryInterface;
 use App\Domain\Security\Crypto\CryptoKeyRingConfig;
 use App\Domain\Security\Password\PasswordPepperRing;
@@ -255,6 +256,10 @@ class Container
             hasPasswordPepperRing: !empty($passwordPepperConfig->peppers())
         );
 
+        $uiConfigDTO = new UiConfigDTO(
+            adminAssetBaseUrl: $_ENV['ASSET_BASE_URL'] ?? '/'
+        );
+
         $totpEnrollmentConfig = new TotpEnrollmentConfig(
             $_ENV['TOTP_ISSUER'],
             (int) ($_ENV['TOTP_ENROLLMENT_TTL_SECONDS'] ?? 0)
@@ -280,6 +285,9 @@ class Container
         $containerBuilder->addDefinitions([
             AdminConfigDTO::class => function () use ($config) {
                 return $config;
+            },
+            UiConfigDTO::class => function () use ($uiConfigDTO) {
+                return $uiConfigDTO;
             },
             EmailTransportConfigDTO::class => function () use ($emailConfig) {
                 return $emailConfig;
@@ -324,8 +332,20 @@ class Container
                     $permissionMapper
                 );
             },
-            Twig::class => function (ContainerInterface $c) {
-                return Twig::create(__DIR__ . '/../../templates', ['cache' => false]);
+            \App\Infrastructure\Ui\NavigationProviderInterface::class => function (ContainerInterface $c) {
+                return new \App\Infrastructure\Ui\DefaultNavigationProvider();
+            },
+            Twig::class                                               => function (ContainerInterface $c) {
+                $twig = Twig::create(__DIR__ . '/../../templates', ['cache' => false]);
+                $navProvider = $c->get(\App\Infrastructure\Ui\NavigationProviderInterface::class);
+                $uiConfigDTO = $c->get(UiConfigDTO::class);
+                assert($navProvider instanceof \App\Infrastructure\Ui\NavigationProviderInterface);
+                assert($uiConfigDTO instanceof UiConfigDTO);
+
+                $twig->getEnvironment()->addGlobal('nav_items', $navProvider->getNavigationItems());
+                $twig->getEnvironment()->addGlobal('asset_base_url', $uiConfigDTO->adminAssetBaseUrl);
+
+                return $twig;
             },
             PDO::class => function (ContainerInterface $c) {
                 $config = $c->get(AdminConfigDTO::class);
