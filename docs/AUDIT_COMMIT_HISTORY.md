@@ -415,6 +415,7 @@ Entries MUST NOT be rewritten or reordered.
 - test(host): provide explicit rootPath to kernel in integration tests
 - refactor(kernel): unlock AdminKernel boot with host-controlled runtime
 - test(integration): align failing tests with fail-fast authorization and MySQL isolation
+- feat(ui): centralize asset resolution via kernel-safe Twig helper
 
 ---
 
