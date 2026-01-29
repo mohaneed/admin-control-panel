@@ -399,6 +399,7 @@ Entries MUST NOT be rewritten or reordered.
 - refactor(auth): extract admin login orchestration into application service
 - refactor(auth): normalize logout flow into application service
 - refactor(auth): normalize change-password flow into application service
+- refactor(auth): normalize email verification and resend flows into application services
 
 ---
 

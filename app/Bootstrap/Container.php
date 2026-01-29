@@ -761,31 +761,57 @@ class Container
 
                 return new \App\Http\Controllers\Web\ChangePasswordController($view, $changePasswordService);
             },
-            EmailVerificationController::class => function (ContainerInterface $c) {
-                $validator = $c->get(VerificationCodeValidatorInterface::class);
-                $generator = $c->get(VerificationCodeGeneratorInterface::class);
-                $verificationService = $c->get(AdminEmailVerificationService::class);
-                $lookup = $c->get(AdminIdentifierLookupInterface::class);
-                $view = $c->get(Twig::class);
+            \App\Application\Auth\VerifyEmailService::class => function (ContainerInterface $c) {
                 $cryptoService = $c->get(AdminIdentifierCryptoServiceInterface::class);
-                $verificationDispatcher = $c->get(VerificationNotificationDispatcherInterface::class);
+                $lookupInterface = $c->get(AdminIdentifierLookupInterface::class);
+                $validator = $c->get(VerificationCodeValidatorInterface::class);
+                $verificationService = $c->get(AdminEmailVerificationService::class);
 
-                assert($validator instanceof VerificationCodeValidatorInterface);
-                assert($generator instanceof VerificationCodeGeneratorInterface);
-                assert($verificationService instanceof AdminEmailVerificationService);
-                assert($lookup instanceof AdminIdentifierLookupInterface);
-                assert($view instanceof Twig);
                 assert($cryptoService instanceof AdminIdentifierCryptoServiceInterface);
-                assert($verificationDispatcher instanceof VerificationNotificationDispatcherInterface);
+                assert($lookupInterface instanceof AdminIdentifierLookupInterface);
+                assert($validator instanceof VerificationCodeValidatorInterface);
+                assert($verificationService instanceof AdminEmailVerificationService);
+
+                return new \App\Application\Auth\VerifyEmailService(
+                    $cryptoService,
+                    $lookupInterface,
+                    $validator,
+                    $verificationService
+                );
+            },
+
+            \App\Application\Auth\ResendEmailVerificationService::class => function (ContainerInterface $c) {
+                $cryptoService = $c->get(AdminIdentifierCryptoServiceInterface::class);
+                $lookupInterface = $c->get(AdminIdentifierLookupInterface::class);
+                $generator = $c->get(VerificationCodeGeneratorInterface::class);
+                $dispatcher = $c->get(VerificationNotificationDispatcherInterface::class);
+
+                assert($cryptoService instanceof AdminIdentifierCryptoServiceInterface);
+                assert($lookupInterface instanceof AdminIdentifierLookupInterface);
+                assert($generator instanceof VerificationCodeGeneratorInterface);
+                assert($dispatcher instanceof VerificationNotificationDispatcherInterface);
+
+                return new \App\Application\Auth\ResendEmailVerificationService(
+                    $cryptoService,
+                    $lookupInterface,
+                    $generator,
+                    $dispatcher
+                );
+            },
+            EmailVerificationController::class => function (ContainerInterface $c) {
+
+                $view = $c->get(Twig::class);
+                $verifyEmailService = $c->get(\App\Application\Auth\VerifyEmailService::class);
+                $resendEmailVerificationService = $c->get(\App\Application\Auth\ResendEmailVerificationService::class);
+
+                assert($view instanceof Twig);
+                assert($verifyEmailService instanceof \App\Application\Auth\VerifyEmailService);
+                assert($resendEmailVerificationService instanceof \App\Application\Auth\ResendEmailVerificationService);
 
                 return new EmailVerificationController(
-                    $validator,
-                    $generator,
-                    $verificationService,
-                    $lookup,
                     $view,
-                    $cryptoService,
-                    $verificationDispatcher
+                    $verifyEmailService,
+                    $resendEmailVerificationService
                 );
             },
             VerificationNotificationDispatcherInterface::class => function (ContainerInterface $c) {

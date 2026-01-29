@@ -4,14 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Web;
 
-use App\Application\Crypto\AdminIdentifierCryptoServiceInterface;
-use App\Application\Verification\VerificationNotificationDispatcherInterface;
-use App\Domain\Contracts\AdminIdentifierLookupInterface;
-use App\Domain\Contracts\VerificationCodeGeneratorInterface;
-use App\Domain\Contracts\VerificationCodeValidatorInterface;
-use App\Domain\Enum\IdentityTypeEnum;
-use App\Domain\Enum\VerificationPurposeEnum;
-use App\Domain\Service\AdminEmailVerificationService;
+use App\Application\Auth\VerifyEmailService;
+use App\Application\Auth\ResendEmailVerificationService;
+use App\Application\Auth\DTO\VerifyEmailRequestDTO;
+use App\Application\Auth\DTO\ResendEmailVerificationRequestDTO;
 use App\Context\RequestContext;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
@@ -20,13 +16,9 @@ use Slim\Views\Twig;
 readonly class EmailVerificationController
 {
     public function __construct(
-        private VerificationCodeValidatorInterface $validator,
-        private VerificationCodeGeneratorInterface $generator,
-        private AdminEmailVerificationService $verificationService,
-        private AdminIdentifierLookupInterface $lookupInterface,
         private Twig $view,
-        private AdminIdentifierCryptoServiceInterface $cryptoService,
-        private VerificationNotificationDispatcherInterface $verificationDispatcher
+        private VerifyEmailService $verifyEmailService,
+        private ResendEmailVerificationService $resendService,
     ) {
     }
 
@@ -38,12 +30,10 @@ readonly class EmailVerificationController
         }
 
         $queryParams = $request->getQueryParams();
-        $email = $queryParams['email'] ?? '';
-        $message = $queryParams['message'] ?? null;
 
         return $this->view->render($response, $template, [
-            'email' => $email,
-            'message' => $message
+            'email' => (string)($queryParams['email'] ?? ''),
+            'message' => $queryParams['message'] ?? null,
         ]);
     }
 
@@ -57,7 +47,7 @@ readonly class EmailVerificationController
         $data = $request->getParsedBody();
         if (!is_array($data)) {
             return $this->view->render($response, $template, [
-                'error' => 'Invalid request'
+                'error' => 'Invalid request',
             ]);
         }
 
@@ -67,68 +57,26 @@ readonly class EmailVerificationController
         if ($email === '' || $otp === '') {
             return $this->view->render($response, $template, [
                 'error' => 'Email and OTP are required.',
-                'email' => $email
+                'email' => $email,
             ]);
         }
 
-        /** @var RequestContext|null $context */
         $context = $request->getAttribute(RequestContext::class);
-
-        /**
-         * 1️⃣ Resolve subject first (email → adminId)
-         */
-        $blindIndex = $this->cryptoService->deriveEmailBlindIndex($email);
-        $adminEmailIdentifierDTO = $this->lookupInterface->findByBlindIndex($blindIndex);
-
-        if ($adminEmailIdentifierDTO === null) {
-            // Security Event: failed verification (no subject resolved)
-
-            return $this->view->render($response, $template, [
-                'error' => 'Verification failed.',
-                'email' => $email
-            ]);
+        if (!$context instanceof RequestContext) {
+            throw new \RuntimeException('RequestContext missing');
         }
 
-        $adminId = $adminEmailIdentifierDTO->adminId;
-        /**
-         * 2️⃣ Validate OTP bound to resolved identity
-         */
-        $result = $this->validator->validate(
-            IdentityTypeEnum::Admin,
-            (string)$adminId,
-            VerificationPurposeEnum::EmailVerification,
-            $otp
+        $result = $this->verifyEmailService->verify(
+            new VerifyEmailRequestDTO($email, $otp, $context)
         );
 
         if (!$result->success) {
-            // Security Event: invalid / expired / exceeded attempts
-
             return $this->view->render($response, $template, [
                 'error' => 'Verification failed.',
-                'email' => $email
+                'email' => $email,
             ]);
         }
 
-        /**
-         * 3️⃣ Mark email as verified
-         * (authoritative state change happens inside the service)
-         */
-        try {
-            if (!$context instanceof RequestContext) {
-                throw new \RuntimeException('Request context missing');
-            }
-
-            $this->verificationService->selfVerify($adminEmailIdentifierDTO->emailId, $context);
-        } catch (\Throwable $e) {
-            // Idempotent behavior:
-            // - already verified
-            // - no user-visible impact
-            // No Security Event, no Audit
-        }
-
-        /**
-         * 4️⃣ Redirect to login
-         */
         return $response
             ->withHeader(
                 'Location',
@@ -140,55 +88,19 @@ readonly class EmailVerificationController
     public function resend(Request $request, Response $response): Response
     {
         $data = $request->getParsedBody();
-        $email = '';
+        $email = is_array($data) ? (string)($data['email'] ?? '') : '';
 
-        if (is_array($data)) {
-            $email = (string)($data['email'] ?? '');
-        }
-
-        if ($email !== '') {
-            $blindIndex = $this->cryptoService->deriveEmailBlindIndex($email);
-            $adminEmailIdentifierDTO = $this->lookupInterface->findByBlindIndex($blindIndex);
-
-            if ($adminEmailIdentifierDTO !== null) {
-                try {
-                    // ✅ توليد واحد فقط
-                    $generated = $this->generator->generate(
-                        IdentityTypeEnum::Admin,
-                        (string)$adminEmailIdentifierDTO->adminId,
-                        VerificationPurposeEnum::EmailVerification
-                    );
-
-                    // ✅ dispatch مرتبط بالتوليد
-                    $this->verificationDispatcher->dispatch(
-                        identityType: IdentityTypeEnum::Admin,
-                        identityId: (string)$adminEmailIdentifierDTO->adminId,
-                        purpose: VerificationPurposeEnum::EmailVerification,
-                        recipient: $email,
-                        plainCode: $generated->plainCode,
-                        context: [
-                            'expires_in' => 600,
-                        ],
-                        language: 'en'
-                    );
-                } catch (\Throwable $e) {
-                    // Best-effort only:
-                    // - rate limit
-                    // - resend cooldown
-                    // - queue failure
-                    // ❌ لا Security Event
-                    // ❌ لا Audit
-                    // ❌ لا PSR-3 (expected behavior)
-                }
-            }
-        }
-
-        $url = '/verify-email?message='
-               . urlencode('Code sent if email is valid.')
-               . '&email=' . urlencode($email);
+        $this->resendService->resend(
+            new ResendEmailVerificationRequestDTO($email)
+        );
 
         return $response
-            ->withHeader('Location', $url)
+            ->withHeader(
+                'Location',
+                '/verify-email?message='
+                . urlencode('Code sent if email is valid.')
+                . '&email=' . urlencode($email)
+            )
             ->withStatus(302);
     }
 }
