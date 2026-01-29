@@ -87,8 +87,8 @@
 												class="w-4 h-4 rounded-xl border border-gray-300 checked:bg-red-500 checked:border-red-500 transition-colors duration-200"
 												type="checkbox"
 												name="remember_me"
-												value="remember-me" id="remember-me">
-                                        <label class="form-check-label" for="remember-me">
+												value="remember_me" id="remember_me">
+                                        <label class="form-check-label" for="remember_me">
                                             Remember me
                                         </label>
                                     </div>
@@ -130,23 +130,23 @@
 	<script>
 
 		const passwordInput = document.getElementById('passwordInput');
-const eyeIcon = document.querySelector('.eye-icon');
-const slashIcon = document.querySelector('.slash');
+		const eyeIcon = document.querySelector('.eye-icon');
+		const slashIcon = document.querySelector('.slash');
 
-eyeIcon.addEventListener('click', () => {
-if (passwordInput.type === 'password') {
-passwordInput.type = 'text';
-eyeIcon.style.display = 'none';
-slashIcon.style.display = 'block';
-}
-});
+		eyeIcon.addEventListener('click', () => {
+			if (passwordInput.type === 'password') {
+				passwordInput.type = 'text';
+				eyeIcon.style.display = 'none';
+				slashIcon.style.display = 'block';
+			}
+		});
 
-slashIcon.addEventListener('click', () => {
-if (passwordInput.type === 'text') {
-passwordInput.type = 'password';
-eyeIcon.style.display = 'block';
-slashIcon.style.display = 'none';
-}
-});
+		slashIcon.addEventListener('click', () => {
+			if (passwordInput.type === 'text') {
+				passwordInput.type = 'password';
+				eyeIcon.style.display = 'block';
+				slashIcon.style.display = 'none';
+			}
+		});
 	</script>
 {% endblock %}

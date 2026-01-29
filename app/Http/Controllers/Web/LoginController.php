@@ -99,7 +99,8 @@ readonly class LoginController
             $response = $response->withHeader('Set-Cookie', $cookieHeader);
 
             // Handle Remember Me
-            if (isset($data['remember_me']) && $data['remember_me'] === 'on') {
+//            if (isset($data['remember_me']) && $data['remember_me'] === 'on') {
+            if (!empty($data['remember_me'])) {
                 $rememberMeToken = $this->rememberMeService->issue((int)$session['admin_id'], $requestContext);
 
                 $rememberMeCookie = sprintf(
