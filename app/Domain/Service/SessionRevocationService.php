@@ -149,7 +149,6 @@ class SessionRevocationService
                 'session_revoked',
                 'session',
                 null, // Target ID is null for generic target? Or should we use session ID?
-                // The DB schema for audit_logs has target_type and target_id.
                 // target_id is BIGINT. Session ID is string.
                 // So target_id must be null or something numeric.
                 // We should put details in payload.

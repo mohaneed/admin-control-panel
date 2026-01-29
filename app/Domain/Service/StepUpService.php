@@ -89,12 +89,6 @@ readonly class StepUpService
 
             $this->issuePrimaryGrant($adminId, $token, $context);
 
-            // TODO[AUDIT][NOTE]:
-            // audit_outbox
-            // stepup_enrolled was previously double-written:
-            // 1) Authoritative audit (outbox)
-            // 2) TelemetryAuditLogger -> audit_logs
-            // Telemetry audit must be removed permanently.
             $this->outboxWriter->write(new AuditEventDTO(
                 $adminId,
                 'stepup_enrolled',
@@ -132,10 +126,6 @@ readonly class StepUpService
 
         $this->grantRepository->save($grant);
 
-        // TODO[AUDIT][NOTE]:
-        // audit_outbox
-        // stepup_primary_issued was previously double-written
-        // (authoritative outbox + telemetry audit).
         $this->outboxWriter->write(new AuditEventDTO(
             $adminId,
             'stepup_primary_issued',

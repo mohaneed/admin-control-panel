@@ -31,10 +31,7 @@ use App\Domain\Contracts\AdminNotificationPreferenceWriterInterface;
 use App\Domain\Contracts\AdminNotificationReadMarkerInterface;
 use App\Domain\Contracts\AdminPasswordRepositoryInterface;
 use App\Domain\Contracts\AdminRoleRepositoryInterface;
-use App\Domain\Contracts\AdminSecurityEventReaderInterface;
-use App\Domain\Contracts\AdminSelfAuditReaderInterface;
 use App\Domain\Contracts\AdminSessionRepositoryInterface;
-use App\Domain\Contracts\AdminTargetedAuditReaderInterface;
 use App\Domain\Contracts\AdminTotpSecretRepositoryInterface;
 use App\Domain\Contracts\AdminTotpSecretStoreInterface;
 use App\Domain\Contracts\AuthoritativeSecurityAuditWriterInterface;
@@ -53,7 +50,6 @@ use App\Domain\Contracts\Roles\RolesMetadataRepositoryInterface;
 use App\Domain\Contracts\Roles\RolesReaderRepositoryInterface;
 use App\Domain\Contracts\Roles\RoleToggleRepositoryInterface;
 use App\Domain\Contracts\StepUpGrantRepositoryInterface;
-use App\Domain\Contracts\TelemetryAuditLoggerInterface;
 use App\Domain\Contracts\TotpServiceInterface;
 use App\Domain\Contracts\VerificationCodeGeneratorInterface;
 use App\Domain\Contracts\VerificationCodePolicyResolverInterface;
@@ -88,9 +84,6 @@ use App\Http\Controllers\AdminEmailVerificationController;
 use App\Http\Controllers\AdminNotificationHistoryController;
 use App\Http\Controllers\AdminNotificationPreferenceController;
 use App\Http\Controllers\AdminNotificationReadController;
-use App\Http\Controllers\AdminSecurityEventController;
-use App\Http\Controllers\AdminSelfAuditController;
-use App\Http\Controllers\AdminTargetedAuditController;
 use App\Http\Controllers\Api\PermissionMetadataUpdateController;
 use App\Http\Controllers\Api\PermissionsController;
 use App\Http\Controllers\Api\Roles\RoleCreateController;
@@ -123,11 +116,7 @@ use App\Http\Middleware\SessionStateGuardMiddleware;
 use App\Infrastructure\Admin\Reader\PDOAdminBasicInfoReader;
 use App\Infrastructure\Admin\Reader\PDOAdminEmailReader;
 use App\Infrastructure\Admin\Reader\PdoAdminProfileReader;
-use App\Infrastructure\Audit\PdoAdminSecurityEventReader;
-use App\Infrastructure\Audit\PdoAdminSelfAuditReader;
-use App\Infrastructure\Audit\PdoAdminTargetedAuditReader;
 use App\Infrastructure\Audit\PdoAuthoritativeAuditWriter;
-use App\Infrastructure\Audit\PdoTelemetryAuditLogger;
 use App\Infrastructure\Context\ActorContextProvider;
 use App\Infrastructure\Crypto\AdminIdentifierCryptoService;
 use App\Infrastructure\Crypto\NotificationCryptoService;
@@ -640,12 +629,6 @@ class Container
             LoggerInterface::class => function () {
                 return LoggerFactory::create('slim/app');
             },
-
-            TelemetryAuditLoggerInterface::class => function (ContainerInterface $c) {
-                $pdo = $c->get(PDO::class);
-                assert($pdo instanceof PDO);
-                return new PdoTelemetryAuditLogger($pdo);
-            },
             AuthoritativeSecurityAuditWriterInterface::class => function (ContainerInterface $c) {
                 $pdo = $c->get(PDO::class);
                 assert($pdo instanceof PDO);
@@ -1000,36 +983,6 @@ class Container
                 assert($repo instanceof AdminEmailRepository);
                 assert($validationGuard instanceof ValidationGuard);
                 return new AdminEmailVerificationController($service, $repo, $validationGuard);
-            },
-            AdminSelfAuditReaderInterface::class => function (ContainerInterface $c) {
-                $pdo = $c->get(PDO::class);
-                assert($pdo instanceof PDO);
-                return new PdoAdminSelfAuditReader($pdo);
-            },
-            AdminTargetedAuditReaderInterface::class => function (ContainerInterface $c) {
-                $pdo = $c->get(PDO::class);
-                assert($pdo instanceof PDO);
-                return new PdoAdminTargetedAuditReader($pdo);
-            },
-            AdminSecurityEventReaderInterface::class => function (ContainerInterface $c) {
-                $pdo = $c->get(PDO::class);
-                assert($pdo instanceof PDO);
-                return new PdoAdminSecurityEventReader($pdo);
-            },
-            AdminSelfAuditController::class => function (ContainerInterface $c) {
-                $selfReader = $c->get(AdminSelfAuditReaderInterface::class);
-                assert($selfReader instanceof AdminSelfAuditReaderInterface);
-                return new AdminSelfAuditController($selfReader);
-            },
-            AdminTargetedAuditController::class => function (ContainerInterface $c) {
-                $targetedReader = $c->get(AdminTargetedAuditReaderInterface::class);
-                assert($targetedReader instanceof AdminTargetedAuditReaderInterface);
-                return new AdminTargetedAuditController($targetedReader);
-            },
-            AdminSecurityEventController::class => function (ContainerInterface $c) {
-                $securityReader = $c->get(AdminSecurityEventReaderInterface::class);
-                assert($securityReader instanceof AdminSecurityEventReaderInterface);
-                return new AdminSecurityEventController($securityReader);
             },
 
             // Phase 14.3: Sessions
