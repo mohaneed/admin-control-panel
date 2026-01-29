@@ -17,7 +17,6 @@ use App\Domain\Admin\Reader\AdminEmailReaderInterface;
 use App\Domain\Admin\Reader\AdminProfileReaderInterface;
 use App\Domain\Admin\Reader\AdminQueryReaderInterface;
 use App\Domain\Contracts\ActorProviderInterface;
-use App\Domain\Contracts\AdminActivityQueryInterface;
 use App\Domain\Contracts\AdminDirectPermissionRepositoryInterface;
 use App\Domain\Contracts\AdminEmailVerificationRepositoryInterface;
 use App\Domain\Contracts\AdminIdentifierLookupInterface;
@@ -140,7 +139,6 @@ use App\Infrastructure\Reader\Admin\PdoAdminQueryReader;
 use App\Infrastructure\Reader\PDOPermissionsReaderRepository;
 use App\Infrastructure\Reader\PDORolesReaderRepository;
 use App\Infrastructure\Reader\Session\PdoSessionListReader;
-use App\Infrastructure\Repository\AdminActivityQueryRepository;
 use App\Infrastructure\Repository\AdminEmailRepository;
 use App\Infrastructure\Repository\AdminNotificationChannelRepository;
 use App\Infrastructure\Repository\AdminPasswordRepository;
@@ -165,7 +163,6 @@ use App\Infrastructure\Repository\Roles\PdoRoleRepository;
 use App\Infrastructure\Service\AdminTotpSecretStore;
 use App\Infrastructure\Service\Google2faTotpService;
 use App\Infrastructure\Updater\PDOPermissionsMetadataRepository;
-use App\Infrastructure\UX\AdminActivityMapper;
 use App\Modules\Crypto\DX\CryptoContextFactory;
 use App\Modules\Crypto\DX\CryptoDirectFactory;
 use App\Modules\Crypto\DX\CryptoProvider;
@@ -652,12 +649,6 @@ class Container
                 $pdo = $c->get(PDO::class);
                 assert($pdo instanceof PDO);
                 return new PdoAuthoritativeAuditWriter($pdo);
-            },
-            AdminActivityQueryInterface::class => function (ContainerInterface $c) {
-                $pdo = $c->get(PDO::class);
-                assert($pdo instanceof PDO);
-                $mapper = new AdminActivityMapper();
-                return new AdminActivityQueryRepository($pdo, $mapper);
             },
             FailedNotificationRepositoryInterface::class => function (ContainerInterface $c) {
                 $pdo = $c->get(PDO::class);

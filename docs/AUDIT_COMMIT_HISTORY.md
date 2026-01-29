@@ -394,6 +394,7 @@ Entries MUST NOT be rewritten or reordered.
 - docs(kernel): define canonical kernel boundaries and extension policy
 - fix(kernel-ui): enforce navigation contract boundaries
 - fix(kernel): delegate HTTP bootstrap outside AdminKernel
+- refactor(activity): remove legacy admin activity query layer
 
 ---
 
