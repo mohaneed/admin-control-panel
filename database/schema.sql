@@ -29,6 +29,15 @@ DROP TABLE IF EXISTS system_ownership;
 DROP TABLE IF EXISTS admins;
 DROP TABLE IF EXISTS system_state;
 
+DROP TABLE IF EXISTS authoritative_audit_outbox;
+DROP TABLE IF EXISTS authoritative_audit_log;
+DROP TABLE IF EXISTS audit_trail;
+DROP TABLE IF EXISTS security_signals;
+DROP TABLE IF EXISTS operational_activity;
+DROP TABLE IF EXISTS diagnostics_telemetry;
+DROP TABLE IF EXISTS delivery_operations;
+DROP TABLE IF EXISTS log_processing_checkpoints;
+
 SET FOREIGN_KEY_CHECKS=1;
 
 /* ===========================

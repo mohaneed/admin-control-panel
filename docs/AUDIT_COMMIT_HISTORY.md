@@ -409,6 +409,7 @@ Entries MUST NOT be rewritten or reordered.
 - docs(ui): add UI extensibility Phase 2 design and ADR-015
 - fix(kernel): enforce strict env root ownership for kernel usage
 - test(logging): align tests with current runtime after logging removal
+- test(schema): ensure clean logging tables state for test bootstrap
 
 ---
 
