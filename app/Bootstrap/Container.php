@@ -925,24 +925,37 @@ class Container
                 assert($view instanceof Twig);
                 return new DashboardController($view);
             },
-            TwoFactorController::class => function (ContainerInterface $c) {
-                $stepUp = $c->get(StepUpService::class);
-                $totp = $c->get(TotpServiceInterface::class);
-                $view = $c->get(Twig::class);
-
-                // Telemetry
+            \App\Application\Auth\TwoFactorEnrollmentService::class => function (ContainerInterface $c) {
+                $stepUpService = $c->get(StepUpService::class);
+                $totpService = $c->get(TotpServiceInterface::class);
                 $telemetryService = $c->get(\App\Application\Services\DiagnosticsTelemetryService::class);
 
-                assert($stepUp instanceof StepUpService);
-                assert($totp instanceof TotpServiceInterface);
-                assert($view instanceof Twig);
+                assert($stepUpService instanceof StepUpService);
+                assert($totpService instanceof TotpServiceInterface);
                 assert($telemetryService instanceof \App\Application\Services\DiagnosticsTelemetryService);
 
-                return new TwoFactorController(
-                    $stepUp,
-                    $totp,
-                    $view,
-                    $telemetryService);
+                return new \App\Application\Auth\TwoFactorEnrollmentService($stepUpService, $totpService, $telemetryService);
+            },
+            \App\Application\Auth\TwoFactorVerificationService::class => function (ContainerInterface $c) {
+                $stepUpService = $c->get(StepUpService::class);
+                $telemetryService = $c->get(\App\Application\Services\DiagnosticsTelemetryService::class);
+
+                assert($stepUpService instanceof StepUpService);
+                assert($telemetryService instanceof \App\Application\Services\DiagnosticsTelemetryService);
+
+                return new \App\Application\Auth\TwoFactorVerificationService($stepUpService, $telemetryService);
+
+            },
+            TwoFactorController::class => function (ContainerInterface $c) {
+                $enrollmentService = $c->get(\App\Application\Auth\TwoFactorEnrollmentService::class);
+                $verificationService = $c->get(\App\Application\Auth\TwoFactorVerificationService::class);
+                $view = $c->get(Twig::class);
+
+                assert($enrollmentService instanceof \App\Application\Auth\TwoFactorEnrollmentService);
+                assert($verificationService instanceof \App\Application\Auth\TwoFactorVerificationService);
+                assert($view instanceof Twig);
+
+                return new TwoFactorController($enrollmentService, $verificationService, $view);
             },
             AdminNotificationPreferenceController::class => function (ContainerInterface $c) {
                 $reader = $c->get(AdminNotificationPreferenceReaderInterface::class);

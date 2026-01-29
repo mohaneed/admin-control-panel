@@ -4,31 +4,30 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Web;
 
-use App\Application\Services\DiagnosticsTelemetryService;
+use App\Application\Auth\DTO\TwoFactorSetupRequestDTO;
+use App\Application\Auth\DTO\TwoFactorVerifyRequestDTO;
+use App\Application\Auth\TwoFactorEnrollmentService;
+use App\Application\Auth\TwoFactorVerificationService;
 use App\Context\AdminContext;
 use App\Context\RequestContext;
-use App\Domain\Contracts\TotpServiceInterface;
 use App\Domain\Enum\Scope;
-use App\Domain\Service\StepUpService;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\Views\Twig;
-use Throwable;
 
 readonly class TwoFactorController
 {
     public function __construct(
-        private StepUpService $stepUpService,
-        private TotpServiceInterface $totpService,
+        private TwoFactorEnrollmentService $enrollmentService,
+        private TwoFactorVerificationService $verificationService,
         private Twig $view,
-        private DiagnosticsTelemetryService $telemetryService
     ) {
     }
 
     public function setup(Request $request, Response $response): Response
     {
-        $secret = $this->totpService->generateSecret();
-        return $this->view->render($response, '2fa-setup.twig', ['secret' => $secret]);
+        $page = $this->enrollmentService->buildSetupPage();
+        return $this->view->render($response, '2fa-setup.twig', ['secret' => $page->secret]);
     }
 
     public function doSetup(Request $request, Response $response): Response
@@ -53,7 +52,6 @@ readonly class TwoFactorController
             $response->getBody()->write('Unauthorized');
             return $response->withStatus(401);
         }
-        $adminId = $adminContext->adminId;
 
         $sessionId = $this->getSessionIdFromRequest($request);
         if ($sessionId === null) {
@@ -66,33 +64,24 @@ readonly class TwoFactorController
             throw new \RuntimeException("Request context missing");
         }
 
-        $enabled = $this->stepUpService->enableTotp($adminId, $sessionId, $secret, $code, $context);
+        $result = $this->enrollmentService->enableTotp(
+            new TwoFactorSetupRequestDTO(
+                adminId: $adminContext->adminId,
+                sessionId: $sessionId,
+                secret: $secret,
+                code: $code,
+                requestContext: $context,
+            )
+        );
 
-        // Telemetry (best-effort): Web UI 2FA setup mutation
-        try {
-            $this->telemetryService->recordEvent(
-                eventKey: 'resource_mutation',
-                severity: $enabled ? 'INFO' : 'WARNING',
-                actorType: 'ADMIN',
-                actorId: $adminId,
-                metadata: [
-                    'action' => '2fa_setup',
-                    'result' => $enabled ? 'success' : 'failure',
-                    'request_id' => $context->requestId,
-                    'ip_address' => $context->ipAddress,
-                    'user_agent' => $context->userAgent,
-                    'route_name' => $context->routeName,
-                ]
-            );
-        } catch (Throwable) {
-            // swallow — telemetry must never affect request flow
-        }
-
-        if ($enabled) {
+        if ($result->success) {
             return $response->withHeader('Location', '/dashboard')->withStatus(302);
         }
 
-        return $this->view->render($response, '2fa-setup.twig', ['error' => 'Invalid code', 'secret' => $secret]);
+        return $this->view->render($response, '2fa-setup.twig', [
+            'error' => 'Invalid code',
+            'secret' => $result->secret,
+        ]);
     }
 
     public function verify(Request $request, Response $response): Response
@@ -127,7 +116,6 @@ readonly class TwoFactorController
         }
 
         $code = $data['code'] ?? '';
-
         if (!is_string($code)) {
             return $this->view->render($response, $template, ['error' => 'Invalid input']);
         }
@@ -137,7 +125,6 @@ readonly class TwoFactorController
             $response->getBody()->write('Unauthorized');
             return $response->withStatus(401);
         }
-        $adminId = $adminContext->adminId;
 
         $sessionId = $this->getSessionIdFromRequest($request);
         if ($sessionId === null) {
@@ -155,36 +142,15 @@ readonly class TwoFactorController
         $returnTo = $this->resolveReturnTo($request);
         // ADDITIVE END
 
-//        $result = $this->stepUpService->verifyTotp($adminId, $sessionId, $code, $context, Scope::LOGIN);
-        $result = $this->stepUpService->verifyTotp(
-            $adminId,
-            $sessionId,
-            $code,
-            $context,
-            $requestedScope
+        $result = $this->verificationService->verifyTotp(
+            new TwoFactorVerifyRequestDTO(
+                adminId: $adminContext->adminId,
+                sessionId: $sessionId,
+                code: $code,
+                requestedScope: $requestedScope,
+                requestContext: $context,
+            )
         );
-
-        // Telemetry (best-effort): Web UI step-up verification
-        try {
-            $this->telemetryService->recordEvent(
-                eventKey: $result->success ? 'auth_stepup_success' : 'auth_stepup_failure',
-                severity: $result->success ? 'INFO' : 'WARNING',
-                actorType: 'ADMIN',
-                actorId: $adminId,
-                metadata: [
-                    'scope' => $requestedScope->value,
-                    'method' => 'totp',
-                    'result' => $result->success ? 'success' : 'failure',
-                    'error_reason' => $result->success ? null : ($result->errorReason ?? 'unknown'),
-                    'request_id' => $context->requestId,
-                    'ip_address' => $context->ipAddress,
-                    'user_agent' => $context->userAgent,
-                    'route_name' => $context->routeName,
-                ]
-            );
-        } catch (Throwable) {
-            // swallow — telemetry must never affect request flow
-        }
 
         if ($result->success) {
             // ADDITIVE START
@@ -196,8 +162,9 @@ readonly class TwoFactorController
             return $response->withHeader('Location', '/dashboard')->withStatus(302);
         }
 
-
-        return $this->view->render($response, $template, ['error' => $result->errorReason ?? 'Invalid code']);
+        return $this->view->render($response, $template, [
+            'error' => $result->errorReason ?? 'Invalid code',
+        ]);
     }
 
     private function getSessionIdFromRequest(Request $request): ?string
@@ -287,5 +254,4 @@ readonly class TwoFactorController
 
         return $returnTo;
     }
-
 }
