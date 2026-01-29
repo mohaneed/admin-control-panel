@@ -411,6 +411,7 @@ Entries MUST NOT be rewritten or reordered.
 - test(logging): align tests with current runtime after logging removal
 - test(schema): ensure clean logging tables state for test bootstrap
 - test(db): execute MySQL schema as-is during test bootstrap
+- fix(kernel): remove middleware duplication and restore kernel-safe wiring
 
 ---
 

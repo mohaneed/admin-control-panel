@@ -13,12 +13,17 @@ return function (App $app) {
     AdminRoutes::register($app);
 
     // IMPORTANT:
-    // InputNormalizationMiddleware MUST run before validation and guards.
-    // It is added last to ensure it executes first in Slim's middleware stack.
+    // Slim executes middleware in LIFO order (Last Added = First Executed).
+    //
+    // Desired Stack (Outer -> Inner):
+    // 1. RequestId (Infrastructure, generates ID)
+    // 2. RequestContext (Infrastructure, needs ID)
+    // 3. Telemetry (Infrastructure, needs Context)
+    // ... Handler ...
+    //
+    // Therefore, we add them in REVERSE order:
 
-    $app->add(\App\Http\Middleware\RecoveryStateMiddleware::class);
-    $app->add(\App\Modules\InputNormalization\Middleware\InputNormalizationMiddleware::class);
+    $app->add(\App\Http\Middleware\HttpRequestTelemetryMiddleware::class);
     $app->add(\App\Http\Middleware\RequestContextMiddleware::class);
     $app->add(\App\Http\Middleware\RequestIdMiddleware::class);
-    $app->add(\App\Http\Middleware\HttpRequestTelemetryMiddleware::class);
 };
