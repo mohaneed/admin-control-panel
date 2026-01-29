@@ -410,6 +410,7 @@ Entries MUST NOT be rewritten or reordered.
 - fix(kernel): enforce strict env root ownership for kernel usage
 - test(logging): align tests with current runtime after logging removal
 - test(schema): ensure clean logging tables state for test bootstrap
+- test(db): execute MySQL schema as-is during test bootstrap
 
 ---
 

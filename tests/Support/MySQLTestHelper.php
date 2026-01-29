@@ -80,39 +80,22 @@ final class MySQLTestHelper
             throw new RuntimeException('Failed to read schema file: ' . $schemaPath);
         }
 
-        // Remove comments
-        $sql = (string) preg_replace('!/\*.*?\*/!s', '', $sql);
-        $sql = (string) preg_replace('#^\s*--.*$#m', '', $sql);
+        try {
+            // Disable FK checks during bootstrap
+            $pdo->exec('SET FOREIGN_KEY_CHECKS=0');
 
-        // Remove COMMENT clauses
-        $sql = (string) preg_replace("/COMMENT\s*=\s*'[^']*'/s", '', $sql);
+            // Execute schema as-is (MySQL native)
+            $pdo->exec($sql);
 
-        // Inject IF NOT EXISTS
-        $sql = (string) preg_replace('/CREATE TABLE (?!IF NOT EXISTS)/i', 'CREATE TABLE IF NOT EXISTS ', $sql);
-
-        $statements = explode(';', $sql);
-
-        // Temporarily disable FK checks to allow dropping/re-creating in any order
-        $pdo->exec('SET FOREIGN_KEY_CHECKS=0');
-
-        foreach ($statements as $statement) {
-            $statement = trim($statement);
-            if ($statement === '') {
-                continue;
-            }
-
-            try {
-                $pdo->exec($statement);
-            } catch (PDOException $e) {
-                throw new RuntimeException(
-                    "SQL Error in bootstrap:\nStatement: $statement\nError: " . $e->getMessage(),
-                    0,
-                    $e
-                );
-            }
+            $pdo->exec('SET FOREIGN_KEY_CHECKS=1');
+        } catch (PDOException $e) {
+            throw new RuntimeException(
+                "SQL Error in bootstrap while executing schema.sql\n" .
+                "Error: " . $e->getMessage(),
+                0,
+                $e
+            );
         }
-
-        $pdo->exec('SET FOREIGN_KEY_CHECKS=1');
     }
 
     public static function truncate(string $table): void
