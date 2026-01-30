@@ -432,6 +432,7 @@ Entries MUST NOT be rewritten or reordered.
 - fix(ui-admins): resolve capability checks against actor admin context
 - feat(ui-admins): enforce capability-based rendering for admin emails UI
 - feat(ui-sessions): add capability-based actions and admin links
+- test(kernel): add env-derived TestKernelFactory for DTO-based boot
 
 ---
 

@@ -7,7 +7,6 @@ namespace Tests\Support;
 use App\Domain\Contracts\ClockInterface;
 use App\Kernel\AdminKernel;
 use App\Kernel\KernelOptions;
-use App\Kernel\DTO\AdminRuntimeConfigDTO;
 use DateTimeImmutable;
 use DateTimeZone;
 use DI\Container as DIContainer;
@@ -16,7 +15,6 @@ use PHPUnit\Framework\TestCase;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\App;
-use Slim\Factory\AppFactory;
 use Slim\Psr7\Factory\ServerRequestFactory;
 
 abstract class UnifiedEndpointBase extends TestCase
@@ -31,13 +29,14 @@ abstract class UnifiedEndpointBase extends TestCase
         parent::setUp();
 
         // 1️⃣ Initialize Test Database (shared PDO)
+        // Note: MySQLTestHelper now reads directly from ENV (populated by bootstrap.php)
         $this->pdo = MySQLTestHelper::pdo();
         $this->assertInstanceOf(PDO::class, $this->pdo);
 
-        // 2️⃣ Build Runtime Config from ENV (ENV already loaded by phpunit bootstrap)
-        $runtimeConfig = AdminRuntimeConfigDTO::fromArray($_ENV);
+        // 2️⃣ Build Runtime Config via Factory (DERIVED FROM ENV)
+        $runtimeConfig = TestKernelFactory::createRuntimeConfig();
 
-        // 3️⃣ Kernel Options
+        // 4️⃣ Kernel Options
         $options = new KernelOptions();
         $options->runtimeConfig = $runtimeConfig;
         $options->registerInfrastructureMiddleware = true;
@@ -56,10 +55,10 @@ abstract class UnifiedEndpointBase extends TestCase
             ]);
         };
 
-        // 4️⃣ Boot Kernel
+        // 5️⃣ Boot Kernel
         $this->app = AdminKernel::bootWithOptions($options);
 
-        // 5️⃣ Override PDO in container to use test PDO
+        // 6️⃣ Override PDO in container to use test PDO
         $container = $this->app->getContainer();
         if ($container instanceof DIContainer) {
             $container->set(PDO::class, $this->pdo);
