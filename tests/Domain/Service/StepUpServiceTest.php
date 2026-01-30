@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Domain\Service;
 
 use App\Context\RequestContext;
+use App\Domain\Contracts\ClockInterface;
 use App\Domain\Contracts\StepUpGrantRepositoryInterface;
 use App\Domain\Contracts\AdminTotpSecretStoreInterface;
 use App\Domain\Contracts\TotpServiceInterface;
@@ -13,6 +14,7 @@ use App\Domain\Enum\Scope;
 use App\Domain\Service\RecoveryStateService;
 use App\Domain\Service\StepUpService;
 use DateTimeImmutable;
+use DateTimeZone;
 use PDO;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -24,6 +26,7 @@ class StepUpServiceTest extends TestCase
     private TotpServiceInterface&MockObject $totpService;
     private RecoveryStateService&MockObject $recoveryState;
     private PDO&MockObject $pdo;
+    private ClockInterface&MockObject $clock;
 
     private StepUpService $service;
 
@@ -34,6 +37,14 @@ class StepUpServiceTest extends TestCase
         $this->totpService = $this->createMock(TotpServiceInterface::class);
         $this->recoveryState = $this->createMock(RecoveryStateService::class);
         $this->pdo = $this->createMock(PDO::class);
+        $this->clock = $this->createMock(ClockInterface::class);
+
+        // ✅ Deterministic clock (no real-time, no system TZ)
+        $tz = new DateTimeZone('Africa/Cairo');
+        $fixedNow = new DateTimeImmutable('2024-01-01 10:00:00', $tz);
+
+        $this->clock->method('getTimezone')->willReturn($tz);
+        $this->clock->method('now')->willReturn($fixedNow);
 
         // PDO transaction stubs
         $this->pdo->method('beginTransaction')->willReturn(true);
@@ -45,7 +56,8 @@ class StepUpServiceTest extends TestCase
             $this->totpSecretStore,
             $this->totpService,
             $this->recoveryState,
-            $this->pdo
+            $this->pdo,
+            $this->clock
         );
     }
 
@@ -61,10 +73,6 @@ class StepUpServiceTest extends TestCase
     public function testVerifyTotpIssuesPrimaryGrantWhenValid(): void
     {
         $adminId = 1;
-        $sessionId = 'session123';
-        // StepUpService logic: $sessionId = hash('sha256', $token);
-        // So the grant saved will have the hashed token as session ID.
-        // The test was passing 'session123' as token, so let's keep consistent.
 
         $token = 'session123_token';
         $expectedSessionId = hash('sha256', $token);
@@ -90,8 +98,8 @@ class StepUpServiceTest extends TestCase
             ->method('save')
             ->with($this->callback(function (StepUpGrant $grant) use ($adminId, $expectedSessionId) {
                 return $grant->adminId === $adminId
-                    && $grant->sessionId === $expectedSessionId
-                    && $grant->scope === Scope::LOGIN;
+                       && $grant->sessionId === $expectedSessionId
+                       && $grant->scope === Scope::LOGIN;
             }));
 
         $result = $this->service->verifyTotp($adminId, $token, $code, $context);
@@ -124,8 +132,8 @@ class StepUpServiceTest extends TestCase
             ->method('save')
             ->with($this->callback(function (StepUpGrant $grant) use ($adminId, $expectedSessionId, $scope) {
                 return $grant->adminId === $adminId
-                    && $grant->sessionId === $expectedSessionId
-                    && $grant->scope === $scope;
+                       && $grant->sessionId === $expectedSessionId
+                       && $grant->scope === $scope;
             }));
 
         $result = $this->service->verifyTotp($adminId, $token, $code, $context, $scope);
@@ -143,8 +151,6 @@ class StepUpServiceTest extends TestCase
             ->method('retrieve')
             ->willReturn(null);
 
-        // Security logging removed from test expectation as recorder dependency is removed
-
         $result = $this->service->verifyTotp(1, 'token', 'c', $context);
         $this->assertFalse($result->success);
         $this->assertEquals('TOTP not enrolled', $result->errorReason);
@@ -160,8 +166,6 @@ class StepUpServiceTest extends TestCase
         $this->totpSecretStore->method('retrieve')->willReturn('secret');
         $this->totpService->method('verify')->willReturn(false);
 
-        // Security logging removed from test expectation as recorder dependency is removed
-
         $result = $this->service->verifyTotp(1, 'token', 'c', $context);
         $this->assertFalse($result->success);
     }
@@ -169,25 +173,26 @@ class StepUpServiceTest extends TestCase
     public function testHasGrantReturnsTrueForValidGrant(): void
     {
         $context = $this->createRequestContext();
-        // hash of 'token'
         $token = 'token';
         $sessionId = hash('sha256', $token);
 
-        // Mock getRiskHash
-        // The service uses hash('sha256', $ip . '|' . $ua);
         $riskHash = hash('sha256', $context->ipAddress . '|' . $context->userAgent);
 
         $grant = new StepUpGrant(
-            1, $sessionId, Scope::SECURITY,
+            1,
+            $sessionId,
+            Scope::SECURITY,
             $riskHash,
-            new DateTimeImmutable(),
-            new DateTimeImmutable('+1 hour'),
+            new DateTimeImmutable('2024-01-01 09:00:00', new DateTimeZone('Africa/Cairo')),
+            new DateTimeImmutable('2024-01-01 11:00:00', new DateTimeZone('Africa/Cairo')),
             false
         );
 
         $this->grantRepository->method('find')->willReturn($grant);
 
-        $this->assertTrue($this->service->hasGrant(1, $token, Scope::SECURITY, $context));
+        $this->assertTrue(
+            $this->service->hasGrant(1, $token, Scope::SECURITY, $context)
+        );
     }
 
     public function testHasGrantReturnsFalseForExpiredGrant(): void
@@ -195,18 +200,23 @@ class StepUpServiceTest extends TestCase
         $context = $this->createRequestContext();
         $token = 'token';
         $sessionId = hash('sha256', $token);
+
         $riskHash = hash('sha256', $context->ipAddress . '|' . $context->userAgent);
 
         $grant = new StepUpGrant(
-            1, $sessionId, Scope::SECURITY,
+            1,
+            $sessionId,
+            Scope::SECURITY,
             $riskHash,
-            new DateTimeImmutable('-2 hours'),
-            new DateTimeImmutable('-1 hour'),
+            new DateTimeImmutable('2023-12-31 06:00:00', new DateTimeZone('Africa/Cairo')),
+            new DateTimeImmutable('2023-12-31 07:00:00', new DateTimeZone('Africa/Cairo')),
             false
         );
 
         $this->grantRepository->method('find')->willReturn($grant);
 
-        $this->assertFalse($this->service->hasGrant(1, $token, Scope::SECURITY, $context));
+        $this->assertFalse(
+            $this->service->hasGrant(1, $token, Scope::SECURITY, $context)
+        );
     }
 }

@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Support;
 
+use App\Domain\Contracts\ClockInterface;
 use App\Kernel\AdminKernel;
 use App\Kernel\KernelOptions;
 use App\Kernel\DTO\AdminRuntimeConfigDTO;
+use DateTimeImmutable;
+use DateTimeZone;
 use DI\Container as DIContainer;
 use PDO;
 use PHPUnit\Framework\TestCase;
@@ -39,6 +42,19 @@ abstract class UnifiedEndpointBase extends TestCase
         $options->runtimeConfig = $runtimeConfig;
         $options->registerInfrastructureMiddleware = true;
         $options->strictInfrastructure = true;
+
+        $options->builderHook = function ($containerBuilder): void {
+            $tz = new DateTimeZone('Africa/Cairo');
+
+            $containerBuilder->addDefinitions([
+                ClockInterface::class => function () use ($tz) {
+                    return new TestClock(
+                        new DateTimeImmutable('2024-01-01 10:00:00', $tz),
+                        $tz
+                    );
+                },
+            ]);
+        };
 
         // 4️⃣ Boot Kernel
         $this->app = AdminKernel::bootWithOptions($options);
