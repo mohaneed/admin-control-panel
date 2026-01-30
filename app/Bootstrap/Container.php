@@ -1026,8 +1026,10 @@ class Container
             },
             SessionListController::class => function (ContainerInterface $c) {
                 $twig = $c->get(Twig::class);
+                $authorizationService = $c->get(AuthorizationService::class);
                 assert($twig instanceof Twig);
-                return new SessionListController($twig);
+                assert($authorizationService instanceof AuthorizationService);
+                return new SessionListController($twig, $authorizationService);
             },
             SessionQueryController::class => function (ContainerInterface $c) {
                 $reader = $c->get(SessionListReaderInterface::class);

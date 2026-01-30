@@ -5,8 +5,8 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-    const headers = ["User ID", "Session ID", "Status", "Expires At"];
-    const rows = ["admin_id", "session_id", "status", "expires_at"];
+    const headers = ["User ID", "Session ID", "Status", "Expires At", "Actions"];
+    const rows = ["admin_id", "session_id", "status", "expires_at", "actions"];
 
     const searchForm = document.getElementById('sessions-search-form');
     const resetBtn = document.getElementById('btn-reset');
@@ -68,6 +68,56 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     };
 
+    /**
+     * Custom renderer for admin_id column
+     * Clickable link to admin profile (if capability exists)
+     */
+    const adminIdRenderer = (value, row) => {
+        if (!value) return '<span class="text-gray-400 italic">N/A</span>';
+
+        // Check if user has can_view_admin capability
+        const canViewAdmin = window.sessionsCapabilities?.can_view_admin ?? false;
+
+        if (canViewAdmin) {
+            return `<a href="/admins/${value}/profile" 
+                       class="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                       title="View admin profile">
+                       ${value}
+                    </a>`;
+        } else {
+            return `<span class="text-gray-700 font-medium">${value}</span>`;
+        }
+    };
+
+    /**
+     * Custom renderer for actions column
+     * Shows revoke button for active sessions (not current, not expired)
+     */
+    const actionsRenderer = (value, row) => {
+        const isCurrent = row.is_current === true || row.is_current === 1 || row.is_current === "1";
+        const status = row.status?.toLowerCase();
+
+        // Check if user has can_revoke_id capability
+        const canRevokeId = window.sessionsCapabilities?.can_revoke_id ?? false;
+
+        // Show revoke button only if:
+        // 1. User has capability
+        // 2. Session is active
+        // 3. Session is not current
+        if (canRevokeId && status === 'active' && !isCurrent) {
+            return `
+                <button class="text-xs px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 transition-all duration-300 revoke-session-btn"
+                        data-session-id="${row.session_id}"
+                        title="Revoke this session">
+                    Revoke
+                </button>
+            `;
+        }
+
+        // Otherwise show dash or empty
+        return '<span class="text-gray-400">—</span>';
+    };
+
     // ========================================================================
     // Initialize
     // ========================================================================
@@ -114,6 +164,18 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.target.classList.contains('session-id-copy')) {
                 const sessionId = e.target.getAttribute('data-session-id');
                 copyToClipboard(sessionId, e.target);
+            }
+
+            // ✅ Setup click handler for revoke button in each row
+            if (e.target.classList.contains('revoke-session-btn')) {
+                const sessionId = e.target.getAttribute('data-session-id');
+                if (sessionId && confirm('Are you sure you want to revoke this session?')) {
+                    revokeSession(sessionId).then((success) => {
+                        if (success) {
+                            loadSessions(); // Reload table
+                        }
+                    });
+                }
             }
         });
     }
@@ -417,17 +479,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (typeof createTable === 'function') {
             try {
+                // ✅ Check if user has can_revoke_bulk capability
+                const canRevokeBulk = window.sessionsCapabilities?.can_revoke_bulk ?? false;
+
                 const result = await createTable(
                     "sessions/query",
                     params,
                     headers,
                     rows,
-                    true,
+                    canRevokeBulk, // ✅ Show checkboxes only if user has capability
                     'session_id',
                     updateSelectionCount,
                     {
                         status: statusRenderer,
-                        session_id: sessionIdRenderer
+                        session_id: sessionIdRenderer,
+                        admin_id: adminIdRenderer,
+                        actions: actionsRenderer
                     },
                     null, // selectableIds - will set in second call
                     getSessionsPaginationInfo // ✅ Pass callback
@@ -459,12 +526,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         params,
                         headers,
                         rows,
-                        true,
+                        canRevokeBulk, // ✅ Show checkboxes only if user has capability
                         'session_id',
                         updateSelectionCount,
                         {
                             status: statusRenderer,
-                            session_id: sessionIdRenderer
+                            session_id: sessionIdRenderer,
+                            admin_id: adminIdRenderer,
+                            actions: actionsRenderer
                         },
                         selectableIds,
                         getSessionsPaginationInfo // ✅ Pass callback again

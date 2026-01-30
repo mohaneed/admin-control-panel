@@ -20,6 +20,30 @@
 			</ol>
 		</nav>
 	</div>
+    {# ✅ Inject capabilities for JavaScript #}
+    {#
+    Capabilities are computed server-side by AuthorizationService
+    and control what UI elements are visible/enabled.
+
+    Available capabilities:
+    - can_revoke_bulk: Show "Revoke" button in actions (POST /api/sessions/revoke-bulk)
+    - can_revoke_id: Show "revoke" button within table in actions (POST /api/sessions/{session_id})
+    - can_view_admin: Show "Link" button within table in actions (GET /admins/{id}/profile)
+
+    UI Rules:
+    ❌ Twig MUST NOT check permissions by name
+    ❌ JavaScript MUST NOT infer authorization
+    ✅ Backend capabilities are the single UI contract
+    ✅ API authorization is always enforced server-side
+    #}
+    <script>
+        window.sessionsCapabilities = {
+            can_view_admin: {{ capabilities.can_view_admin ?? false ? 'true' : 'false' }},
+            can_revoke_id: {{ capabilities.can_revoke_id ?? false ? 'true' : 'false' }},
+            can_revoke_bulk: {{ capabilities.can_revoke_bulk ?? false ? 'true' : 'false' }},
+        };
+        console.log('🔐 Sessions Capabilities Injected:', window.sessionsCapabilities);
+    </script>
 
     <div class=" px-0 py-2">
 		<!-- Header -->
@@ -72,9 +96,13 @@
 						<button type="button" id="btn-reset" class="text-xs px-4 py-1 bg-white text-gray-600 border border-gray-600 rounded-md hover:bg-gray-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2">
 							Reset
 						</button>
+						{# ✅ Show "Revoke" button only if user has can_revoke_bulk capability #}
+						{# NOTE: This capability should be provided by the backend. If missing, add it to AuthorizationService #}
+						{% if capabilities.can_revoke_bulk ?? false %}
 						<button class="text-xs px-4 py-1 bg-white text-red-600 border border-red-600 rounded-md hover:bg-red-600 hover:text-white transition-all duration-300 cursor-not-allowed opacity-50" id="btn-bulk-revoke" disabled>
 							Revoke (<span id="selected-count" class="font-semibold">0</span>)
 						</button>
+						{% endif %}
 					</div>
 				</form>
 			</div>

@@ -431,6 +431,7 @@ Entries MUST NOT be rewritten or reordered.
 - feat(ui-admins): gate admin profile sections behind capability flags
 - fix(ui-admins): resolve capability checks against actor admin context
 - feat(ui-admins): enforce capability-based rendering for admin emails UI
+- feat(ui-sessions): add capability-based actions and admin links
 
 ---
 
