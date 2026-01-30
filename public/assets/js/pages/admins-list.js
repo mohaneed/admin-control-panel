@@ -2,12 +2,32 @@
  * Admins Page - Admin Management
  * Controls ALL params structure and handles admin-specific logic
  * Follows Canonical LIST / QUERY Contract (LOCKED)
+ *
+ * 🔐 AUTHORIZATION SYSTEM:
+ * - Capabilities are injected from server-side (window.adminsCapabilities)
+ * - can_create: Controls visibility of "Add Admin" button
+ * - can_view_admin: Controls visibility of "Actions" column and View buttons
+ * - Authorization is ALWAYS enforced server-side at API level
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-    // ✅ Headers match API response fields (removed email from display, added Actions)
-    const headers = ["ID", "Display Name", "Status", "Created At", "Actions"];
-    const rows = ["id", "display_name", "status", "created_at", "actions"];
+    // ✅ Check capabilities before defining table structure
+    const canViewAdmin = window.adminsCapabilities?.can_view_admin ?? false;
+    const canCreate = window.adminsCapabilities?.can_create ?? false;
+
+    console.log('🔐 Admins Capabilities:', {
+        can_view_admin: canViewAdmin,
+        can_create: canCreate
+    });
+
+    // ✅ Define headers and rows based on can_view_admin capability
+    const headers = canViewAdmin
+        ? ["ID", "Display Name", "Status", "Created At", "Actions"]
+        : ["ID", "Display Name", "Status", "Created At"];
+
+    const rows = canViewAdmin
+        ? ["id", "display_name", "status", "created_at", "actions"]
+        : ["id", "display_name", "status", "created_at"];
 
     const searchForm = document.getElementById('admins-search-form');
     const resetBtn = document.getElementById('btn-reset');
@@ -56,10 +76,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * Custom renderer for ID column
-     * Clickable link to admin profile
+     * Clickable link to admin profile (only if can_view_admin capability exists)
      */
     const idRenderer = (value, row) => {
         if (!value) return '<span class="text-gray-400 italic">N/A</span>';
+
+        // ✅ Check capability
+        const canViewAdmin = window.adminsCapabilities?.can_view_admin ?? false;
+
+        if (!canViewAdmin) {
+            // Show ID without link
+            return `<span class="font-mono text-sm text-gray-800 font-medium">#${value}</span>`;
+        }
+
         return `
             <a href="/admins/${value}/profile" 
                class="font-mono text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer font-medium"
@@ -71,14 +100,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * Custom renderer for display_name column
-     * Clickable link to admin profile
+     * Clickable link to admin profile (only if can_view_admin capability exists)
      */
     const displayNameRenderer = (value, row) => {
         if (!value) return '<span class="text-gray-400 italic">N/A</span>';
+
         const adminId = row.id;
-        if (!adminId) {
+
+        // ✅ Check capability
+        const canViewAdmin = window.adminsCapabilities?.can_view_admin ?? false;
+
+        if (!canViewAdmin || !adminId) {
+            // Show name without link
             return `<span class="text-sm font-medium text-gray-800">${value}</span>`;
         }
+
         return `
             <a href="/admins/${adminId}/profile" 
                class="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
@@ -99,6 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /**
      * Custom renderer for actions column
      * View Profile button
+     * Note: This column only appears if can_view_admin capability is true
      */
     const actionsRenderer = (value, row) => {
         const adminId = row.id;
@@ -434,6 +471,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (typeof createTable === 'function') {
             try {
+                // ✅ Build renderers object based on capabilities
+                const canViewAdmin = window.adminsCapabilities?.can_view_admin ?? false;
+
+                const renderers = {
+                    id: idRenderer,
+                    display_name: displayNameRenderer,
+                    status: statusRenderer,
+                    created_at: createdAtRenderer
+                };
+
+                // Only add actions renderer if column exists
+                if (canViewAdmin) {
+                    renderers.actions = actionsRenderer;
+                }
+
                 const result = await createTable(
                     "admins/query",
                     params,
@@ -442,13 +494,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     false, // ✅ No selection for admins (read-only list)
                     'id',
                     null, // No selection callback
-                    {
-                        id: idRenderer,
-                        display_name: displayNameRenderer,
-                        status: statusRenderer,
-                        created_at: createdAtRenderer,
-                        actions: actionsRenderer
-                    },
+                    renderers,
                     null, // No selectable IDs
                     getAdminsPaginationInfo // ✅ Pass callback
                 );

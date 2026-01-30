@@ -421,6 +421,7 @@ Entries MUST NOT be rewritten or reordered.
 - refactor(kernel): extract runtime configuration from env into AdminRuntimeConfigDTO
 - test(integration): align admin creation tests with HTTP permission contract
 - feat(ui-permissions): inject backend-calculated capabilities into permissions UI
+- feat(ui-admins): inject server-side authorization capabilities into Admins UI
 
 ---
 

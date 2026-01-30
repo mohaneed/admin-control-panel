@@ -854,17 +854,20 @@ class Container
                 $profileUpdateService = $c->get(AdminProfileUpdateService::class);
                 $emailReaderInterface = $c->get(AdminEmailReaderInterface::class);
                 $basicInfoReaderInterface = $c->get(AdminBasicInfoReaderInterface::class);
+                $authorizationService = $c->get(AuthorizationService::class);
                 assert($view instanceof Twig);
                 assert($profileReader instanceof AdminProfileReaderInterface);
                 assert($profileUpdateService instanceof AdminProfileUpdateService);
                 assert($emailReaderInterface instanceof AdminEmailReaderInterface);
                 assert($basicInfoReaderInterface instanceof AdminBasicInfoReaderInterface);
+                assert($authorizationService instanceof AuthorizationService);
                 return new UiAdminsController(
                     $view,
                     $profileReader,
                     $profileUpdateService,
                     $emailReaderInterface,
-                    $basicInfoReaderInterface
+                    $basicInfoReaderInterface,
+                    $authorizationService,
                 );
             },
             UiDashboardController::class => function (ContainerInterface $c) {

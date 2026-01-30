@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Ui;
 
 use App\Application\Admin\AdminProfileUpdateService;
+use App\Context\AdminContext;
 use App\Domain\Admin\Reader\AdminBasicInfoReaderInterface;
 use App\Domain\Admin\Reader\AdminEmailReaderInterface;
 use App\Domain\Admin\Reader\AdminProfileReaderInterface;
+use App\Domain\Service\AuthorizationService;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use RuntimeException;
@@ -25,12 +27,23 @@ readonly class UiAdminsController
         private AdminProfileUpdateService $profileUpdateService,
         private AdminEmailReaderInterface $emailReader,
         private AdminBasicInfoReaderInterface $basicInfoReader,
+        private AuthorizationService $authorizationService,
     ) {
     }
 
     public function index(Request $request, Response $response): Response
     {
-        return $this->view->render($response, 'pages/admins.twig');
+        /** @var AdminContext $context */
+        $context = $request->getAttribute(AdminContext::class);
+        $adminId = $context->adminId;
+
+        $capabilities = [
+            'can_create'       => $this->authorizationService->hasPermission($adminId, 'admin.create.api'),
+            'can_view_admin'  => $this->authorizationService->hasPermission($adminId, 'admins.profile.view'),
+        ];
+        return $this->view->render($response, 'pages/admins.twig', [
+            'capabilities' => $capabilities
+        ]);
     }
 
     /**
