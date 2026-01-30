@@ -17,22 +17,30 @@
                         </svg>
                     </a>
                 </li>
-                <li>
-                    <a class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-blue-600 transition-colors" href="{{ ui.adminUrl }}admins">
-                        Admins
-                        <svg class="stroke-current" width="17" height="16" viewbox="0 0 17 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M6.0765 12.667L10.2432 8.50033L6.0765 4.33366" stroke="" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"></path>
-                        </svg>
-                    </a>
-                </li>
-                <li>
-                    <a class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-blue-600 transition-colors" href="{{ ui.adminUrl }}admins/{{ admin_id }}/profile">
-                        Profile
-                        <svg class="stroke-current" width="17" height="16" viewbox="0 0 17 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M6.0765 12.667L10.2432 8.50033L6.0765 4.33366" stroke="" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"></path>
-                        </svg>
-                    </a>
-                </li>
+                {# ✅ Show "Admins" button only if user has can_view_admins capability #}
+                {# NOTE: This capability should be provided by the backend. If missing, add it to AuthorizationService #}
+                {% if capabilities.can_view_admins ?? false %}
+                    <li>
+                        <a class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-blue-600 transition-colors" href="{{ ui.adminUrl }}admins">
+                            Admins
+                            <svg class="stroke-current" width="17" height="16" viewbox="0 0 17 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M6.0765 12.667L10.2432 8.50033L6.0765 4.33366" stroke="" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"></path>
+                            </svg>
+                        </a>
+                    </li>
+                {% endif %}
+
+                {# ✅ Show "Profile" button only if user has can_view_profile capability #}
+                {% if capabilities.can_view_profile ?? false %}
+                    <li>
+                        <a class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-blue-600 transition-colors" href="{{ ui.adminUrl }}admins/{{ admin_id }}/profile">
+                            Profile
+                            <svg class="stroke-current" width="17" height="16" viewbox="0 0 17 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M6.0765 12.667L10.2432 8.50033L6.0765 4.33366" stroke="" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"></path>
+                            </svg>
+                        </a>
+                    </li>
+                {% endif %}
                 <li class="text-sm text-gray-800">Emails</li>
             </ol>
         </nav>
@@ -57,18 +65,23 @@
                     </div>
                 </div>
 
-                <!-- Back Button -->
-                <a href="{{ ui.adminUrl }}admins/{{ admin_id }}/profile" class="inline-flex items-center gap-2 px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewbox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"/>
-                    </svg>
-                    <span>Back to Profile</span>
-                </a>
+                {# ✅ Show "Profile" button only if user has can_view_profile capability #}
+                {% if capabilities.can_view_profile ?? false %}
+                    <!-- Back Button -->
+                    <a href="{{ ui.adminUrl }}admins/{{ admin_id }}/profile" class="inline-flex items-center gap-2 px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewbox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"/>
+                        </svg>
+                        <span>Back to Profile</span>
+                    </a>
+                {% endif %}
             </div>
         </div>
     </div>
 
-    <div class="px-0 py-2">
+    {# ✅ Show "Add New Email" Section only if user has can_add capability #}
+    {% if capabilities.can_add ?? false %}
+        <div class="px-0 py-2">
         <!-- Add Email Section -->
         <div class="bg-white rounded-lg shadow border border-gray-200 mb-6">
             <div class="px-6 py-4 border-b border-gray-200">
@@ -133,39 +146,70 @@
                 </form>
             </div>
         </div>
+    {% endif %}
 
-        <!-- Emails List -->
-        <div class="bg-white rounded-lg shadow border border-gray-200">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewbox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-blue-600">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/>
-                        </svg>
-                        <h3 class="text-lg font-semibold text-gray-800">Email Addresses</h3>
-                    </div>
 
-                    <!-- Status Filter Buttons -->
-                    <div class="flex gap-2">
-                        <span data-status="all" class="cursor-pointer text-sm px-3 py-1 rounded-lg bg-blue-600 text-white transition-colors duration-200">All</span>
-                        <span data-status="pending" class="cursor-pointer text-sm px-3 py-1 rounded-lg hover:bg-blue-400 hover:text-white transition-colors duration-200">Pending</span>
-                        <span data-status="verified" class="cursor-pointer text-sm px-3 py-1 rounded-lg hover:bg-blue-400 hover:text-white transition-colors duration-200">Verified</span>
-                        <span data-status="failed" class="cursor-pointer text-sm px-3 py-1 rounded-lg hover:bg-blue-400 hover:text-white transition-colors duration-200">Failed</span>
-                        <span data-status="replaced" class="cursor-pointer text-sm px-3 py-1 rounded-lg hover:bg-blue-400 hover:text-white transition-colors duration-200">Replaced</span>
-                    </div>
+    {# ✅ Inject capabilities for JavaScript #}
+    {#
+    Capabilities are computed server-side by AuthorizationService
+    and control what UI elements are visible/enabled.
+
+    Available capabilities:
+    - can_add: Show "Add" button in actions (POST /api/admins/{id}/emails)
+    - can_verify: Show "verify" button in actions (POST /api/admin-emails/{emailId}/verify)
+    - can_replace: Show "replace" button in actions (POST /api/admin-emails/{emailId}/replace)
+    - can_fail: Show "fail" button in actions (POST /api/admin-emails/{emailId}/fail)
+    - can_restart: restart "Add" button in actions (POST /api/admin-emails/{emailId}/restart-verification)
+
+    UI Rules:
+    ❌ Twig MUST NOT check permissions by name
+    ❌ JavaScript MUST NOT infer authorization
+    ✅ Backend capabilities are the single UI contract
+    ✅ API authorization is always enforced server-side
+    #}
+    <script>
+        window.AdminEmailsCapabilities = {
+            can_add: {{ capabilities.can_add ?? false ? 'true' : 'false' }},
+            can_verify: {{ capabilities.can_verify ?? false ? 'true' : 'false' }},
+            can_replace: {{ capabilities.can_replace ?? false ? 'true' : 'false' }},
+            can_fail: {{ capabilities.can_fail ?? false ? 'true' : 'false' }},
+            can_restart: {{ capabilities.can_restart ?? false ? 'true' : 'false' }},
+        };
+        console.log('🔐 Admin Emails Capabilities Injected:', window.AdminEmailsCapabilities);
+    </script>
+
+    <!-- Emails List -->
+    <div class="bg-white rounded-lg shadow border border-gray-200">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewbox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-blue-600">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/>
+                    </svg>
+                    <h3 class="text-lg font-semibold text-gray-800">Email Addresses</h3>
                 </div>
-            </div>
 
-            <!-- Emails Container -->
-            <div class="px-6 py-6">
-                <div id="emails-container" class="space-y-4">
-                    <!-- Loading indicator -->
-                    <div class="flex items-center justify-center py-12">
-                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-                    </div>
+                <!-- Status Filter Buttons -->
+                <div class="flex gap-2">
+                    <span data-status="all" class="cursor-pointer text-sm px-3 py-1 rounded-lg bg-blue-600 text-white transition-colors duration-200">All</span>
+                    <span data-status="pending" class="cursor-pointer text-sm px-3 py-1 rounded-lg hover:bg-blue-400 hover:text-white transition-colors duration-200">Pending</span>
+                    <span data-status="verified" class="cursor-pointer text-sm px-3 py-1 rounded-lg hover:bg-blue-400 hover:text-white transition-colors duration-200">Verified</span>
+                    <span data-status="failed" class="cursor-pointer text-sm px-3 py-1 rounded-lg hover:bg-blue-400 hover:text-white transition-colors duration-200">Failed</span>
+                    <span data-status="replaced" class="cursor-pointer text-sm px-3 py-1 rounded-lg hover:bg-blue-400 hover:text-white transition-colors duration-200">Replaced</span>
                 </div>
             </div>
         </div>
+
+        <!-- Emails Container -->
+        <div class="px-6 py-6">
+            <div id="emails-container" class="space-y-4">
+                <!-- Loading indicator -->
+                <div class="flex items-center justify-center py-12">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                </div>
+            </div>
+        </div>
+    </div>
     </div>
 
 {% endblock %}

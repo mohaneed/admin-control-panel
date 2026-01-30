@@ -28,7 +28,8 @@ readonly class UiAdminsController
         private AdminEmailReaderInterface $emailReader,
         private AdminBasicInfoReaderInterface $basicInfoReader,
         private AuthorizationService $authorizationService,
-    ) {
+    )
+    {
     }
 
     public function index(Request $request, Response $response): Response
@@ -38,11 +39,12 @@ readonly class UiAdminsController
         $adminId = $context->adminId;
 
         $capabilities = [
-            'can_create'       => $this->authorizationService->hasPermission($adminId, 'admin.create.api'),
-            'can_view_admin'  => $this->authorizationService->hasPermission($adminId, 'admins.profile.view'),
+            'can_create'     => $this->authorizationService->hasPermission($adminId, 'admin.create.api'),
+            'can_view_admin' => $this->authorizationService->hasPermission($adminId, 'admins.profile.view'),
         ];
+
         return $this->view->render($response, 'pages/admins.twig', [
-            'capabilities' => $capabilities
+            'capabilities' => $capabilities,
         ]);
     }
 
@@ -76,11 +78,11 @@ readonly class UiAdminsController
         $adminId = $context->adminId;
 
         $capabilities = [
-            'can_edit'       => $this->authorizationService->hasPermission($adminId, 'admins.profile.edit'),
-            'can_view_sessions'       => $this->authorizationService->hasPermission($adminId, 'sessions.list'),
-            'can_view_emails'       => $this->authorizationService->hasPermission($adminId, 'admin.email.list'),
-            'can_view_admins'       => $this->authorizationService->hasPermission($adminId, 'admins.list'),
-            'can_view_notifications'       => $this->authorizationService->hasPermission($adminId, 'notifications.list'),
+            'can_edit'               => $this->authorizationService->hasPermission($adminId, 'admins.profile.edit'),
+            'can_view_sessions'      => $this->authorizationService->hasPermission($adminId, 'sessions.list'),
+            'can_view_emails'        => $this->authorizationService->hasPermission($adminId, 'admin.email.list'),
+            'can_view_admins'        => $this->authorizationService->hasPermission($adminId, 'admins.list'),
+            'can_view_notifications' => $this->authorizationService->hasPermission($adminId, 'notifications.list'),
         ];
         $profile['capabilities'] = $capabilities;
 
@@ -149,7 +151,7 @@ readonly class UiAdminsController
 
         $parsedBody = $request->getParsedBody();
 
-        if (!is_array($parsedBody)) {
+        if (! is_array($parsedBody)) {
             throw new RuntimeException('Invalid request body');
         }
 
@@ -166,7 +168,7 @@ readonly class UiAdminsController
         }
 
         if (array_key_exists('status', $parsedBody)) {
-            if (!is_string($parsedBody['status'])) {
+            if (! is_string($parsedBody['status'])) {
                 throw new RuntimeException('Invalid status value');
             }
 
@@ -178,17 +180,16 @@ readonly class UiAdminsController
         $requestContext = $request->getAttribute(\App\Context\RequestContext::class);
 
         if (
-            !$adminContext instanceof \App\Context\AdminContext ||
-            !$requestContext instanceof \App\Context\RequestContext
+            ! $adminContext instanceof \App\Context\AdminContext || ! $requestContext instanceof \App\Context\RequestContext
         ) {
             throw new RuntimeException('Context missing');
         }
 
         $this->profileUpdateService->update(
-            adminContext: $adminContext,
+            adminContext  : $adminContext,
             requestContext: $requestContext,
-            targetAdminId: $adminId,
-            input: $input
+            targetAdminId : $adminId,
+            input         : $input
         );
 
         // Redirect back to profile view
@@ -216,23 +217,38 @@ readonly class UiAdminsController
      */
     public function emails(Request $request, Response $response, array $args): Response
     {
-        $adminId = $this->extractAdminId($args);
+        $targetAdminId = $this->extractAdminId($args);
 
-        $displayName = $this->basicInfoReader->getDisplayName($adminId);
+        $displayName = $this->basicInfoReader->getDisplayName($targetAdminId);
 
         if ($displayName === null) {
             throw new HttpNotFoundException($request, 'Admin not found');
         }
 
-        $emails = $this->emailReader->listByAdminId($adminId);
+        $emails = $this->emailReader->listByAdminId($targetAdminId);
+
+        /** @var AdminContext $context */
+        $context = $request->getAttribute(AdminContext::class);
+        $adminId = $context->adminId;
+
+        $capabilities = [
+            'can_view_profile' => $this->authorizationService->hasPermission($adminId, 'admins.profile.view'),
+            'can_view_admins'  => $this->authorizationService->hasPermission($adminId, 'admins.list'),
+            'can_add'          => $this->authorizationService->hasPermission($adminId, 'admin.email.add'),
+            'can_verify'       => $this->authorizationService->hasPermission($adminId, 'admin.email.verify'),
+            'can_replace'      => $this->authorizationService->hasPermission($adminId, 'admin.email.replace'),
+            'can_fail'         => $this->authorizationService->hasPermission($adminId, 'admin.email.fail'),
+            'can_restart'      => $this->authorizationService->hasPermission($adminId, 'admin.email.restart'),
+        ];
 
         return $this->view->render(
             $response,
             'pages/admin/email.list.twig',
             [
-                'admin_id' => $adminId,
+                'admin_id'     => $targetAdminId,
                 'display_name' => $displayName,
-                'emails' => $emails,
+                'emails'       => $emails,
+                'capabilities' => $capabilities,
             ]
         );
     }
@@ -268,7 +284,7 @@ readonly class UiAdminsController
             $response,
             'pages/admin/sessions.list.twig',
             [
-                'admin_id' => $adminId,
+                'admin_id'     => $adminId,
                 'display_name' => $displayName,
             ]
         );
@@ -280,13 +296,13 @@ readonly class UiAdminsController
      * ===============================
      *
      * @param   array<string, string>  $args
-    */
+     */
     private function extractAdminId(array $args): int
     {
-        if (!isset($args['id']) || !ctype_digit((string) $args['id'])) {
+        if (! isset($args['id']) || ! ctype_digit((string)$args['id'])) {
             throw new RuntimeException('Invalid admin id');
         }
 
-        return (int) $args['id'];
+        return (int)$args['id'];
     }
 }

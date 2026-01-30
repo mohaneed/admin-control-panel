@@ -404,6 +404,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderEmailCard(email) {
         const status = email.status.toLowerCase();
 
+        // Get capabilities from window object (injected by Twig)
+        const capabilities = window.AdminEmailsCapabilities || {};
+
         // Status badge configuration
         let statusBadge = '';
         switch(status) {
@@ -451,62 +454,81 @@ document.addEventListener('DOMContentLoaded', () => {
                 statusBadge = `<span class="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-xs font-medium">${email.status}</span>`;
         }
 
-        // Action buttons based on status
+        // Action buttons based on status AND capabilities
         let actionButtons = '';
 
         if (status === 'pending') {
-            actionButtons = `
-                <button 
-                    data-action="verify" 
-                    data-email-id="${email.email_id}" 
-                    data-email-address="${email.email}"
-                    class="inline-flex items-center gap-1 px-3 py-1 bg-green-600 text-white text-xs rounded-md hover:bg-green-700 transition-colors duration-200"
-                    title="Mark as verified">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                    </svg>
-                    Verify
-                </button>
-                <button 
-                    data-action="fail" 
-                    data-email-id="${email.email_id}" 
-                    data-email-address="${email.email}"
-                    class="inline-flex items-center gap-1 px-3 py-1 bg-red-600 text-white text-xs rounded-md hover:bg-red-700 transition-colors duration-200"
-                    title="Mark as failed">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-                    </svg>
-                    Fail
-                </button>
-            `;
+            const buttons = [];
+
+            // Show "Verify" button only if user has can_verify capability
+            if (capabilities.can_verify) {
+                buttons.push(`
+                    <button 
+                        data-action="verify" 
+                        data-email-id="${email.email_id}" 
+                        data-email-address="${email.email}"
+                        class="inline-flex items-center gap-1 px-3 py-1 bg-green-600 text-white text-xs rounded-md hover:bg-green-700 transition-colors duration-200"
+                        title="Mark as verified">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                        </svg>
+                        Verify
+                    </button>
+                `);
+            }
+
+            // Show "Fail" button only if user has can_fail capability
+            if (capabilities.can_fail) {
+                buttons.push(`
+                    <button 
+                        data-action="fail" 
+                        data-email-id="${email.email_id}" 
+                        data-email-address="${email.email}"
+                        class="inline-flex items-center gap-1 px-3 py-1 bg-red-600 text-white text-xs rounded-md hover:bg-red-700 transition-colors duration-200"
+                        title="Mark as failed">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                        </svg>
+                        Fail
+                    </button>
+                `);
+            }
+
+            actionButtons = buttons.join('');
         } else if (status === 'verified') {
-            actionButtons = `
-                <button 
-                    data-action="replace" 
-                    data-email-id="${email.email_id}" 
-                    data-email-address="${email.email}"
-                    class="inline-flex items-center gap-1 px-3 py-1 bg-orange-600 text-white text-xs rounded-md hover:bg-orange-700 transition-colors duration-200"
-                    title="Mark as replaced">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-                    </svg>
-                    Replace
-                </button>
-            `;
+            // Show "Replace" button only if user has can_replace capability
+            if (capabilities.can_replace) {
+                actionButtons = `
+                    <button 
+                        data-action="replace" 
+                        data-email-id="${email.email_id}" 
+                        data-email-address="${email.email}"
+                        class="inline-flex items-center gap-1 px-3 py-1 bg-orange-600 text-white text-xs rounded-md hover:bg-orange-700 transition-colors duration-200"
+                        title="Mark as replaced">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                        </svg>
+                        Replace
+                    </button>
+                `;
+            }
         } else if (status === 'failed' || status === 'replaced') {
-            actionButtons = `
-                <button 
-                    data-action="restart" 
-                    data-email-id="${email.email_id}" 
-                    data-email-address="${email.email}"
-                    class="inline-flex items-center gap-1 px-3 py-1 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 transition-colors duration-200"
-                    title="Restart verification">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-                    </svg>
-                    Restart
-                </button>
-            `;
+            // Show "Restart" button only if user has can_restart capability
+            if (capabilities.can_restart) {
+                actionButtons = `
+                    <button 
+                        data-action="restart" 
+                        data-email-id="${email.email_id}" 
+                        data-email-address="${email.email}"
+                        class="inline-flex items-center gap-1 px-3 py-1 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 transition-colors duration-200"
+                        title="Restart verification">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                        </svg>
+                        Restart
+                    </button>
+                `;
+            }
         }
 
         // Verified date (if available)
