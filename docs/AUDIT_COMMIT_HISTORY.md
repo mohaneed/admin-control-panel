@@ -423,6 +423,7 @@ Entries MUST NOT be rewritten or reordered.
 - feat(ui-permissions): inject backend-calculated capabilities into permissions UI
 - feat(ui-admins): inject server-side authorization capabilities into Admins UI
 - refactor(kernel): remove global timezone mutation and introduce ClockInterface
+- fix(kernel): make Twig templates path injectable for kernel embedding
 
 ---
 
