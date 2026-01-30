@@ -5,20 +5,56 @@ declare(strict_types=1);
 require __DIR__ . '/../vendor/autoload.php';
 
 use App\Bootstrap\Container;
+use App\Kernel\DTO\AdminRuntimeConfigDTO;
+use Dotenv\Dotenv;
+
 use App\Modules\Crypto\DX\CryptoProvider;
 use App\Modules\Email\Renderer\EmailRendererInterface;
 use App\Modules\Email\Transport\EmailTransportInterface;
 use App\Modules\Email\Worker\EmailQueueWorker;
 
-// 1. Bootstrap Container
+/*
+|--------------------------------------------------------------------------
+| 1️⃣ Load ENV (HOST responsibility)
+|--------------------------------------------------------------------------
+*/
 try {
-    $container = Container::create();
+    $dotenv = Dotenv::createImmutable(__DIR__ . '/../');
+    $dotenv->safeLoad();
 } catch (Throwable $e) {
-    fwrite(STDERR, "Worker Bootstrap Failed: " . $e->getMessage() . PHP_EOL);
+    fwrite(STDERR, "ENV Load Failed: {$e->getMessage()}" . PHP_EOL);
     exit(1);
 }
 
-// 2. Retrieve Dependencies
+/*
+|--------------------------------------------------------------------------
+| 2️⃣ Build Runtime Config DTO
+|--------------------------------------------------------------------------
+*/
+try {
+    $runtimeConfig = AdminRuntimeConfigDTO::fromArray($_ENV);
+} catch (Throwable $e) {
+    fwrite(STDERR, "Runtime Config Invalid: {$e->getMessage()}" . PHP_EOL);
+    exit(1);
+}
+
+/*
+|--------------------------------------------------------------------------
+| 3️⃣ Bootstrap Container
+|--------------------------------------------------------------------------
+*/
+try {
+    $container = Container::create($runtimeConfig);
+} catch (Throwable $e) {
+    fwrite(STDERR, "Container Bootstrap Failed: {$e->getMessage()}" . PHP_EOL);
+    exit(1);
+}
+
+/*
+|--------------------------------------------------------------------------
+| 4️⃣ Resolve Dependencies
+|--------------------------------------------------------------------------
+*/
 try {
     /** @var PDO $pdo */
     $pdo = $container->get(PDO::class);
@@ -33,18 +69,27 @@ try {
     $transport = $container->get(EmailTransportInterface::class);
 
 } catch (Throwable $e) {
-    fwrite(STDERR, "Dependency Resolution Failed: " . $e->getMessage() . PHP_EOL);
+    fwrite(STDERR, "Dependency Resolution Failed: {$e->getMessage()}" . PHP_EOL);
     exit(1);
 }
 
-// 3. Instantiate Worker
+/*
+|--------------------------------------------------------------------------
+| 5️⃣ Run Worker
+|--------------------------------------------------------------------------
+*/
 try {
-    $worker = new EmailQueueWorker($pdo, $crypto, $renderer, $transport);
+    $worker = new EmailQueueWorker(
+        $pdo,
+        $crypto,
+        $renderer,
+        $transport
+    );
 
-    // 4. Run Batch
+    // Process up to 50 queued emails
     $worker->processBatch(50);
 
 } catch (Throwable $e) {
-    fwrite(STDERR, "Worker Execution Failed: " . $e->getMessage() . PHP_EOL);
+    fwrite(STDERR, "Worker Execution Failed: {$e->getMessage()}" . PHP_EOL);
     exit(1);
 }

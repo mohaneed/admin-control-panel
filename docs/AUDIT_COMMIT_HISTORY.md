@@ -418,6 +418,7 @@ Entries MUST NOT be rewritten or reordered.
 - feat(ui): centralize asset resolution via kernel-safe Twig helper
 - feat(ui): enable kernel-safe UI extensibility via Twig loader stacking
 - feat(kernel): own and enforce infrastructure middleware lifecycle
+- refactor(kernel): extract runtime configuration from env into AdminRuntimeConfigDTO
 
 ---
 

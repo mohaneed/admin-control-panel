@@ -151,6 +151,9 @@ use App\Infrastructure\Repository\Roles\PdoRoleRepository;
 use App\Infrastructure\Service\AdminTotpSecretStore;
 use App\Infrastructure\Service\Google2faTotpService;
 use App\Infrastructure\Updater\PDOPermissionsMetadataRepository;
+use App\Kernel\Adapter\CryptoKeyRingEnvAdapter;
+use App\Kernel\Adapter\PasswordPepperEnvAdapter;
+use App\Kernel\DTO\AdminRuntimeConfigDTO;
 use App\Modules\Crypto\DX\CryptoContextFactory;
 use App\Modules\Crypto\DX\CryptoDirectFactory;
 use App\Modules\Crypto\DX\CryptoProvider;
@@ -176,7 +179,6 @@ use App\Modules\Validation\Contracts\ValidatorInterface;
 use App\Modules\Validation\Guard\ValidationGuard;
 use App\Modules\Validation\Validator\RespectValidator;
 use DI\ContainerBuilder;
-use Dotenv\Dotenv;
 use Exception;
 use Maatify\PsrLogger\LoggerFactory;
 use PDO;
@@ -192,91 +194,71 @@ class Container
      *
      * @throws Exception
      */
-    public static function create(?callable $builderHook = null, ?string $rootPath = null, bool $loadEnv = true): ContainerInterface
+    public static function create(
+        AdminRuntimeConfigDTO $runtime,
+        ?callable $builderHook = null
+    ): ContainerInterface
     {
         $containerBuilder = new ContainerBuilder();
 
-        // Load ENV
-        if ($loadEnv) {
-            if ($rootPath === null) {
-                throw new \RuntimeException('Kernel cannot load .env without explicit rootPath provided by Host.');
-            }
-            $dotenv = Dotenv::createImmutable($rootPath);
-            $dotenv->safeLoad();
-            $dotenv->required([
-                'APP_ENV',
-                'APP_DEBUG',
-                'DB_HOST',
-                'DB_NAME',
-                'DB_USER',
-                'DB_PASS',
-                'PASSWORD_PEPPERS',
-                'PASSWORD_ACTIVE_PEPPER_ID',
-                'PASSWORD_ARGON2_OPTIONS',
-                'EMAIL_BLIND_INDEX_KEY',
-                'APP_TIMEZONE',
-                'MAIL_HOST',
-                'MAIL_PORT',
-                'MAIL_USERNAME',
-                'MAIL_PASSWORD',
-                'MAIL_FROM_ADDRESS',
-                'MAIL_FROM_NAME',
-                'CRYPTO_KEYS',
-                'CRYPTO_ACTIVE_KEY_ID',
-                'TOTP_ISSUER',
-                'TOTP_ENROLLMENT_TTL_SECONDS',
-            ])->notEmpty();
-        }
+        $cryptoRing = CryptoKeyRingConfig::fromEnv(
+            CryptoKeyRingEnvAdapter::adapt($runtime)
+        );
 
-        $cryptoRing = CryptoKeyRingConfig::fromEnv($_ENV);
-        $passwordPepperConfig = PasswordPepperRingConfig::fromEnv($_ENV);
+        $passwordPepperConfig = PasswordPepperRingConfig::fromEnv(
+            PasswordPepperEnvAdapter::adapt($runtime)
+        );
+
 
         // Create Config DTO
         $config = new AdminConfigDTO(
-            appEnv: $_ENV['APP_ENV'],
-            appDebug: $_ENV['APP_DEBUG'] === 'true',
-            timezone: $_ENV['APP_TIMEZONE'],
+            appEnv: $runtime->appEnv,
+            appDebug: $runtime->appDebug,
+            timezone: $runtime->appTimezone,
             passwordActivePepperId: $passwordPepperConfig->activeId(),
-            dbHost: $_ENV['DB_HOST'],
-            dbName: $_ENV['DB_NAME'],
-            dbUser: $_ENV['DB_USER'],
-            isRecoveryMode: ($_ENV['RECOVERY_MODE'] ?? 'false') === 'true',
+            dbHost: $runtime->dbHost,
+            dbName: $runtime->dbName,
+            dbUser: $runtime->dbUser,
+            isRecoveryMode: $runtime->recoveryMode,
             activeKeyId: $cryptoRing->activeKeyId(),
             hasCryptoKeyRing: !empty($cryptoRing->keys()),
             hasPasswordPepperRing: !empty($passwordPepperConfig->peppers())
         );
 
         $uiConfigDTO = new UiConfigDTO(
-            adminAssetBaseUrl: $_ENV['ASSET_BASE_URL'] ?? '/',
-            appName: $_ENV['APP_NAME'] ?? 'Admin Panel',
-            logoUrl: $_ENV['LOGO_URL'] ?? null,
-            adminUrl: $_ENV['ADMIN_URL'] ?? '/',
-            hostTemplatePath: $_ENV['HOST_TEMPLATE_PATH'] ?? null,
+            adminAssetBaseUrl: $runtime->assetBaseUrl,
+            appName: $runtime->appName,
+            logoUrl: $runtime->logoUrl,
+            adminUrl: $runtime->adminUrl,
+            hostTemplatePath: $runtime->hostTemplatePath
         );
 
         $totpEnrollmentConfig = new TotpEnrollmentConfig(
-            $_ENV['TOTP_ISSUER'],
-            (int) ($_ENV['TOTP_ENROLLMENT_TTL_SECONDS'] ?? 0)
+            $runtime->totpIssuer,
+            $runtime->totpEnrollmentTtlSeconds
         );
 
         // Create Email Config DTO
         $emailConfig = new EmailTransportConfigDTO(
-            host: $_ENV['MAIL_HOST'],
-            port: (int)$_ENV['MAIL_PORT'],
-            username: $_ENV['MAIL_USERNAME'],
-            password: $_ENV['MAIL_PASSWORD'],
-            fromAddress: $_ENV['MAIL_FROM_ADDRESS'],
-            fromName: $_ENV['MAIL_FROM_NAME'],
-            encryption: $_ENV['MAIL_ENCRYPTION'] ?? null,
-            timeoutSeconds: isset($_ENV['MAIL_TIMEOUT_SECONDS']) ? (int)$_ENV['MAIL_TIMEOUT_SECONDS'] : 10,
-            charset: $_ENV['MAIL_CHARSET'] ?? 'UTF-8',
-            debugLevel: isset($_ENV['MAIL_DEBUG_LEVEL']) ? (int)$_ENV['MAIL_DEBUG_LEVEL'] : 0
+            host: $runtime->mailHost,
+            port: $runtime->mailPort,
+            username: $runtime->mailUsername,
+            password: $runtime->mailPassword,
+            fromAddress: $runtime->mailFromAddress,
+            fromName: $runtime->mailFromName,
+            encryption: $runtime->mailEncryption,
+            timeoutSeconds: $runtime->mailTimeoutSeconds,
+            charset: $runtime->mailCharset,
+            debugLevel: $runtime->mailDebugLevel
         );
 
         // Enforce Timezone
         date_default_timezone_set($config->timezone);
 
         $containerBuilder->addDefinitions([
+            AdminRuntimeConfigDTO::class => function () use ($runtime) {
+                return $runtime;
+            },
             AdminConfigDTO::class => function () use ($config) {
                 return $config;
             },
@@ -364,24 +346,28 @@ class Container
 
             PDO::class => function (ContainerInterface $c) {
                 $config = $c->get(AdminConfigDTO::class);
+                $adminRuntimeConfigDTO = $c->get(AdminRuntimeConfigDTO::class);
                 assert($config instanceof AdminConfigDTO);
+                assert($adminRuntimeConfigDTO instanceof AdminRuntimeConfigDTO);
 
                 $factory = new PDOFactory(
                     $config->dbHost,
                     $config->dbName,
                     $config->dbUser,
-                    $_ENV['DB_PASS'] // Direct ENV access for secret
+                    $adminRuntimeConfigDTO->dbPassword
                 );
                 return $factory->create();
             },
             PDOFactory::class => function (ContainerInterface $c) {
                 $config = $c->get(AdminConfigDTO::class);
+                $adminRuntimeConfigDTO = $c->get(AdminRuntimeConfigDTO::class);
                 assert($config instanceof AdminConfigDTO);
+                assert($adminRuntimeConfigDTO instanceof AdminRuntimeConfigDTO);
                 return new PDOFactory(
                     $config->dbHost,
                     $config->dbName,
                     $config->dbUser,
-                    $_ENV['DB_PASS'] // Direct ENV access for secret
+                    $adminRuntimeConfigDTO->dbPassword
                 );
             },
             AdminRepository::class => function (ContainerInterface $c) {
@@ -498,15 +484,13 @@ class Container
             },
             PasswordService::class => function (ContainerInterface $c) {
                 $ring = $c->get(PasswordPepperRing::class);
-                assert($ring instanceof PasswordPepperRing);
+                $adminRuntimeConfigDTO = $c->get(AdminRuntimeConfigDTO::class);
 
-                // Parse Argon2 options from ENV
-                if (empty($_ENV['PASSWORD_ARGON2_OPTIONS'])) {
-                    throw new \Exception('PASSWORD_ARGON2_OPTIONS is required and cannot be empty.');
-                }
+                assert($ring instanceof PasswordPepperRing);
+                assert($adminRuntimeConfigDTO instanceof AdminRuntimeConfigDTO);
                 
                 /** @var mixed $options */
-                $options = json_decode($_ENV['PASSWORD_ARGON2_OPTIONS'], true, 512, JSON_THROW_ON_ERROR);
+                $options = json_decode($adminRuntimeConfigDTO->passwordArgon2Options, true, 512, JSON_THROW_ON_ERROR);
                 
                 if (!is_array($options)) {
                     throw new \Exception('PASSWORD_ARGON2_OPTIONS must be a valid JSON object.');
@@ -1189,14 +1173,16 @@ class Container
             RecoveryStateService::class => function (ContainerInterface $c) {
                 $pdo = $c->get(PDO::class);
                 $config = $c->get(AdminConfigDTO::class);
+                $adminRuntimeConfigDTO = $c->get(AdminRuntimeConfigDTO::class);
 
                 assert($pdo instanceof PDO);
                 assert($config instanceof AdminConfigDTO);
+                assert($adminRuntimeConfigDTO instanceof AdminRuntimeConfigDTO);
 
                 return new RecoveryStateService(
                     $pdo,
                     $config,
-                    $_ENV['EMAIL_BLIND_INDEX_KEY'] // Direct ENV access
+                    $adminRuntimeConfigDTO->emailBlindIndexKey
                 );
             },
             RecoveryStateMiddleware::class => function (ContainerInterface $c) {
@@ -1368,9 +1354,13 @@ class Container
 
             AdminIdentifierCryptoServiceInterface::class => function (ContainerInterface $c) {
                 $cryptoProvider = $c->get(CryptoProvider::class);
-                $blindIndexPepper = $_ENV['EMAIL_BLIND_INDEX_KEY'] ?? '';
+
+                $adminRuntimeConfigDTO = $c->get(AdminRuntimeConfigDTO::class);
 
                 assert($cryptoProvider instanceof CryptoProvider);
+                assert($adminRuntimeConfigDTO instanceof AdminRuntimeConfigDTO);
+
+                $blindIndexPepper = $adminRuntimeConfigDTO->emailBlindIndexKey;
 
                 return new AdminIdentifierCryptoService(
                     $cryptoProvider,

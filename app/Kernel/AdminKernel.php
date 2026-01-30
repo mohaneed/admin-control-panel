@@ -9,11 +9,12 @@ use App\Context\RequestContext;
 use App\Http\Middleware\HttpRequestTelemetryMiddleware;
 use App\Http\Middleware\RequestContextMiddleware;
 use App\Http\Middleware\RequestIdMiddleware;
+use App\Kernel\DTO\AdminRuntimeConfigDTO;
 use RuntimeException;
 use Slim\App;
 use Slim\Factory\AppFactory;
 
-class AdminKernel
+final class AdminKernel
 {
     /**
      * Infrastructure middleware required for Admin runtime.
@@ -29,51 +30,42 @@ class AdminKernel
     ];
 
     /**
+     * Simplest boot entrypoint.
+     *
+     * @param AdminRuntimeConfigDTO $runtimeConfig
      * @param callable(mixed): void|null $builderHook
      * @return App<\Psr\Container\ContainerInterface>
      */
-    public static function boot(?callable $builderHook = null): App
-    {
-        return self::bootWithConfig(
-            __DIR__ . '/../../',
-            true,
-            $builderHook
-        );
-    }
-
-    /**
-     * @param ?string $rootPath
-     * @param bool $loadEnv
-     * @param callable(mixed): void|null $builderHook
-     * @return App<\Psr\Container\ContainerInterface>
-     */
-    public static function bootWithConfig(
-        ?string $rootPath = null,
-        bool $loadEnv = true,
+    public static function boot(
+        AdminRuntimeConfigDTO $runtimeConfig,
         ?callable $builderHook = null
     ): App {
         $options = new KernelOptions();
-        $options->rootPath = $rootPath;
-        $options->loadEnv = $loadEnv;
+        $options->runtimeConfig = $runtimeConfig;
         $options->builderHook = $builderHook;
 
         return self::bootWithOptions($options);
     }
 
     /**
+     * Canonical boot method.
+     *
      * @param KernelOptions $options
      * @return App<\Psr\Container\ContainerInterface>
      */
     public static function bootWithOptions(KernelOptions $options): App
     {
-        // Create Container (handles ENV loading and AdminConfigDTO)
+        if (!isset($options->runtimeConfig)) {
+            throw new RuntimeException('AdminRuntimeConfigDTO is required to boot AdminKernel.');
+        }
+
+        // Create Container (NO env loading, NO filesystem assumptions)
         $container = Container::create(
-            $options->builderHook,
-            $options->rootPath,
-            $options->loadEnv
+            $options->runtimeConfig,
+            $options->builderHook
         );
 
-        // Create App
+        // Create Slim App
         AppFactory::setContainer($container);
         /** @var App<\Psr\Container\ContainerInterface> $app */
         $app = AppFactory::create();
@@ -128,12 +120,7 @@ class AdminKernel
             $app->add($middleware);
         }
 
-        /**
-         * Mark infra as registered.
-         *
-         * We do NOT assume mutability of the container.
-         * set() is used only if supported (e.g. PHP-DI).
-         */
+        // Mark infra as registered (only if container supports mutation)
         if (method_exists($container, 'set')) {
             $container->set($markerKey, true);
         }

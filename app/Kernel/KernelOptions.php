@@ -4,43 +4,51 @@ declare(strict_types=1);
 
 namespace App\Kernel;
 
+use App\Kernel\DTO\AdminRuntimeConfigDTO;
 use Slim\App;
 
-class KernelOptions
+final class KernelOptions
 {
     /**
-     * @var string|null
+     * Runtime configuration (REQUIRED)
+     *
+     * @var AdminRuntimeConfigDTO|null
      */
-    public ?string $rootPath = null;
+    public ?AdminRuntimeConfigDTO $runtimeConfig = null;
 
     /**
+     * Register infrastructure middleware
+     * (RequestId, RequestContext, Telemetry)
+     *
      * @var bool
-     */
-    public bool $loadEnv = true;
-
-    /**
-     * @var bool
-     * Register infrastructure middleware (RequestId, Context, Telemetry)
      */
     public bool $registerInfrastructureMiddleware = true;
 
     /**
+     * Fail fast if routes are mounted without infrastructure middleware
+     *
      * @var bool
-     * Fail fast if AdminRoutes mounted without infrastructure middleware
      */
     public bool $strictInfrastructure = true;
 
     /**
+     * Optional container builder hook
+     *
      * @var (callable(mixed): void)|null
      */
     public $builderHook = null;
 
     /**
+     * Optional HTTP bootstrap
+     * (body parsing, error middleware, etc.)
+     *
      * @var (callable(App<\Psr\Container\ContainerInterface>): void)|null
      */
     public $bootstrap = null;
 
     /**
+     * Routes registrar
+     *
      * @var (callable(App<\Psr\Container\ContainerInterface>): void)|null
      */
     public $routes = null;

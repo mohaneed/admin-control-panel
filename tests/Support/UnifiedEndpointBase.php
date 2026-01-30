@@ -4,55 +4,52 @@ declare(strict_types=1);
 
 namespace Tests\Support;
 
-use App\Bootstrap\Container;
+use App\Kernel\AdminKernel;
+use App\Kernel\KernelOptions;
+use App\Kernel\DTO\AdminRuntimeConfigDTO;
 use DI\Container as DIContainer;
 use PDO;
 use PHPUnit\Framework\TestCase;
+use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\App;
 use Slim\Factory\AppFactory;
 use Slim\Psr7\Factory\ServerRequestFactory;
-use Tests\Support\MySQLTestHelper;
-
-use Psr\Container\ContainerInterface;
 
 abstract class UnifiedEndpointBase extends TestCase
 {
     /** @var App<ContainerInterface> */
     protected App $app;
+
     protected ?PDO $pdo = null;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        // 1. Initialize Test Database (Schema Load)
-        // This ensures the in-memory DB is ready and we have the PDO instance.
+        // 1️⃣ Initialize Test Database (shared PDO)
         $this->pdo = MySQLTestHelper::pdo();
+        $this->assertInstanceOf(PDO::class, $this->pdo);
 
-        // 2. Create Container
-        $container = Container::create(null, __DIR__ . '/../../');
+        // 2️⃣ Build Runtime Config from ENV (ENV already loaded by phpunit bootstrap)
+        $runtimeConfig = AdminRuntimeConfigDTO::fromArray($_ENV);
 
-        // 3. Override PDO in Container to use our shared Test PDO
-        // This ensures the App uses the SAME database connection as our tests/assertions.
+        // 3️⃣ Kernel Options
+        $options = new KernelOptions();
+        $options->runtimeConfig = $runtimeConfig;
+        $options->registerInfrastructureMiddleware = true;
+        $options->strictInfrastructure = true;
+
+        // 4️⃣ Boot Kernel
+        $this->app = AdminKernel::bootWithOptions($options);
+
+        // 5️⃣ Override PDO in container to use test PDO
+        $container = $this->app->getContainer();
         if ($container instanceof DIContainer) {
             $container->set(PDO::class, $this->pdo);
-        } else {
-             // Fallback if container implementation changes (unlikely)
-             // But for now, we assume PHP-DI
         }
 
-        // 4. Create App
-        AppFactory::setContainer($container);
-        /** @var App<ContainerInterface> $app */
-        $app = AppFactory::create();
-        $this->app = $app;
-
-        // 5. Register Middleware & Routes
-        $routes = require __DIR__ . '/../../routes/web.php';
-        $routes($this->app);
-
-        // 6. Reset Database State (Truncate tables to ensure isolation)
+        // 6️⃣ Reset database state
         $this->cleanDatabase();
     }
 
@@ -73,14 +70,13 @@ abstract class UnifiedEndpointBase extends TestCase
             'step_up_grants',
             'permissions',
             'admin_direct_permissions',
-            // Add others as needed
         ];
 
         foreach ($tables as $table) {
             try {
                 MySQLTestHelper::truncate($table);
-            } catch (\Exception $e) {
-                // Ignore if table doesn't exist (though schema load should have created them)
+            } catch (\Throwable $e) {
+                // Table may not exist in some test scopes — ignore safely
             }
         }
     }
@@ -88,16 +84,19 @@ abstract class UnifiedEndpointBase extends TestCase
     /**
      * @param array<string, mixed> $body
      */
-    protected function createRequest(string $method, string $path, array $body = []): ServerRequestInterface
-    {
-        $request = (new ServerRequestFactory())->createServerRequest($method, $path);
+    protected function createRequest(
+        string $method,
+        string $path,
+        array $body = []
+    ): ServerRequestInterface {
+        $request = (new ServerRequestFactory())
+            ->createServerRequest($method, $path)
+            ->withHeader('Accept', 'application/json');
 
-        // Default headers
-        $request = $request->withHeader('Accept', 'application/json');
-
-        if (!empty($body)) {
-            $request = $request->withParsedBody($body);
-            $request = $request->withHeader('Content-Type', 'application/json');
+        if ($body !== []) {
+            $request = $request
+                ->withParsedBody($body)
+                ->withHeader('Content-Type', 'application/json');
         }
 
         return $request;
@@ -116,20 +115,24 @@ abstract class UnifiedEndpointBase extends TestCase
         $params = [];
 
         foreach ($data as $key => $value) {
-            $conditions[] = "$key = ?";
+            $conditions[] = "{$key} = ?";
             $params[] = $value;
         }
 
-        $sql = "SELECT COUNT(*) FROM $table WHERE " . implode(' AND ', $conditions);
+        $sql = "SELECT COUNT(*) FROM {$table} WHERE " . implode(' AND ', $conditions);
         $stmt = $this->pdo->prepare($sql);
         if ($stmt === false) {
-            $this->fail("Failed to prepare SQL: $sql");
+            $this->fail("Failed to prepare SQL: {$sql}");
         }
+
         $stmt->execute($params);
+        $count = (int) $stmt->fetchColumn();
 
-        $count = (int)$stmt->fetchColumn();
-
-        $this->assertGreaterThan(0, $count, "Failed asserting that table [$table] has row with: " . json_encode($data));
+        $this->assertGreaterThan(
+            0,
+            $count,
+            "Failed asserting that table [{$table}] has row with: " . json_encode($data)
+        );
     }
 
     /**
@@ -145,19 +148,23 @@ abstract class UnifiedEndpointBase extends TestCase
         $params = [];
 
         foreach ($data as $key => $value) {
-            $conditions[] = "$key = ?";
+            $conditions[] = "{$key} = ?";
             $params[] = $value;
         }
 
-        $sql = "SELECT COUNT(*) FROM $table WHERE " . implode(' AND ', $conditions);
+        $sql = "SELECT COUNT(*) FROM {$table} WHERE " . implode(' AND ', $conditions);
         $stmt = $this->pdo->prepare($sql);
         if ($stmt === false) {
-            $this->fail("Failed to prepare SQL: $sql");
+            $this->fail("Failed to prepare SQL: {$sql}");
         }
+
         $stmt->execute($params);
+        $count = (int) $stmt->fetchColumn();
 
-        $count = (int)$stmt->fetchColumn();
-
-        $this->assertSame(0, $count, "Failed asserting that table [$table] DOES NOT have row with: " . json_encode($data));
+        $this->assertSame(
+            0,
+            $count,
+            "Failed asserting that table [{$table}] DOES NOT have row with: " . json_encode($data)
+        );
     }
 }
