@@ -58,6 +58,7 @@ use Maatify\AdminKernel\Domain\DTO\AdminConfigDTO;
 use Maatify\AdminKernel\Domain\DTO\TotpEnrollmentConfig;
 use Maatify\AdminKernel\Domain\DTO\Ui\UiConfigDTO;
 use Maatify\AdminKernel\Domain\Ownership\SystemOwnershipRepositoryInterface;
+use Maatify\AdminKernel\Domain\Security\Crypto\AdminCryptoContextProvider;
 use Maatify\AdminKernel\Domain\Security\Crypto\CryptoKeyRingConfig;
 use Maatify\AdminKernel\Domain\Security\Password\PasswordPepperRing;
 use Maatify\AdminKernel\Domain\Security\Password\PasswordPepperRingConfig;
@@ -180,6 +181,7 @@ use App\Modules\Validation\Guard\ValidationGuard;
 use App\Modules\Validation\Validator\RespectValidator;
 use DI\ContainerBuilder;
 use Exception;
+use Maatify\Crypto\Contract\CryptoContextProviderInterface;
 use Maatify\PsrLogger\LoggerFactory;
 use Maatify\SharedCommon\Contracts\ClockInterface;
 use PDO;
@@ -381,6 +383,9 @@ class Container
                     $config->dbUser,
                     $adminRuntimeConfigDTO->dbPassword
                 );
+            },
+            CryptoContextProviderInterface::class => function (ContainerInterface $c) {
+                return new AdminCryptoContextProvider();
             },
             AdminRepository::class => function (ContainerInterface $c) {
                 $pdo = $c->get(PDO::class);
@@ -1368,11 +1373,13 @@ class Container
             EmailQueueWriterInterface::class => function (ContainerInterface $c) {
                 $pdo = $c->get(PDO::class);
                 $crypto = $c->get(CryptoProvider::class);
+                $cryptoContextProvider = $c->get(CryptoContextProviderInterface::class);
 
                 assert($pdo instanceof PDO);
                 assert($crypto instanceof CryptoProvider);
+                assert($cryptoContextProvider instanceof CryptoContextProviderInterface);
 
-                return new PdoEmailQueueWriter($pdo, $crypto);
+                return new PdoEmailQueueWriter($pdo, $crypto, $cryptoContextProvider);
             },
             EmailRendererInterface::class => function (ContainerInterface $c) use ($templatesPath) {
                 return new TwigEmailRenderer($templatesPath);
@@ -1385,34 +1392,40 @@ class Container
 
             NotificationCryptoServiceInterface::class => function (ContainerInterface $c) {
                 $cryptoProvider = $c->get(CryptoProvider::class);
+                $cryptoContextProvider = $c->get(CryptoContextProviderInterface::class);
 
                 assert($cryptoProvider instanceof CryptoProvider);
+                assert($cryptoContextProvider instanceof CryptoContextProviderInterface);
 
-                return new NotificationCryptoService($cryptoProvider);
+                return new NotificationCryptoService($cryptoProvider, $cryptoContextProvider);
             },
 
             TotpSecretCryptoServiceInterface::class => function (ContainerInterface $c) {
                 $cryptoProvider = $c->get(CryptoProvider::class);
+                $cryptoContextProvider = $c->get(CryptoContextProviderInterface::class);
 
                 assert($cryptoProvider instanceof CryptoProvider);
+                assert($cryptoContextProvider instanceof CryptoContextProviderInterface);
 
-                return new TotpSecretCryptoService($cryptoProvider);
+                return new TotpSecretCryptoService($cryptoProvider, $cryptoContextProvider);
             },
 
 
             AdminIdentifierCryptoServiceInterface::class => function (ContainerInterface $c) {
                 $cryptoProvider = $c->get(CryptoProvider::class);
-
                 $adminRuntimeConfigDTO = $c->get(AdminRuntimeConfigDTO::class);
+                $cryptoContextProvider = $c->get(CryptoContextProviderInterface::class);
 
                 assert($cryptoProvider instanceof CryptoProvider);
                 assert($adminRuntimeConfigDTO instanceof AdminRuntimeConfigDTO);
+                assert($cryptoContextProvider instanceof CryptoContextProviderInterface);
 
                 $blindIndexPepper = $adminRuntimeConfigDTO->emailBlindIndexKey;
 
                 return new AdminIdentifierCryptoService(
                     $cryptoProvider,
-                    $blindIndexPepper
+                    $blindIndexPepper,
+                    $cryptoContextProvider
                 );
             },
 

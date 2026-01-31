@@ -9,17 +9,16 @@ use App\Modules\Crypto\Reversible\DTO\ReversibleCryptoEncryptionResultDTO;
 use App\Modules\Email\Queue\DTO\EmailQueuePayloadDTO;
 use App\Modules\Email\Exception\EmailQueueWriteException;
 use DateTimeInterface;
+use Maatify\Crypto\Contract\CryptoContextProviderInterface;
 use PDO;
 use Throwable;
 
-class PdoEmailQueueWriter implements EmailQueueWriterInterface
+readonly class PdoEmailQueueWriter implements EmailQueueWriterInterface
 {
-    private const RECIPIENT_CONTEXT = 'email:recipient:v1';
-    private const PAYLOAD_CONTEXT = 'email:payload:v1';
-
     public function __construct(
-        private readonly PDO $pdo,
-        private readonly CryptoProvider $cryptoProvider
+        private PDO $pdo,
+        private CryptoProvider $cryptoProvider,
+        private CryptoContextProviderInterface $cryptoContextProvider
     ) {
     }
 
@@ -38,7 +37,7 @@ class PdoEmailQueueWriter implements EmailQueueWriterInterface
             $serializedPayload = json_encode($payload->toArray(), JSON_THROW_ON_ERROR);
 
             // 2. Encrypt Recipient
-            $recipientCrypto = $this->cryptoProvider->context(self::RECIPIENT_CONTEXT);
+            $recipientCrypto = $this->cryptoProvider->context($this->cryptoContextProvider->emailQueueRecipient());
             /** @var array{result: ReversibleCryptoEncryptionResultDTO, key_id: string, algorithm: mixed} $recipientEncryptedData */
             $recipientEncryptedData = $recipientCrypto->encrypt($recipientEmail);
 
@@ -46,7 +45,7 @@ class PdoEmailQueueWriter implements EmailQueueWriterInterface
             $recipientKeyId = $recipientEncryptedData['key_id'];
 
             // 3. Encrypt Payload
-            $payloadCrypto = $this->cryptoProvider->context(self::PAYLOAD_CONTEXT);
+            $payloadCrypto = $this->cryptoProvider->context($this->cryptoContextProvider->emailQueuePayload());
             /** @var array{result: ReversibleCryptoEncryptionResultDTO, key_id: string, algorithm: mixed} $payloadEncryptedData */
             $payloadEncryptedData = $payloadCrypto->encrypt($serializedPayload);
 

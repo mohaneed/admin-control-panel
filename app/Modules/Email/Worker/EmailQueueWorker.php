@@ -14,6 +14,7 @@ use App\Modules\Email\Exception\EmailTransportException;
 use App\Modules\Email\Renderer\EmailRendererInterface;
 use App\Modules\Email\Transport\EmailTransportInterface;
 use JsonException;
+use Maatify\Crypto\Contract\CryptoContextProviderInterface;
 use PDO;
 use Throwable;
 
@@ -30,16 +31,14 @@ use Throwable;
  *   payload_key_id: string
  * }
  */
-final class EmailQueueWorker
+final readonly class EmailQueueWorker
 {
-    private const RECIPIENT_CONTEXT = 'email:recipient:v1';
-    private const PAYLOAD_CONTEXT   = 'email:payload:v1';
-
     public function __construct(
-        private readonly PDO $pdo,
-        private readonly CryptoProvider $cryptoProvider,
-        private readonly EmailRendererInterface $renderer,
-        private readonly EmailTransportInterface $transport
+        private PDO $pdo,
+        private CryptoProvider $cryptoProvider,
+        private EmailRendererInterface $renderer,
+        private EmailTransportInterface $transport,
+        private CryptoContextProviderInterface $cryptoContextProvider
     ) {
     }
 
@@ -111,7 +110,7 @@ final class EmailQueueWorker
         try {
             // Decrypt recipient
             try {
-                $recipientCrypto = $this->cryptoProvider->context(self::RECIPIENT_CONTEXT);
+                $recipientCrypto = $this->cryptoProvider->context($this->cryptoContextProvider->emailQueueRecipient());
 
                 $recipient = $recipientCrypto->decrypt(
                     $row['recipient_encrypted'],
@@ -124,7 +123,7 @@ final class EmailQueueWorker
                 );
 
                 // Decrypt payload
-                $payloadCrypto = $this->cryptoProvider->context(self::PAYLOAD_CONTEXT);
+                $payloadCrypto = $this->cryptoProvider->context($this->cryptoContextProvider->emailQueuePayload());
 
                 $payloadJson = $payloadCrypto->decrypt(
                     $row['payload_encrypted'],

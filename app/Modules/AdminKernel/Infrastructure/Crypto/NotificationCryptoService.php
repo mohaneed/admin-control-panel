@@ -17,11 +17,11 @@ namespace Maatify\AdminKernel\Infrastructure\Crypto;
 
 use Maatify\AdminKernel\Application\Crypto\NotificationCryptoServiceInterface;
 use Maatify\AdminKernel\Domain\DTO\Crypto\EncryptedPayloadDTO;
-use Maatify\AdminKernel\Domain\Security\CryptoContext;
 use App\Modules\Crypto\DX\CryptoProvider;
 use App\Modules\Crypto\Reversible\DTO\ReversibleCryptoEncryptionResultDTO;
 use App\Modules\Crypto\Reversible\DTO\ReversibleCryptoMetadataDTO;
 use App\Modules\Crypto\Reversible\ReversibleCryptoAlgorithmEnum;
+use Maatify\Crypto\Contract\CryptoContextProviderInterface;
 use RuntimeException;
 
 /**
@@ -36,17 +36,19 @@ use RuntimeException;
  */
 
 
-final class NotificationCryptoService implements NotificationCryptoServiceInterface
+final readonly class NotificationCryptoService implements NotificationCryptoServiceInterface
 {
     public function __construct(
-        private CryptoProvider $cryptoProvider
+        private CryptoProvider $cryptoProvider,
+        private CryptoContextProviderInterface $cryptoContextProvider,
     ) {
     }
 
     public function encryptRecipient(string $email): EncryptedPayloadDTO
     {
+
         $response = $this->cryptoProvider
-            ->context(CryptoContext::EMAIL_RECIPIENT_V1)
+            ->context($this->cryptoContextProvider->notificationEmailRecipient())
             ->encrypt($email);
 
         /** @var ReversibleCryptoEncryptionResultDTO $result */
@@ -68,7 +70,7 @@ final class NotificationCryptoService implements NotificationCryptoServiceInterf
         );
 
         return $this->cryptoProvider
-            ->context(CryptoContext::EMAIL_RECIPIENT_V1)
+            ->context($this->cryptoContextProvider->notificationEmailRecipient())
             ->decrypt(
                 $encryptedRecipient->ciphertext,
                 $encryptedRecipient->keyId,
@@ -82,7 +84,7 @@ final class NotificationCryptoService implements NotificationCryptoServiceInterf
         $json = json_encode($payload, JSON_THROW_ON_ERROR);
 
         $response = $this->cryptoProvider
-            ->context(CryptoContext::EMAIL_PAYLOAD_V1)
+            ->context($this->cryptoContextProvider->notificationEmailPayload())
             ->encrypt($json);
 
         /** @var ReversibleCryptoEncryptionResultDTO $result */
@@ -104,7 +106,7 @@ final class NotificationCryptoService implements NotificationCryptoServiceInterf
         );
 
         $json = $this->cryptoProvider
-            ->context(CryptoContext::EMAIL_PAYLOAD_V1)
+            ->context($this->cryptoContextProvider->notificationEmailPayload())
             ->decrypt(
                 $encryptedPayload->ciphertext,
                 $encryptedPayload->keyId,

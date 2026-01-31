@@ -17,11 +17,11 @@ namespace Maatify\AdminKernel\Infrastructure\Crypto;
 
 use Maatify\AdminKernel\Application\Crypto\AdminIdentifierCryptoServiceInterface;
 use Maatify\AdminKernel\Domain\DTO\Crypto\EncryptedPayloadDTO;
-use Maatify\AdminKernel\Domain\Security\CryptoContext;
 use App\Modules\Crypto\DX\CryptoProvider;
 use App\Modules\Crypto\Reversible\DTO\ReversibleCryptoEncryptionResultDTO;
 use App\Modules\Crypto\Reversible\DTO\ReversibleCryptoMetadataDTO;
 use App\Modules\Crypto\Reversible\ReversibleCryptoAlgorithmEnum;
+use Maatify\Crypto\Contract\CryptoContextProviderInterface;
 use RuntimeException;
 
 /**
@@ -42,8 +42,10 @@ final class AdminIdentifierCryptoService implements AdminIdentifierCryptoService
     private string $blindIndexPepper;
 
     public function __construct(
-        private CryptoProvider $cryptoProvider,
-        string $blindIndexPepper
+        private readonly CryptoProvider $cryptoProvider,
+        string $blindIndexPepper,
+        private readonly CryptoContextProviderInterface $cryptoContextProvider,
+
     )
     {
         if ($blindIndexPepper === '') {
@@ -56,7 +58,7 @@ final class AdminIdentifierCryptoService implements AdminIdentifierCryptoService
     public function encryptEmail(string $plainEmail): EncryptedPayloadDTO
     {
         $response = $this->cryptoProvider
-            ->context(CryptoContext::IDENTIFIER_EMAIL_V1)
+            ->context($this->cryptoContextProvider->identifierEmail())
             ->encrypt($plainEmail);
 
         /** @var ReversibleCryptoEncryptionResultDTO $result */
@@ -78,7 +80,7 @@ final class AdminIdentifierCryptoService implements AdminIdentifierCryptoService
         );
 
         return $this->cryptoProvider
-            ->context(CryptoContext::IDENTIFIER_EMAIL_V1)
+            ->context($this->cryptoContextProvider->identifierEmail())
             ->decrypt(
                 $encryptedIdentifier->ciphertext,
                 $encryptedIdentifier->keyId,

@@ -5,7 +5,7 @@
  * @Library     maatify/admin-control-panel
  * @Project     maatify:admin-control-panel
  * @author      Mohamed Abdulalim (megyptm) <mohamed@maatify.dev>
- * @since       2026-01-09 21:53
+ * @since       2026-01-31 13:01
  * @see         https://www.maatify.dev Maatify.dev
  * @link        https://github.com/Maatify/admin-control-panel view Project on GitHub
  * @note        Distributed in the hope that it will be useful - WITHOUT WARRANTY.
@@ -13,7 +13,7 @@
 
 declare(strict_types=1);
 
-namespace Maatify\AdminKernel\Domain\Security;
+namespace Maatify\AdminKernel\Domain\Security\Crypto;
 
 /**
  * Canonical Crypto Context Registry
@@ -30,8 +30,8 @@ final class CryptoContext
      * Email / Notification System
      * =============================== */
 
-    public const EMAIL_RECIPIENT_V1 = 'notification:email:recipient:v1';
-    public const EMAIL_PAYLOAD_V1   = 'notification:email:payload:v1';
+    public const NOTIFICATION_EMAIL_RECIPIENT_V1 = 'notification:email:recipient:v1';
+    public const NOTIFICATION_EMAIL_PAYLOAD_V1   = 'notification:email:payload:v1';
 
     /* ===============================
      * Identifiers (PII)
@@ -51,6 +51,13 @@ final class CryptoContext
      * =============================== */
 
     public const SYSTEM_SECRET_V1 = 'system:secret:v1';
+
+    /* ===============================
+     * QUEUE / EMAIL
+     * =============================== */
+
+    public const EMAIL_QUEUE_RECIPIENT_V1 = 'email:queue:recipient:v1';
+    public const EMAIL_QUEUE_PAYLOAD_V1   = 'email:queue:payload:v1';
 
     private function __construct()
     {

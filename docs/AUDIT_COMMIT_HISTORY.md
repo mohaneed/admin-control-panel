@@ -435,6 +435,7 @@ Entries MUST NOT be rewritten or reordered.
 - test(kernel): add env-derived TestKernelFactory for DTO-based boot
 - refactor(kernel): centralize Clock contract and remove module-level implementations
 - refactor(kernel): extract Admin Kernel into dedicated module
+- refactor(crypto): introduce CryptoContextProvider and decouple context semantics
 
 ---
 
