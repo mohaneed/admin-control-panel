@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\SharedCommon\Infrastructure;
+namespace Maatify\SharedCommon\Infrastructure;
 
 use DateTimeImmutable;
 use DateTimeZone;

@@ -267,7 +267,7 @@ class Container
                 } catch (\Exception $e) {
                     throw new \RuntimeException("Invalid APP_TIMEZONE: " . $config->timezone, 0, $e);
                 }
-                return new \App\Modules\SharedCommon\Infrastructure\SystemClock($timezone);
+                return new \Maatify\SharedCommon\Infrastructure\SystemClock($timezone);
             },
             AdminRuntimeConfigDTO::class => function () use ($runtime) {
                 return $runtime;

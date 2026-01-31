@@ -436,6 +436,7 @@ Entries MUST NOT be rewritten or reordered.
 - refactor(kernel): centralize Clock contract and remove module-level implementations
 - refactor(kernel): extract Admin Kernel into dedicated module
 - refactor(crypto): introduce CryptoContextProvider and decouple context semantics
+- refactor(modules): extract locked modules to top-level Modules directory
 
 ---
 
