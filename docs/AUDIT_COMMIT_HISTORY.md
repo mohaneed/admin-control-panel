@@ -434,6 +434,7 @@ Entries MUST NOT be rewritten or reordered.
 - feat(ui-sessions): add capability-based actions and admin links
 - test(kernel): add env-derived TestKernelFactory for DTO-based boot
 - refactor(kernel): centralize Clock contract and remove module-level implementations
+- refactor(kernel): extract Admin Kernel into dedicated module
 
 ---
 
