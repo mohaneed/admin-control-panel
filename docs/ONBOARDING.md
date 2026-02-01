@@ -187,40 +187,14 @@ php -S 0.0.0.0:8080 -t public
 
 ---
 
-## 7️⃣ Currently Exposed Routes (Subject to Change)
+## 7️⃣ Exposed Routes
 
-The following routes are currently exposed in `routes/web.php`.
+For the authoritative list of exposed routes, please refer to:
 
-### Web Routes (Browser / Twig)
-*   `GET  /login`
-*   `POST /login`
-*   `GET  /verify-email`
-*   `POST /verify-email`
-*   `POST /verify-email/resend`
-*   `GET  /dashboard`
-*   `GET  /2fa/setup`
-*   `POST /2fa/setup`
-*   `GET  /2fa/verify`
-*   `POST /2fa/verify`
-*   `GET  /notifications/telegram/connect`
-*   `POST /logout`
+1. **`docs/API.md`** — The Canonical API Contract.
+2. **`routes/web.php`** — The implementation of the routing configuration.
 
-### API Routes (JSON)
-*   `GET  /health`
-*   `POST /auth/login`
-*   `POST /auth/step-up`
-*   `POST /admins`
-*   `POST /admins/{id}/emails`
-*   `GET  /admins/{id}/emails`
-*   `POST /admins/{id}/emails/verify`
-*   `POST /admin-identifiers/email/lookup`
-*   `GET  /notifications`
-*   `GET  /admins/{admin_id}/preferences`
-*   `PUT  /admins/{admin_id}/preferences`
-*   `GET  /admins/{admin_id}/notifications`
-*   `POST /admin/notifications/{id}/read`
-
-📌 **Note:** Any endpoint not listed here is unavailable.
+📌 **Note:** `docs/API.md` is the **canonical source of truth**. Any endpoint not documented there is considered unavailable, regardless of what exists in `routes/web.php`.
 
 ---
 
@@ -281,9 +255,10 @@ templates/
 
 ## 🔚 Final Notes
 
-This document is the **single source of truth** for running the project.
+This document serves as the **practical guide** for running the project.
 
-* Any conflict → this document is correct
+* **Authority:** Refer to `docs/index.md` for the document hierarchy.
+* **Conflict Resolution:** `docs/PROJECT_CANONICAL_CONTEXT.md` is the absolute source of truth.
 * Any feature request → outside this guide
 
 **Work carefully — the system will work with you 🔒**

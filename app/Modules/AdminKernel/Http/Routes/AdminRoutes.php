@@ -115,7 +115,7 @@ class AdminRoutes
                     // Admin Profile (VIEW)
                     // ===============================
                     $protectedGroup->get(
-                        '/admins/{id}/profile',
+                        '/admins/{id:[0-9]}/profile',
                         [\Maatify\AdminKernel\Http\Controllers\Ui\UiAdminsController::class, 'profile']
                     )
                         ->setName('admins.profile.view')
@@ -125,7 +125,7 @@ class AdminRoutes
                     // Admin Profile (EDIT FORM)
                     // ===============================
                     $protectedGroup->get(
-                        '/admins/{id}/profile/edit',
+                        '/admins/{id:[0-9]}/profile/edit',
                         [\Maatify\AdminKernel\Http\Controllers\Ui\UiAdminsController::class, 'editProfile']
                     )
                         ->setName('admins.profile.edit.view')
@@ -136,7 +136,7 @@ class AdminRoutes
                     // Admin Profile (UPDATE)
                     // ===============================
                     $protectedGroup->post(
-                        '/admins/{id}/profile/edit',
+                        '/admins/{id:[0-9]}/profile/edit',
                         [\Maatify\AdminKernel\Http\Controllers\Ui\UiAdminsController::class, 'updateProfile']
                     )
                         ->setName('admins.profile.edit')
@@ -146,7 +146,7 @@ class AdminRoutes
                     // Admin Email Control
                     // ─────────────────────────────
                     $protectedGroup->get(
-                        '/admins/{id}/emails',
+                        '/admins/{id:[0-9]}/emails',
                         [\Maatify\AdminKernel\Http\Controllers\Ui\UiAdminsController::class, 'emails']
                     )
                         ->setName('admin.email.list.ui')
@@ -156,7 +156,7 @@ class AdminRoutes
                     // Admin Session Control
                     // ─────────────────────────────
                     $protectedGroup->get(
-                        '/admins/{id}/sessions',
+                        '/admins/{id:[0-9]}/sessions',
                         [\Maatify\AdminKernel\Http\Controllers\Ui\UiAdminsController::class, 'sessions']
                     )
                         ->setName('admins.session.list')
@@ -167,6 +167,13 @@ class AdminRoutes
                         [\Maatify\AdminKernel\Http\Controllers\Ui\UiRolesController::class, 'index']
                     )
                         ->setName('roles.query.ui')
+                        ->add(AuthorizationGuardMiddleware::class);
+
+                    $protectedGroup->get(
+                        '/roles/{id:[0-9]}',
+                        [\Maatify\AdminKernel\Http\Controllers\Ui\UiRoleDetailsController::class, '__invoke']
+                    )
+                        ->setName('roles.view.ui')
                         ->add(AuthorizationGuardMiddleware::class);
 
                     $protectedGroup->get(
@@ -219,6 +226,9 @@ class AdminRoutes
 
             })->add(\Maatify\AdminKernel\Http\Middleware\UiRedirectNormalizationMiddleware::class);
 
+            // ========================================
+            // ================== API =================
+            // ========================================
             // API Routes (JSON only)
             $app->group('/api', function (RouteCollectorProxyInterface $api) {
                 // Public API
@@ -255,30 +265,30 @@ class AdminRoutes
                         $admins->post('/create', [AdminController::class, 'create'])
                             ->setName('admin.create.api');
 
-                        $admins->get('/{admin_id}/preferences', [AdminNotificationPreferenceController::class, 'getPreferences'])
+                        $admins->get('/{admin_id:[0-9]}/preferences', [AdminNotificationPreferenceController::class, 'getPreferences'])
                             ->setName('admin.preferences.read');
 
-                        $admins->put('/{admin_id}/preferences', [AdminNotificationPreferenceController::class, 'upsertPreference'])
+                        $admins->put('/{admin_id:[0-9]}/preferences', [AdminNotificationPreferenceController::class, 'upsertPreference'])
                             ->setName('admin.preferences.write');
 
-                        $admins->get('/{admin_id}/notifications', [\Maatify\AdminKernel\Http\Controllers\AdminNotificationHistoryController::class, 'index'])
+                        $admins->get('/{admin_id:[0-9]}/notifications', [\Maatify\AdminKernel\Http\Controllers\AdminNotificationHistoryController::class, 'index'])
                             ->setName('admin.notifications.history');
 
                         // ─────────────────────────────
                         // Admin Email Control
                         // ─────────────────────────────
-                        $admins->get('/{id}/emails', [AdminController::class, 'getEmails'])
+                        $admins->get('/{id:[0-9]}/emails', [AdminController::class, 'getEmails'])
                             ->setName('admin.email.list.api');
-                        $admins->post('/{id}/emails', [AdminController::class, 'addEmail'])
+                        $admins->post('/{id:[0-9]}/emails', [AdminController::class, 'addEmail'])
                             ->setName('admin.email.add');
                     });
 
                     $group->group('/admin-emails', function (RouteCollectorProxyInterface $adminEmails) {
-                        $adminEmails->post('/{emailId}/verify', [AdminEmailVerificationController::class, 'verify'])
+                        $adminEmails->post('/{emailId:[0-9]}/verify', [AdminEmailVerificationController::class, 'verify'])
                             ->setName('admin.email.verify');
-                        $adminEmails->post('/{emailId}/replace', [AdminEmailVerificationController::class, 'replace'])
+                        $adminEmails->post('/{emailId:[0-9]}/replace', [AdminEmailVerificationController::class, 'replace'])
                             ->setName('admin.email.replace');
-                        $adminEmails->post('/{emailId}/fail', [AdminEmailVerificationController::class, 'fail'])
+                        $adminEmails->post('/{emailId:[0-9]}/fail', [AdminEmailVerificationController::class, 'fail'])
                             ->setName('admin.email.fail');
                         $adminEmails->post('/{emailId}/restart-verification', [AdminEmailVerificationController::class, 'restart'])
                             ->setName('admin.email.restart');
@@ -291,7 +301,7 @@ class AdminRoutes
                         $permissions->post('/query', [\Maatify\AdminKernel\Http\Controllers\Api\PermissionsController::class, '__invoke'])
                             ->setName('permissions.query.api');
 
-                        $permissions->post('/{id}/metadata', [\Maatify\AdminKernel\Http\Controllers\Api\PermissionMetadataUpdateController::class, '__invoke'])
+                        $permissions->post('/{id:[0-9]}/metadata', [\Maatify\AdminKernel\Http\Controllers\Api\PermissionMetadataUpdateController::class, '__invoke'])
                             ->setName('permissions.metadata.update');
                     });
 
@@ -299,20 +309,78 @@ class AdminRoutes
                     // Roles Control
                     // ─────────────────────────────
                     $group->group('/roles', function (RouteCollectorProxyInterface $roles) {
-                        $roles->post('/query', [\Maatify\AdminKernel\Http\Controllers\Api\Roles\RolesControllerQuery::class, '__invoke'])
+                        $roles->post(
+                            '/query',
+                            [\Maatify\AdminKernel\Http\Controllers\Api\Roles\RolesControllerQuery::class, '__invoke']
+                        )
                             ->setName('roles.query.api');
 
-                        $roles->post('/{id}/metadata', [\Maatify\AdminKernel\Http\Controllers\Api\Roles\RoleMetadataUpdateController::class, '__invoke'])
+                        $roles->post(
+                            '/{id:[0-9]}/metadata',
+                            [\Maatify\AdminKernel\Http\Controllers\Api\Roles\RoleMetadataUpdateController::class, '__invoke']
+                        )
                             ->setName('roles.metadata.update');
 
-                        $roles->post('/{id}/toggle', [\Maatify\AdminKernel\Http\Controllers\Api\Roles\RoleToggleController::class, '__invoke'])
+                        $roles->post(
+                            '/{id:[0-9]}/toggle',
+                            [\Maatify\AdminKernel\Http\Controllers\Api\Roles\RoleToggleController::class, '__invoke']
+                        )
                             ->setName('roles.toggle');
 
-                        $roles->post('/{id}/rename', [\Maatify\AdminKernel\Http\Controllers\Api\Roles\RoleRenameController::class, '__invoke'])
+                        $roles->post(
+                            '/{id:[0-9]}/rename',
+                            [\Maatify\AdminKernel\Http\Controllers\Api\Roles\RoleRenameController::class, '__invoke']
+                        )
                             ->setName('roles.rename');
 
-                        $roles->post('/create', [\Maatify\AdminKernel\Http\Controllers\Api\Roles\RoleCreateController::class, '__invoke'])
+                        $roles->post(
+                            '/create',
+                            [\Maatify\AdminKernel\Http\Controllers\Api\Roles\RoleCreateController::class, '__invoke']
+                        )
                             ->setName('roles.create');
+
+                        // ─────────────────────────────
+                        // Role → Permissions (QUERY)
+                        // ─────────────────────────────
+                        $roles->post(
+                            '/{id:[0-9]}/permissions/query',
+                            [\Maatify\AdminKernel\Http\Controllers\Api\Roles\RolePermissionsQueryController::class, '__invoke']
+                        )
+                            ->setName('roles.permissions.query');
+
+                        // ─────────────────────────────
+                        // Role → Permissions (ASSIGN)
+                        // ─────────────────────────────
+                        $roles->post(
+                            '/{id:[0-9]}/permissions/assign',
+                            [\Maatify\AdminKernel\Http\Controllers\Api\Roles\RolePermissionAssignController::class, '__invoke']
+                        )
+                            ->setName('roles.permissions.assign');
+
+                        // ─────────────────────────────
+                        // Role → Permissions (UNASSIGN)
+                        // ─────────────────────────────
+                        $roles->post(
+                            '/{id:[0-9]}/permissions/unassign',
+                            [\Maatify\AdminKernel\Http\Controllers\Api\Roles\RolePermissionUnassignController::class, '__invoke']
+                        )
+                            ->setName('roles.permissions.unassign');
+
+                        // AdminRoutes.php
+                        $roles->post(
+                            '/{id:[0-9]}/admins/query',
+                            [\Maatify\AdminKernel\Http\Controllers\Api\Roles\RoleAdminsQueryController::class, '__invoke']
+                        )->setName('roles.admins.query');
+
+                        $roles->post(
+                            '/{id:[0-9]}/admins/assign',
+                            [\Maatify\AdminKernel\Http\Controllers\Api\Roles\RoleAdminAssignController::class, '__invoke']
+                        )->setName('roles.admins.assign');
+
+                        $roles->post(
+                            '/{id}/admins/unassign',
+                            [\Maatify\AdminKernel\Http\Controllers\Api\Roles\RoleAdminUnassignController::class, '__invoke']
+                        )->setName('roles.admins.unassign');
                     });
 
 
@@ -342,7 +410,7 @@ class AdminRoutes
         // Middleware applied to the group (LIFO execution: Input -> Recovery)
         $group
             ->add(\Maatify\AdminKernel\Http\Middleware\RecoveryStateMiddleware::class)
-            ->add(\App\Modules\InputNormalization\Middleware\InputNormalizationMiddleware::class);
+            ->add(\Maatify\InputNormalization\Middleware\InputNormalizationMiddleware::class);
 
         // Explicit Infrastructure Middleware (Outer Layer)
         // Execution Order (LIFO): RequestId -> Context -> Telemetry -> Input -> Recovery

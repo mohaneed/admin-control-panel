@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Maatify\AdminKernel\Bootstrap;
 
+use DI\ContainerBuilder;
+use Exception;
 use Maatify\AdminKernel\Application\Admin\AdminProfileUpdateService;
 use Maatify\AdminKernel\Application\Auth\AdminLoginService;
 use Maatify\AdminKernel\Application\Auth\AdminLogoutService;
@@ -42,7 +44,9 @@ use Maatify\AdminKernel\Domain\Contracts\PermissionsMetadataRepositoryInterface;
 use Maatify\AdminKernel\Domain\Contracts\PermissionsReaderRepositoryInterface;
 use Maatify\AdminKernel\Domain\Contracts\RememberMeRepositoryInterface;
 use Maatify\AdminKernel\Domain\Contracts\RolePermissionRepositoryInterface;
+use Maatify\AdminKernel\Domain\Contracts\Roles\RoleAdminsRepositoryInterface;
 use Maatify\AdminKernel\Domain\Contracts\Roles\RoleCreateRepositoryInterface;
+use Maatify\AdminKernel\Domain\Contracts\Roles\RolePermissionsRepositoryInterface;
 use Maatify\AdminKernel\Domain\Contracts\Roles\RoleRenameRepositoryInterface;
 use Maatify\AdminKernel\Domain\Contracts\Roles\RoleRepositoryInterface;
 use Maatify\AdminKernel\Domain\Contracts\Roles\RolesMetadataRepositoryInterface;
@@ -58,6 +62,7 @@ use Maatify\AdminKernel\Domain\DTO\AdminConfigDTO;
 use Maatify\AdminKernel\Domain\DTO\TotpEnrollmentConfig;
 use Maatify\AdminKernel\Domain\DTO\Ui\UiConfigDTO;
 use Maatify\AdminKernel\Domain\Ownership\SystemOwnershipRepositoryInterface;
+use Maatify\AdminKernel\Domain\Security\Crypto\AdminCryptoContextProvider;
 use Maatify\AdminKernel\Domain\Security\Crypto\CryptoKeyRingConfig;
 use Maatify\AdminKernel\Domain\Security\Password\PasswordPepperRing;
 use Maatify\AdminKernel\Domain\Security\Password\PasswordPepperRingConfig;
@@ -146,7 +151,9 @@ use Maatify\AdminKernel\Infrastructure\Repository\PdoStepUpGrantRepository;
 use Maatify\AdminKernel\Infrastructure\Repository\PdoSystemOwnershipRepository;
 use Maatify\AdminKernel\Infrastructure\Repository\PdoVerificationCodeRepository;
 use Maatify\AdminKernel\Infrastructure\Repository\RolePermissionRepository;
+use Maatify\AdminKernel\Infrastructure\Repository\Roles\PdoRoleAdminsRepository;
 use Maatify\AdminKernel\Infrastructure\Repository\Roles\PdoRoleCreateRepository;
+use Maatify\AdminKernel\Infrastructure\Repository\Roles\PdoRolePermissionsRepository;
 use Maatify\AdminKernel\Infrastructure\Repository\Roles\PdoRoleRepository;
 use Maatify\AdminKernel\Infrastructure\Service\AdminTotpSecretStore;
 use Maatify\AdminKernel\Infrastructure\Service\Google2faTotpService;
@@ -154,34 +161,33 @@ use Maatify\AdminKernel\Infrastructure\Updater\PDOPermissionsMetadataRepository;
 use Maatify\AdminKernel\Kernel\Adapter\CryptoKeyRingEnvAdapter;
 use Maatify\AdminKernel\Kernel\Adapter\PasswordPepperEnvAdapter;
 use Maatify\AdminKernel\Kernel\DTO\AdminRuntimeConfigDTO;
-use App\Modules\Crypto\DX\CryptoContextFactory;
-use App\Modules\Crypto\DX\CryptoDirectFactory;
-use App\Modules\Crypto\DX\CryptoProvider;
-use App\Modules\Crypto\HKDF\HKDFService;
-use App\Modules\Crypto\KeyRotation\DTO\CryptoKeyDTO;
-use App\Modules\Crypto\KeyRotation\KeyRotationService;
-use App\Modules\Crypto\KeyRotation\KeyStatusEnum;
-use App\Modules\Crypto\KeyRotation\Policy\StrictSingleActiveKeyPolicy;
-use App\Modules\Crypto\KeyRotation\Providers\InMemoryKeyProvider;
-use App\Modules\Crypto\Reversible\Algorithms\Aes256GcmAlgorithm;
-use App\Modules\Crypto\Reversible\Registry\ReversibleCryptoAlgorithmRegistry;
-use App\Modules\Email\Config\EmailTransportConfigDTO;
-use App\Modules\Email\Queue\EmailQueueWriterInterface;
-use App\Modules\Email\Queue\PdoEmailQueueWriter;
-use App\Modules\Email\Renderer\EmailRendererInterface;
-use App\Modules\Email\Renderer\TwigEmailRenderer;
-use App\Modules\Email\Transport\EmailTransportInterface;
-use App\Modules\Email\Transport\SmtpEmailTransport;
-use App\Modules\InputNormalization\Contracts\InputNormalizerInterface;
-use App\Modules\InputNormalization\Middleware\InputNormalizationMiddleware;
-use App\Modules\InputNormalization\Normalizer\InputNormalizer;
-use App\Modules\Validation\Contracts\ValidatorInterface;
-use App\Modules\Validation\Guard\ValidationGuard;
-use App\Modules\Validation\Validator\RespectValidator;
-use DI\ContainerBuilder;
-use Exception;
+use Maatify\Crypto\Contract\CryptoContextProviderInterface;
+use Maatify\Crypto\DX\CryptoContextFactory;
+use Maatify\Crypto\DX\CryptoDirectFactory;
+use Maatify\Crypto\DX\CryptoProvider;
+use Maatify\Crypto\HKDF\HKDFService;
+use Maatify\Crypto\KeyRotation\DTO\CryptoKeyDTO;
+use Maatify\Crypto\KeyRotation\KeyRotationService;
+use Maatify\Crypto\KeyRotation\KeyStatusEnum;
+use Maatify\Crypto\KeyRotation\Policy\StrictSingleActiveKeyPolicy;
+use Maatify\Crypto\KeyRotation\Providers\InMemoryKeyProvider;
+use Maatify\Crypto\Reversible\Algorithms\Aes256GcmAlgorithm;
+use Maatify\Crypto\Reversible\Registry\ReversibleCryptoAlgorithmRegistry;
+use Maatify\EmailDelivery\Config\EmailTransportConfigDTO;
+use Maatify\EmailDelivery\Queue\EmailQueueWriterInterface;
+use Maatify\EmailDelivery\Queue\PdoEmailQueueWriter;
+use Maatify\EmailDelivery\Renderer\EmailRendererInterface;
+use Maatify\EmailDelivery\Renderer\TwigEmailRenderer;
+use Maatify\EmailDelivery\Transport\EmailTransportInterface;
+use Maatify\EmailDelivery\Transport\SmtpEmailTransport;
+use Maatify\InputNormalization\Contracts\InputNormalizerInterface;
+use Maatify\InputNormalization\Middleware\InputNormalizationMiddleware;
+use Maatify\InputNormalization\Normalizer\InputNormalizer;
 use Maatify\PsrLogger\LoggerFactory;
 use Maatify\SharedCommon\Contracts\ClockInterface;
+use Maatify\Validation\Contracts\ValidatorInterface;
+use Maatify\Validation\Guard\ValidationGuard;
+use Maatify\Validation\Validator\RespectValidator;
 use PDO;
 use Psr\Container\ContainerInterface;
 use Psr\Log\LoggerInterface;
@@ -265,7 +271,7 @@ class Container
                 } catch (\Exception $e) {
                     throw new \RuntimeException("Invalid APP_TIMEZONE: " . $config->timezone, 0, $e);
                 }
-                return new \App\Modules\SharedCommon\Infrastructure\SystemClock($timezone);
+                return new \Maatify\SharedCommon\Infrastructure\SystemClock($timezone);
             },
             AdminRuntimeConfigDTO::class => function () use ($runtime) {
                 return $runtime;
@@ -381,6 +387,9 @@ class Container
                     $config->dbUser,
                     $adminRuntimeConfigDTO->dbPassword
                 );
+            },
+            CryptoContextProviderInterface::class => function (ContainerInterface $c) {
+                return new AdminCryptoContextProvider();
             },
             AdminRepository::class => function (ContainerInterface $c) {
                 $pdo = $c->get(PDO::class);
@@ -1174,11 +1183,11 @@ class Container
             },
             \Maatify\AdminKernel\Http\Controllers\StepUpController::class => function (ContainerInterface $c) {
                 $stepUpService = $c->get(\Maatify\AdminKernel\Domain\Service\StepUpService::class);
-                $validationGuard = $c->get(\App\Modules\Validation\Guard\ValidationGuard::class);
+                $validationGuard = $c->get(\Maatify\Validation\Guard\ValidationGuard::class);
                 $telemetryService = $c->get(\Maatify\AdminKernel\Application\Services\DiagnosticsTelemetryService::class);
 
                 assert($stepUpService instanceof \Maatify\AdminKernel\Domain\Service\StepUpService);
-                assert($validationGuard instanceof \App\Modules\Validation\Guard\ValidationGuard);
+                assert($validationGuard instanceof \Maatify\Validation\Guard\ValidationGuard);
                 assert($telemetryService instanceof \Maatify\AdminKernel\Application\Services\DiagnosticsTelemetryService);
 
                 return new \Maatify\AdminKernel\Http\Controllers\StepUpController(
@@ -1368,11 +1377,13 @@ class Container
             EmailQueueWriterInterface::class => function (ContainerInterface $c) {
                 $pdo = $c->get(PDO::class);
                 $crypto = $c->get(CryptoProvider::class);
+                $cryptoContextProvider = $c->get(CryptoContextProviderInterface::class);
 
                 assert($pdo instanceof PDO);
                 assert($crypto instanceof CryptoProvider);
+                assert($cryptoContextProvider instanceof CryptoContextProviderInterface);
 
-                return new PdoEmailQueueWriter($pdo, $crypto);
+                return new PdoEmailQueueWriter($pdo, $crypto, $cryptoContextProvider);
             },
             EmailRendererInterface::class => function (ContainerInterface $c) use ($templatesPath) {
                 return new TwigEmailRenderer($templatesPath);
@@ -1385,34 +1396,40 @@ class Container
 
             NotificationCryptoServiceInterface::class => function (ContainerInterface $c) {
                 $cryptoProvider = $c->get(CryptoProvider::class);
+                $cryptoContextProvider = $c->get(CryptoContextProviderInterface::class);
 
                 assert($cryptoProvider instanceof CryptoProvider);
+                assert($cryptoContextProvider instanceof CryptoContextProviderInterface);
 
-                return new NotificationCryptoService($cryptoProvider);
+                return new NotificationCryptoService($cryptoProvider, $cryptoContextProvider);
             },
 
             TotpSecretCryptoServiceInterface::class => function (ContainerInterface $c) {
                 $cryptoProvider = $c->get(CryptoProvider::class);
+                $cryptoContextProvider = $c->get(CryptoContextProviderInterface::class);
 
                 assert($cryptoProvider instanceof CryptoProvider);
+                assert($cryptoContextProvider instanceof CryptoContextProviderInterface);
 
-                return new TotpSecretCryptoService($cryptoProvider);
+                return new TotpSecretCryptoService($cryptoProvider, $cryptoContextProvider);
             },
 
 
             AdminIdentifierCryptoServiceInterface::class => function (ContainerInterface $c) {
                 $cryptoProvider = $c->get(CryptoProvider::class);
-
                 $adminRuntimeConfigDTO = $c->get(AdminRuntimeConfigDTO::class);
+                $cryptoContextProvider = $c->get(CryptoContextProviderInterface::class);
 
                 assert($cryptoProvider instanceof CryptoProvider);
                 assert($adminRuntimeConfigDTO instanceof AdminRuntimeConfigDTO);
+                assert($cryptoContextProvider instanceof CryptoContextProviderInterface);
 
                 $blindIndexPepper = $adminRuntimeConfigDTO->emailBlindIndexKey;
 
                 return new AdminIdentifierCryptoService(
                     $cryptoProvider,
-                    $blindIndexPepper
+                    $blindIndexPepper,
+                    $cryptoContextProvider
                 );
             },
 
@@ -1700,7 +1717,87 @@ class Container
 
             PermissionMapperInterface::class => function () {
                 return new PermissionMapper();
-            }
+            },
+
+            \Maatify\AdminKernel\Domain\Contracts\Roles\RolePermissionsRepositoryInterface::class => function (ContainerInterface $c) {
+                $pdo = $c->get(PDO::class);
+                assert($pdo instanceof PDO);
+                return new PdoRolePermissionsRepository($pdo);
+            },
+
+            \Maatify\AdminKernel\Http\Controllers\Ui\UiRoleDetailsController::class => function (ContainerInterface $c) {
+                $view = $c->get(Twig::class);
+                $authorizationService = $c->get(AuthorizationService::class);
+                $roleRepository = $c->get(\Maatify\AdminKernel\Domain\Contracts\Roles\RoleRepositoryInterface::class);
+
+                assert($view instanceof Twig);
+                assert($authorizationService instanceof AuthorizationService);
+                assert($roleRepository instanceof \Maatify\AdminKernel\Domain\Contracts\Roles\RoleRepositoryInterface);
+
+                return new \Maatify\AdminKernel\Http\Controllers\Ui\UiRoleDetailsController($view, $authorizationService, $roleRepository);
+            },
+
+            \Maatify\AdminKernel\Http\Controllers\Api\Roles\RolePermissionAssignController::class => function (ContainerInterface $c) {
+                $validationGuard = $c->get(ValidationGuard::class);
+                $updater = $c->get(RolePermissionsRepositoryInterface::class);
+
+                assert($validationGuard instanceof ValidationGuard);
+                assert($updater instanceof RolePermissionsRepositoryInterface);
+
+                return new \Maatify\AdminKernel\Http\Controllers\Api\Roles\RolePermissionAssignController($validationGuard, $updater);
+            },
+
+            \Maatify\AdminKernel\Http\Controllers\Api\Roles\RolePermissionUnassignController::class => function (ContainerInterface $c) {
+                $validationGuard = $c->get(ValidationGuard::class);
+                $updater = $c->get(RolePermissionsRepositoryInterface::class);
+                assert($validationGuard instanceof ValidationGuard);
+                assert($updater instanceof RolePermissionsRepositoryInterface);
+                return new \Maatify\AdminKernel\Http\Controllers\Api\Roles\RolePermissionUnassignController($validationGuard, $updater);
+            },
+
+            \Maatify\AdminKernel\Http\Controllers\Api\Roles\RolePermissionsQueryController::class => function (ContainerInterface $c) {
+                $reader = $c->get(\Maatify\AdminKernel\Domain\Contracts\Roles\RolePermissionsRepositoryInterface::class);
+                $validationGuard = $c->get(ValidationGuard::class);
+                $filterResolver = $c->get(ListFilterResolver::class);
+                assert($reader instanceof \Maatify\AdminKernel\Domain\Contracts\Roles\RolePermissionsRepositoryInterface);
+                assert($validationGuard instanceof ValidationGuard);
+                assert($filterResolver instanceof ListFilterResolver);
+                return new \Maatify\AdminKernel\Http\Controllers\Api\Roles\RolePermissionsQueryController($reader, $validationGuard, $filterResolver);
+            },
+
+            \Maatify\AdminKernel\Domain\Contracts\Roles\RoleAdminsRepositoryInterface::class => function (ContainerInterface $c) {
+                $pdo = $c->get(PDO::class);
+                assert($pdo instanceof PDO);
+                return new PdoRoleAdminsRepository($pdo);
+            },
+
+            \Maatify\AdminKernel\Http\Controllers\Api\Roles\RoleAdminAssignController::class => function (ContainerInterface $c) {
+                $validationGuard = $c->get(ValidationGuard::class);
+                $updater = $c->get(RoleAdminsRepositoryInterface::class);
+                assert($validationGuard instanceof ValidationGuard);
+                assert($updater instanceof RoleAdminsRepositoryInterface);
+
+                return new \Maatify\AdminKernel\Http\Controllers\Api\Roles\RoleAdminAssignController($validationGuard, $updater);
+            },
+
+            \Maatify\AdminKernel\Http\Controllers\Api\Roles\RoleAdminUnassignController::class => function (ContainerInterface $c) {
+                $validationGuard = $c->get(ValidationGuard::class);
+                $updater = $c->get(RoleAdminsRepositoryInterface::class);
+                assert($validationGuard instanceof ValidationGuard);
+                assert($updater instanceof RoleAdminsRepositoryInterface);
+
+                return new \Maatify\AdminKernel\Http\Controllers\Api\Roles\RoleAdminUnassignController($validationGuard, $updater);
+            },
+
+            \Maatify\AdminKernel\Http\Controllers\Api\Roles\RoleAdminsQueryController::class => function (ContainerInterface $c) {
+                $reader = $c->get(\Maatify\AdminKernel\Domain\Contracts\Roles\RoleAdminsRepositoryInterface::class);
+                $validationGuard = $c->get(ValidationGuard::class);
+                $filterResolver = $c->get(ListFilterResolver::class);
+                assert($reader instanceof \Maatify\AdminKernel\Domain\Contracts\Roles\RoleAdminsRepositoryInterface);
+                assert($validationGuard instanceof ValidationGuard);
+                assert($filterResolver instanceof ListFilterResolver);
+                return new \Maatify\AdminKernel\Http\Controllers\Api\Roles\RoleAdminsQueryController($reader, $validationGuard, $filterResolver);
+            },
 
         ]);
 

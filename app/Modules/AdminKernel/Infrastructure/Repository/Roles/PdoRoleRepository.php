@@ -8,6 +8,7 @@ use Maatify\AdminKernel\Domain\Contracts\Roles\RoleRenameRepositoryInterface;
 use Maatify\AdminKernel\Domain\Contracts\Roles\RoleRepositoryInterface;
 use Maatify\AdminKernel\Domain\Contracts\Roles\RolesMetadataRepositoryInterface;
 use Maatify\AdminKernel\Domain\Contracts\Roles\RoleToggleRepositoryInterface;
+use Maatify\AdminKernel\Domain\DTO\Roles\RoleDetailsDTO;
 use Maatify\AdminKernel\Domain\Exception\EntityAlreadyExistsException;
 use Maatify\AdminKernel\Domain\Exception\EntityNotFoundException;
 use Maatify\AdminKernel\Domain\Exception\InvalidOperationException;
@@ -167,4 +168,42 @@ class PdoRoleRepository implements RoleRepositoryInterface,
         }
     }
 
+    public function getById(int $roleId): RoleDetailsDTO
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT
+                 id,
+                 name,
+                 display_name,
+                 description,
+                 is_active
+             FROM roles
+             WHERE id = :id'
+        );
+
+        $stmt->execute(['id' => $roleId]);
+
+        /**
+         * @var array{
+         *     id:int,
+         *     name:string,
+         *     display_name:string|null,
+         *     description:string|null,
+         *     is_active:int
+         *     }|false $row
+         */
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($row === false) {
+            throw new EntityNotFoundException('role', $roleId);
+        }
+
+        return new RoleDetailsDTO(
+            id: (int) $row['id'],
+            name: (string) $row['name'],
+            display_name: $row['display_name'] !== null ? (string) $row['display_name'] : null,
+            description: $row['description'] !== null ? (string) $row['description'] : null,
+            is_active: (int) $row['is_active'],
+        );
+    }
 }
