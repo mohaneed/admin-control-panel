@@ -130,17 +130,28 @@
         return `<span class="text-sm text-gray-600">${date.toLocaleString()}</span>`;
     };
 
-    /** Actions column — Revoke button (only if can_revoke) */
+    /** Actions column — Edit + Revoke buttons (if can_revoke) */
     const actionsRenderer = (value, row) => {
         if (!canRevoke) return '<span class="text-gray-400">—</span>';
         const permId = row.id;
         if (!permId) return '<span class="text-gray-400">—</span>';
+
+        const currentAllowed = row.is_allowed === true || row.is_allowed === 1 || row.is_allowed === '1' ? '1' : '0';
+        const currentExpires = row.expires_at || '';
+
         return `
-            <button class="direct-revoke-btn text-xs px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 transition-all duration-200"
-                    data-permission-id="${permId}"
-                    title="Revoke this direct permission">
-                Revoke
-            </button>
+            <div class="flex gap-1.5">
+                <button class="direct-edit-btn text-xs px-3 py-1 bg-gray-100 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-200 transition-all duration-200"
+                        data-permission-id="${permId}"
+                        data-current-allowed="${currentAllowed}"
+                        data-current-expires="${currentExpires}">
+                    Edit
+                </button>
+                <button class="direct-revoke-btn text-xs px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 transition-all duration-200"
+                        data-permission-id="${permId}">
+                    Revoke
+                </button>
+            </div>
         `;
     };
 
@@ -442,6 +453,166 @@
             showAlert('d', 'Network error');
             btn.disabled = false;
             btn.classList.remove('opacity-50');
+        }
+    }
+
+    // ====================================================================
+    // Direct Tab — Inline Edit Form Helpers
+    // ====================================================================
+
+    /** Collapse any currently open inline edit form in the direct table */
+    function collapseDirectInlineForms() {
+        document.querySelectorAll('.direct-inline-form').forEach(form => form.remove());
+    }
+
+    /**
+     * Show the inline edit sub-form for a direct permission row.
+     * @param {HTMLElement} btn        – the clicked Edit button
+     * @param {number}      permId     – permission_id
+     * @param {boolean}     preAllowed – pre-selected is_allowed
+     * @param {string}      preExpires – pre-filled expires_at in "Y-m-d H:i:s" format
+     */
+    function showDirectInlineForm(btn, permId, preAllowed = true, preExpires = '') {
+        collapseDirectInlineForms();
+
+        const row = btn.closest('tr');
+        if (!row) return;
+
+        // Convert "Y-m-d H:i:s" → "YYYY-MM-DDTHH:MM" for datetime-local input
+        let preExpiresLocal = '';
+        if (preExpires) {
+            preExpiresLocal = preExpires.replace(' ', 'T').substring(0, 16);
+        }
+
+        const formHtml = `
+            <tr class="direct-inline-form bg-blue-50 border-t border-blue-200">
+                <td colspan="8" class="px-4 py-3">
+                    <div class="flex flex-wrap items-end gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Permission Type</label>
+                            <div class="flex gap-2">
+                                <label class="inline-flex items-center gap-1.5 px-3 py-1.5 border rounded-md cursor-pointer transition-colors duration-200
+                                    ${preAllowed ? 'border-green-400 bg-green-50' : 'border-gray-300'}
+                                    direct-inline-type" data-type="allow">
+                                    <input type="radio" name="direct-inline-type-${permId}" value="allow" class="sr-only" ${preAllowed ? 'checked' : ''}>
+                                    <span class="text-xs font-medium ${preAllowed ? 'text-green-700' : 'text-gray-600'}">Allow</span>
+                                </label>
+                                <label class="inline-flex items-center gap-1.5 px-3 py-1.5 border rounded-md cursor-pointer transition-colors duration-200
+                                    ${!preAllowed ? 'border-red-400 bg-red-50' : 'border-gray-300'}
+                                    direct-inline-type" data-type="deny">
+                                    <input type="radio" name="direct-inline-type-${permId}" value="deny" class="sr-only" ${!preAllowed ? 'checked' : ''}>
+                                    <span class="text-xs font-medium ${!preAllowed ? 'text-red-700' : 'text-gray-600'}">Deny</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Expiration <span class="text-gray-400 font-normal">(Optional)</span></label>
+                            <input type="datetime-local" class="direct-inline-expires px-3 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                   value="${preExpiresLocal}">
+                        </div>
+                        <button type="button" class="direct-inline-save-btn text-xs px-4 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                data-permission-id="${permId}">
+                            Save
+                        </button>
+                        <button type="button" class="direct-inline-cancel-btn text-xs px-3 py-1.5 bg-white text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition-all duration-200">
+                            Cancel
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+
+        row.insertAdjacentHTML('afterend', formHtml);
+
+        // Wire up Allow / Deny label toggle styling
+        const formRow    = row.nextElementSibling;
+        const typeLabels = formRow.querySelectorAll('.direct-inline-type');
+        typeLabels.forEach(label => {
+            label.addEventListener('click', () => {
+                const type  = label.dataset.type;
+                const radio = label.querySelector('input[type=radio]');
+                if (radio) radio.checked = true;
+
+                typeLabels.forEach(l => {
+                    const isSelected = l.dataset.type === type;
+                    const isAllow    = l.dataset.type === 'allow';
+                    l.classList.remove('border-green-400', 'bg-green-50', 'border-red-400', 'bg-red-50', 'border-gray-300');
+                    if (isSelected) {
+                        l.classList.add(isAllow ? 'border-green-400' : 'border-red-400');
+                        l.classList.add(isAllow ? 'bg-green-50'      : 'bg-red-50');
+                    } else {
+                        l.classList.add('border-gray-300');
+                    }
+                    const span = l.querySelector('span');
+                    if (span) {
+                        span.className = `text-xs font-medium ${isSelected ? (isAllow ? 'text-green-700' : 'text-red-700') : 'text-gray-600'}`;
+                    }
+                });
+            });
+        });
+    }
+
+    /**
+     * Handle save from the direct tab's inline edit form.
+     * Calls PUT /api/admins/{id}/permissions/direct/update
+     */
+    async function handleDirectInlineSave(saveBtn) {
+        const permId  = Number(saveBtn.dataset.permissionId);
+        const formRow = saveBtn.closest('.direct-inline-form');
+        if (!formRow) return;
+
+        const typeRadio   = formRow.querySelector('input[name^="direct-inline-type-"]:checked');
+        const expiresInput = formRow.querySelector('.direct-inline-expires');
+        if (!typeRadio) return;
+
+        const isAllowed = typeRadio.value === 'allow';
+        let expiresAt   = expiresInput?.value ? expiresInput.value.replace('T', ' ') + ':00' : null;
+
+        console.log('💾 [Direct] Inline save — permission_id:', permId, 'is_allowed:', isAllowed, 'expires_at:', expiresAt);
+
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+
+        const payload = { permission_id: permId, is_allowed: isAllowed };
+        if (expiresAt) payload.expires_at = expiresAt;
+
+        try {
+            const response = await fetch(`/api/admins/${adminId}/permissions/direct/update`, {
+                method:  'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify(payload)
+            });
+
+            console.log('📥 [Direct] Update response — status:', response.status);
+
+            // Step-Up 2FA
+            if (response.status === 403) {
+                const data = await response.json().catch(() => null);
+                if (data && data.code === 'STEP_UP_REQUIRED') {
+                    const scope    = encodeURIComponent(data.scope || 'admin.permissions.direct.update');
+                    const returnTo = encodeURIComponent(window.location.pathname);
+                    window.location.href = `/2fa/verify?scope=${scope}&return_to=${returnTo}`;
+                    return;
+                }
+            }
+
+            if (response.ok || response.status === 204) {
+                console.log('✅ [Direct] Permission updated — reloading table');
+                showAlert('s', 'Permission metadata updated successfully');
+                formRow.remove();
+                await loadDirectWithParams(currentParams);
+            } else {
+                const data = await response.json().catch(() => null);
+                console.error('❌ [Direct] Update failed:', data);
+                showAlert('w', data?.message || 'Failed to update permission metadata');
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save';
+            }
+        } catch (err) {
+            console.error('❌ [Direct] Network error:', err);
+            showAlert('d', 'Network error. Please try again.');
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save';
         }
     }
 
@@ -1044,10 +1215,35 @@
     // Delegated Click Handlers — All Row Actions
     // ====================================================================
     document.addEventListener('click', (e) => {
+        // Direct tab — Edit → open inline form (pre-filled)
+        const directEditBtn = e.target.closest('.direct-edit-btn');
+        if (directEditBtn && !directEditBtn.disabled) {
+            const preAllowed = directEditBtn.dataset.currentAllowed === '1';
+            const preExpires = directEditBtn.dataset.currentExpires || '';
+            console.log('✏️  [Direct] Edit clicked — permission_id:', directEditBtn.dataset.permissionId, 'allowed:', preAllowed, 'expires:', preExpires);
+            showDirectInlineForm(directEditBtn, directEditBtn.dataset.permissionId, preAllowed, preExpires);
+            return;
+        }
+
         // Direct tab — Revoke
         const directRevokeBtn = e.target.closest('.direct-revoke-btn');
         if (directRevokeBtn && !directRevokeBtn.disabled) {
             handleRevoke(directRevokeBtn);
+            return;
+        }
+
+        // Direct tab — Inline Save
+        const directInlineSaveBtn = e.target.closest('.direct-inline-save-btn');
+        if (directInlineSaveBtn && !directInlineSaveBtn.disabled) {
+            handleDirectInlineSave(directInlineSaveBtn);
+            return;
+        }
+
+        // Direct tab — Inline Cancel
+        const directInlineCancelBtn = e.target.closest('.direct-inline-cancel-btn');
+        if (directInlineCancelBtn) {
+            const formRow = directInlineCancelBtn.closest('.direct-inline-form');
+            if (formRow) formRow.remove();
             return;
         }
 
