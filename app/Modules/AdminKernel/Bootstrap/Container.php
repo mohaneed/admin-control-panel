@@ -44,7 +44,9 @@ use Maatify\AdminKernel\Domain\Contracts\PermissionsMetadataRepositoryInterface;
 use Maatify\AdminKernel\Domain\Contracts\PermissionsReaderRepositoryInterface;
 use Maatify\AdminKernel\Domain\Contracts\RememberMeRepositoryInterface;
 use Maatify\AdminKernel\Domain\Contracts\RolePermissionRepositoryInterface;
+use Maatify\AdminKernel\Domain\Contracts\Roles\RoleAdminsRepositoryInterface;
 use Maatify\AdminKernel\Domain\Contracts\Roles\RoleCreateRepositoryInterface;
+use Maatify\AdminKernel\Domain\Contracts\Roles\RolePermissionsRepositoryInterface;
 use Maatify\AdminKernel\Domain\Contracts\Roles\RoleRenameRepositoryInterface;
 use Maatify\AdminKernel\Domain\Contracts\Roles\RoleRepositoryInterface;
 use Maatify\AdminKernel\Domain\Contracts\Roles\RolesMetadataRepositoryInterface;
@@ -149,7 +151,9 @@ use Maatify\AdminKernel\Infrastructure\Repository\PdoStepUpGrantRepository;
 use Maatify\AdminKernel\Infrastructure\Repository\PdoSystemOwnershipRepository;
 use Maatify\AdminKernel\Infrastructure\Repository\PdoVerificationCodeRepository;
 use Maatify\AdminKernel\Infrastructure\Repository\RolePermissionRepository;
+use Maatify\AdminKernel\Infrastructure\Repository\Roles\PdoRoleAdminsRepository;
 use Maatify\AdminKernel\Infrastructure\Repository\Roles\PdoRoleCreateRepository;
+use Maatify\AdminKernel\Infrastructure\Repository\Roles\PdoRolePermissionsRepository;
 use Maatify\AdminKernel\Infrastructure\Repository\Roles\PdoRoleRepository;
 use Maatify\AdminKernel\Infrastructure\Service\AdminTotpSecretStore;
 use Maatify\AdminKernel\Infrastructure\Service\Google2faTotpService;
@@ -1713,7 +1717,87 @@ class Container
 
             PermissionMapperInterface::class => function () {
                 return new PermissionMapper();
-            }
+            },
+
+            \Maatify\AdminKernel\Domain\Contracts\Roles\RolePermissionsRepositoryInterface::class => function (ContainerInterface $c) {
+                $pdo = $c->get(PDO::class);
+                assert($pdo instanceof PDO);
+                return new PdoRolePermissionsRepository($pdo);
+            },
+
+            \Maatify\AdminKernel\Http\Controllers\Ui\UiRoleDetailsController::class => function (ContainerInterface $c) {
+                $view = $c->get(Twig::class);
+                $authorizationService = $c->get(AuthorizationService::class);
+                $roleRepository = $c->get(\Maatify\AdminKernel\Domain\Contracts\Roles\RoleRepositoryInterface::class);
+
+                assert($view instanceof Twig);
+                assert($authorizationService instanceof AuthorizationService);
+                assert($roleRepository instanceof \Maatify\AdminKernel\Domain\Contracts\Roles\RoleRepositoryInterface);
+
+                return new \Maatify\AdminKernel\Http\Controllers\Ui\UiRoleDetailsController($view, $authorizationService, $roleRepository);
+            },
+
+            \Maatify\AdminKernel\Http\Controllers\Api\Roles\RolePermissionAssignController::class => function (ContainerInterface $c) {
+                $validationGuard = $c->get(ValidationGuard::class);
+                $updater = $c->get(RolePermissionsRepositoryInterface::class);
+
+                assert($validationGuard instanceof ValidationGuard);
+                assert($updater instanceof RolePermissionsRepositoryInterface);
+
+                return new \Maatify\AdminKernel\Http\Controllers\Api\Roles\RolePermissionAssignController($validationGuard, $updater);
+            },
+
+            \Maatify\AdminKernel\Http\Controllers\Api\Roles\RolePermissionUnassignController::class => function (ContainerInterface $c) {
+                $validationGuard = $c->get(ValidationGuard::class);
+                $updater = $c->get(RolePermissionsRepositoryInterface::class);
+                assert($validationGuard instanceof ValidationGuard);
+                assert($updater instanceof RolePermissionsRepositoryInterface);
+                return new \Maatify\AdminKernel\Http\Controllers\Api\Roles\RolePermissionUnassignController($validationGuard, $updater);
+            },
+
+            \Maatify\AdminKernel\Http\Controllers\Api\Roles\RolePermissionsQueryController::class => function (ContainerInterface $c) {
+                $reader = $c->get(\Maatify\AdminKernel\Domain\Contracts\Roles\RolePermissionsRepositoryInterface::class);
+                $validationGuard = $c->get(ValidationGuard::class);
+                $filterResolver = $c->get(ListFilterResolver::class);
+                assert($reader instanceof \Maatify\AdminKernel\Domain\Contracts\Roles\RolePermissionsRepositoryInterface);
+                assert($validationGuard instanceof ValidationGuard);
+                assert($filterResolver instanceof ListFilterResolver);
+                return new \Maatify\AdminKernel\Http\Controllers\Api\Roles\RolePermissionsQueryController($reader, $validationGuard, $filterResolver);
+            },
+
+            \Maatify\AdminKernel\Domain\Contracts\Roles\RoleAdminsRepositoryInterface::class => function (ContainerInterface $c) {
+                $pdo = $c->get(PDO::class);
+                assert($pdo instanceof PDO);
+                return new PdoRoleAdminsRepository($pdo);
+            },
+
+            \Maatify\AdminKernel\Http\Controllers\Api\Roles\RoleAdminAssignController::class => function (ContainerInterface $c) {
+                $validationGuard = $c->get(ValidationGuard::class);
+                $updater = $c->get(RoleAdminsRepositoryInterface::class);
+                assert($validationGuard instanceof ValidationGuard);
+                assert($updater instanceof RoleAdminsRepositoryInterface);
+
+                return new \Maatify\AdminKernel\Http\Controllers\Api\Roles\RoleAdminAssignController($validationGuard, $updater);
+            },
+
+            \Maatify\AdminKernel\Http\Controllers\Api\Roles\RoleAdminUnassignController::class => function (ContainerInterface $c) {
+                $validationGuard = $c->get(ValidationGuard::class);
+                $updater = $c->get(RoleAdminsRepositoryInterface::class);
+                assert($validationGuard instanceof ValidationGuard);
+                assert($updater instanceof RoleAdminsRepositoryInterface);
+
+                return new \Maatify\AdminKernel\Http\Controllers\Api\Roles\RoleAdminUnassignController($validationGuard, $updater);
+            },
+
+            \Maatify\AdminKernel\Http\Controllers\Api\Roles\RoleAdminsQueryController::class => function (ContainerInterface $c) {
+                $reader = $c->get(\Maatify\AdminKernel\Domain\Contracts\Roles\RoleAdminsRepositoryInterface::class);
+                $validationGuard = $c->get(ValidationGuard::class);
+                $filterResolver = $c->get(ListFilterResolver::class);
+                assert($reader instanceof \Maatify\AdminKernel\Domain\Contracts\Roles\RoleAdminsRepositoryInterface);
+                assert($validationGuard instanceof ValidationGuard);
+                assert($filterResolver instanceof ListFilterResolver);
+                return new \Maatify\AdminKernel\Http\Controllers\Api\Roles\RoleAdminsQueryController($reader, $validationGuard, $filterResolver);
+            },
 
         ]);
 
