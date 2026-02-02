@@ -6,6 +6,11 @@ namespace Maatify\AdminKernel\Bootstrap;
 
 use DI\ContainerBuilder;
 use Exception;
+use Maatify\AbuseProtection\Contracts\AbuseDecisionInterface;
+use Maatify\AbuseProtection\Contracts\AbuseSignatureProviderInterface;
+use Maatify\AbuseProtection\Contracts\ChallengeProviderInterface;
+use Maatify\AbuseProtection\Middleware\AbuseProtectionMiddleware;
+use Maatify\AbuseProtection\Policy\LoginAbusePolicy;
 use Maatify\AdminKernel\Application\Admin\AdminProfileUpdateService;
 use Maatify\AdminKernel\Application\Auth\AdminLoginService;
 use Maatify\AdminKernel\Application\Auth\AdminLogoutService;
@@ -20,6 +25,8 @@ use Maatify\AdminKernel\Domain\Admin\Reader\AdminBasicInfoReaderInterface;
 use Maatify\AdminKernel\Domain\Admin\Reader\AdminEmailReaderInterface;
 use Maatify\AdminKernel\Domain\Admin\Reader\AdminProfileReaderInterface;
 use Maatify\AdminKernel\Domain\Admin\Reader\AdminQueryReaderInterface;
+use Maatify\AdminKernel\Domain\Contracts\Abuse\AbuseCookieServiceInterface;
+use Maatify\AdminKernel\Domain\Contracts\Abuse\ChallengeWidgetRendererInterface;
 use Maatify\AdminKernel\Domain\Contracts\ActorProviderInterface;
 use Maatify\AdminKernel\Domain\Contracts\AdminDirectPermissionRepositoryInterface;
 use Maatify\AdminKernel\Domain\Contracts\AdminEmailVerificationRepositoryInterface;
@@ -40,6 +47,7 @@ use Maatify\AdminKernel\Domain\Contracts\FailedNotificationRepositoryInterface;
 use Maatify\AdminKernel\Domain\Contracts\NotificationReadRepositoryInterface;
 use Maatify\AdminKernel\Domain\Contracts\NotificationRoutingInterface;
 use Maatify\AdminKernel\Domain\Contracts\PermissionMapperInterface;
+use Maatify\AdminKernel\Domain\Contracts\Permissions\DirectPermissionsWriterRepositoryInterface;
 use Maatify\AdminKernel\Domain\Contracts\PermissionsMetadataRepositoryInterface;
 use Maatify\AdminKernel\Domain\Contracts\PermissionsReaderRepositoryInterface;
 use Maatify\AdminKernel\Domain\Contracts\RememberMeRepositoryInterface;
@@ -155,6 +163,9 @@ use Maatify\AdminKernel\Infrastructure\Repository\Roles\PdoRoleAdminsRepository;
 use Maatify\AdminKernel\Infrastructure\Repository\Roles\PdoRoleCreateRepository;
 use Maatify\AdminKernel\Infrastructure\Repository\Roles\PdoRolePermissionsRepository;
 use Maatify\AdminKernel\Infrastructure\Repository\Roles\PdoRoleRepository;
+use Maatify\AdminKernel\Infrastructure\Security\Abuse\AbuseCookieService;
+use Maatify\AdminKernel\Infrastructure\Security\Abuse\TurnstileChallengeProvider;
+use Maatify\AdminKernel\Infrastructure\Security\Abuse\TurnstileConfigDTO;
 use Maatify\AdminKernel\Infrastructure\Service\AdminTotpSecretStore;
 use Maatify\AdminKernel\Infrastructure\Service\Google2faTotpService;
 use Maatify\AdminKernel\Infrastructure\Updater\PDOPermissionsMetadataRepository;
@@ -261,6 +272,11 @@ class Container
             debugLevel: $runtime->mailDebugLevel
         );
 
+        $turnstileConfigDTO = new TurnstileConfigDTO(
+            siteKey: $runtime->turnstileSiteKey,
+            secretKey: $runtime->turnstileSecretKey
+        );
+
         // Enforce Timezone
         // date_default_timezone_set($config->timezone); // Removed in Kernelization Step 1(B)
 
@@ -287,6 +303,9 @@ class Container
             },
             TotpEnrollmentConfig::class => function () use ($totpEnrollmentConfig) {
                 return $totpEnrollmentConfig;
+            },
+            TurnstileConfigDTO::class => function () use ($turnstileConfigDTO) {
+                return $turnstileConfigDTO;
             },
             ValidatorInterface::class => function (ContainerInterface $c) {
                 return new RespectValidator();
@@ -701,24 +720,28 @@ class Container
                 $rememberMeService = $c->get(RememberMeService::class);
                 $cryptoService = $c->get(AdminIdentifierCryptoServiceInterface::class);
                 $clock = $c->get(\Maatify\SharedCommon\Contracts\ClockInterface::class);
-
+                $abuseCookieService = $c->get(AbuseCookieServiceInterface::class);
                 assert($authService instanceof AdminAuthenticationService);
                 assert($sessionRepo instanceof \Maatify\AdminKernel\Domain\Contracts\AdminSessionValidationRepositoryInterface);
                 assert($rememberMeService instanceof RememberMeService);
                 assert($cryptoService instanceof AdminIdentifierCryptoServiceInterface);
                 assert($clock instanceof \Maatify\SharedCommon\Contracts\ClockInterface);
+                assert($abuseCookieService instanceof AbuseCookieServiceInterface);
 
-                return new AdminLoginService($authService, $sessionRepo, $rememberMeService, $cryptoService, $clock);
+                return new AdminLoginService($authService, $sessionRepo, $rememberMeService, $cryptoService, $clock, $abuseCookieService);
             },
             LoginController::class => function (ContainerInterface $c) {
                 $adminLoginService = $c->get(AdminLoginService::class);
                 $view = $c->get(Twig::class);
+                $challengeRenderer = $c->get(ChallengeWidgetRendererInterface::class);
                 assert($adminLoginService instanceof AdminLoginService);
                 assert($view instanceof Twig);
+                assert($challengeRenderer instanceof ChallengeWidgetRendererInterface);
 
                 return new LoginController(
                     $adminLoginService,
                     $view,
+                    $challengeRenderer
                 );
             },
             \Maatify\AdminKernel\Application\Auth\AdminLogoutService::class => function (ContainerInterface $c) {
@@ -1797,6 +1820,176 @@ class Container
                 assert($validationGuard instanceof ValidationGuard);
                 assert($filterResolver instanceof ListFilterResolver);
                 return new \Maatify\AdminKernel\Http\Controllers\Api\Roles\RoleAdminsQueryController($reader, $validationGuard, $filterResolver);
+            },
+
+            \Maatify\AdminKernel\Domain\Contracts\Roles\AdminRolesRepositoryInterface::class => function (ContainerInterface $c) {
+                $pdo = $c->get(PDO::class);
+                assert($pdo instanceof PDO);
+                return new \Maatify\AdminKernel\Infrastructure\Repository\Roles\PdoAdminRolesRepository($pdo);
+            },
+
+            \Maatify\AdminKernel\Http\Controllers\Api\Admin\AdminRolesQueryController::class => function (ContainerInterface $c) {
+                $reader = $c->get(\Maatify\AdminKernel\Domain\Contracts\Roles\AdminRolesRepositoryInterface::class);
+                $validationGuard = $c->get(ValidationGuard::class);
+                $filterResolver = $c->get(ListFilterResolver::class);
+                assert($reader instanceof \Maatify\AdminKernel\Domain\Contracts\Roles\AdminRolesRepositoryInterface);
+                assert($validationGuard instanceof ValidationGuard);
+                assert($filterResolver instanceof ListFilterResolver);
+                return new \Maatify\AdminKernel\Http\Controllers\Api\Admin\AdminRolesQueryController($reader, $validationGuard, $filterResolver);
+            },
+
+
+            \Maatify\AdminKernel\Domain\Contracts\Permissions\EffectivePermissionsRepositoryInterface::class => function (ContainerInterface $c) {
+                $pdo = $c->get(PDO::class);
+                assert($pdo instanceof PDO);
+                return new \Maatify\AdminKernel\Infrastructure\Repository\Permissions\PdoEffectivePermissionsRepository($pdo);
+            },
+
+            \Maatify\AdminKernel\Http\Controllers\Api\Admin\EffectivePermissionsQueryController::class => function (ContainerInterface $c) {
+                $reader = $c->get(\Maatify\AdminKernel\Domain\Contracts\Permissions\EffectivePermissionsRepositoryInterface::class);
+                $validationGuard = $c->get(ValidationGuard::class);
+                $filterResolver = $c->get(ListFilterResolver::class);
+                assert($reader instanceof \Maatify\AdminKernel\Domain\Contracts\Permissions\EffectivePermissionsRepositoryInterface);
+                assert($validationGuard instanceof ValidationGuard);
+                assert($filterResolver instanceof ListFilterResolver);
+                return new \Maatify\AdminKernel\Http\Controllers\Api\Admin\EffectivePermissionsQueryController($reader, $validationGuard, $filterResolver);
+            },
+
+            \Maatify\AdminKernel\Domain\Contracts\Permissions\DirectPermissionsRepositoryInterface::class => function (ContainerInterface $c) {
+                $pdo = $c->get(PDO::class);
+                assert($pdo instanceof PDO);
+                return new \Maatify\AdminKernel\Infrastructure\Repository\Permissions\PdoDirectPermissionsRepository($pdo);
+            },
+
+            \Maatify\AdminKernel\Http\Controllers\Api\Admin\DirectPermissionsQueryController::class => function (ContainerInterface $c) {
+                $reader = $c->get(\Maatify\AdminKernel\Domain\Contracts\Permissions\DirectPermissionsRepositoryInterface::class);
+                $validationGuard = $c->get(ValidationGuard::class);
+                $filterResolver = $c->get(ListFilterResolver::class);
+                assert($reader instanceof \Maatify\AdminKernel\Domain\Contracts\Permissions\DirectPermissionsRepositoryInterface);
+                assert($validationGuard instanceof ValidationGuard);
+                assert($filterResolver instanceof ListFilterResolver);
+                return new \Maatify\AdminKernel\Http\Controllers\Api\Admin\DirectPermissionsQueryController($reader, $validationGuard, $filterResolver);
+            },
+
+            \Maatify\AdminKernel\Domain\Contracts\Permissions\DirectPermissionsWriterRepositoryInterface::class => function (ContainerInterface $c) {
+                $pdo = $c->get(PDO::class);
+                assert($pdo instanceof PDO);
+                return new \Maatify\AdminKernel\Infrastructure\Repository\Permissions\PdoDirectPermissionsWriterRepository($pdo);
+            },
+
+            \Maatify\AdminKernel\Http\Controllers\Api\Admin\AssignDirectPermissionController::class => function (ContainerInterface $c) {
+                $validationGuard = $c->get(ValidationGuard::class);
+                $updater = $c->get(DirectPermissionsWriterRepositoryInterface::class);
+                assert($validationGuard instanceof ValidationGuard);
+                assert($updater instanceof DirectPermissionsWriterRepositoryInterface);
+                return new \Maatify\AdminKernel\Http\Controllers\Api\Admin\AssignDirectPermissionController($validationGuard, $updater);
+            },
+
+            \Maatify\AdminKernel\Http\Controllers\Api\Admin\RevokeDirectPermissionController::class => function (ContainerInterface $c) {
+                $validationGuard = $c->get(ValidationGuard::class);
+                $updater = $c->get(DirectPermissionsWriterRepositoryInterface::class);
+                assert($validationGuard instanceof ValidationGuard);
+                assert($updater instanceof DirectPermissionsWriterRepositoryInterface);
+                return new \Maatify\AdminKernel\Http\Controllers\Api\Admin\RevokeDirectPermissionController($validationGuard, $updater);
+            },
+
+            \Maatify\AdminKernel\Domain\Contracts\Permissions\DirectPermissionsAssignableRepositoryInterface::class => function (ContainerInterface $c) {
+                $pdo = $c->get(PDO::class);
+                assert($pdo instanceof PDO);
+                return new \Maatify\AdminKernel\Infrastructure\Repository\Permissions\PdoDirectPermissionsAssignableRepository($pdo);
+            },
+
+            \Maatify\AdminKernel\Http\Controllers\Api\Admin\DirectPermissionsAssignableQueryController::class => function (ContainerInterface $c) {
+                $repo = $c->get(\Maatify\AdminKernel\Domain\Contracts\Permissions\DirectPermissionsAssignableRepositoryInterface::class);
+                $validationGuard = $c->get(ValidationGuard::class);
+                $filterResolver = $c->get(ListFilterResolver::class);
+                assert($repo instanceof \Maatify\AdminKernel\Domain\Contracts\Permissions\DirectPermissionsAssignableRepositoryInterface);
+                assert($validationGuard instanceof ValidationGuard);
+                assert($filterResolver instanceof ListFilterResolver);
+                return new \Maatify\AdminKernel\Http\Controllers\Api\Admin\DirectPermissionsAssignableQueryController($repo, $validationGuard, $filterResolver);
+            },
+
+            \Maatify\AdminKernel\Domain\Contracts\Permissions\PermissionDetailsRepositoryInterface::class => function (ContainerInterface $c) {
+                $pdo = $c->get(PDO::class);
+                assert($pdo instanceof PDO);
+                return new \Maatify\AdminKernel\Infrastructure\Repository\Permissions\PdoPermissionDetailsRepository($pdo);
+            },
+
+            \Maatify\AdminKernel\Http\Controllers\Ui\UiAPermissionDetailsController::class => function (ContainerInterface $c) {
+                $view = $c->get(Twig::class);
+                $authorizationService = $c->get(AuthorizationService::class);
+                $permissionDetailsRepository = $c->get(\Maatify\AdminKernel\Domain\Contracts\Permissions\PermissionDetailsRepositoryInterface::class);
+                assert($view instanceof Twig);
+                assert($authorizationService instanceof AuthorizationService);
+                assert($permissionDetailsRepository instanceof \Maatify\AdminKernel\Domain\Contracts\Permissions\PermissionDetailsRepositoryInterface);
+                return new \Maatify\AdminKernel\Http\Controllers\Ui\UiAPermissionDetailsController($view, $authorizationService, $permissionDetailsRepository);
+            },
+
+            \Maatify\AdminKernel\Domain\Contracts\Permissions\PermissionRolesQueryRepositoryInterface::class => function (ContainerInterface $c) {
+                $pdo = $c->get(PDO::class);
+                assert($pdo instanceof PDO);
+                return new \Maatify\AdminKernel\Infrastructure\Repository\Permissions\PdoPermissionRolesQueryRepository($pdo);
+            },
+
+            \Maatify\AdminKernel\Http\Controllers\Api\Permissions\PermissionRolesQueryController::class => function (ContainerInterface $c) {
+                $reader = $c->get(\Maatify\AdminKernel\Domain\Contracts\Permissions\PermissionRolesQueryRepositoryInterface::class);
+                $validationGuard = $c->get(ValidationGuard::class);
+                $filterResolver = $c->get(ListFilterResolver::class);
+                assert($reader instanceof \Maatify\AdminKernel\Domain\Contracts\Permissions\PermissionRolesQueryRepositoryInterface);
+                assert($validationGuard instanceof ValidationGuard);
+                assert($filterResolver instanceof ListFilterResolver);
+                return new \Maatify\AdminKernel\Http\Controllers\Api\Permissions\PermissionRolesQueryController($reader, $validationGuard, $filterResolver);
+            },
+
+            \Maatify\AdminKernel\Domain\Contracts\Permissions\PermissionAdminsQueryRepositoryInterface::class => function (ContainerInterface $c) {
+                $pdo = $c->get(PDO::class);
+                assert($pdo instanceof PDO);
+                return new \Maatify\AdminKernel\Infrastructure\Repository\Permissions\PdoPermissionAdminsQueryRepository($pdo);
+            },
+
+            \Maatify\AbuseProtection\Contracts\AbuseSignatureProviderInterface::class => function (ContainerInterface $c) {
+                $keyRotation = $c->get(KeyRotationService::class);
+                $hkdf = $c->get(HKDFService::class);
+                $cryptoContextProvider = $c->get(CryptoContextProviderInterface::class);
+
+                assert($keyRotation instanceof KeyRotationService);
+                assert($hkdf instanceof HKDFService);
+                assert($cryptoContextProvider instanceof CryptoContextProviderInterface);
+
+                return new \Maatify\AdminKernel\Infrastructure\Crypto\AbuseProtectionCryptoSignatureProvider($keyRotation, $hkdf, $cryptoContextProvider);
+            },
+
+            \Maatify\AdminKernel\Domain\Contracts\Abuse\AbuseCookieServiceInterface::class => function (ContainerInterface $c) {
+                $signatureProvider = $c->get(AbuseSignatureProviderInterface::class);
+                assert($signatureProvider instanceof AbuseSignatureProviderInterface);
+                return new AbuseCookieService($signatureProvider);
+            },
+
+            \Maatify\AbuseProtection\Contracts\AbuseDecisionInterface::class => function (ContainerInterface $c) {
+                return new LoginAbusePolicy(
+//                    challengeAfterFailures: 0,
+                );
+            },
+
+            \Maatify\AbuseProtection\Contracts\ChallengeProviderInterface::class => function (ContainerInterface $c) {
+                $turnstileConfig = $c->get(TurnstileConfigDTO::class);
+                assert($turnstileConfig instanceof TurnstileConfigDTO);
+
+                $secret = (string)($turnstileConfig->secretKey ?? '');
+                if ($secret === '') {
+                    // لو مش متظبط env، اقفلها بشكل واضح بدل ما تسيبها weak
+                    // ممكن برضه ترجع NullProvider في dev فقط لو تحب
+                    throw new \RuntimeException('TURNSTILE_SECRET_KEY is missing.');
+                }
+
+                return new TurnstileChallengeProvider($secret);
+            },
+
+            \Maatify\AdminKernel\Domain\Contracts\Abuse\ChallengeWidgetRendererInterface::class => function (ContainerInterface $c) {
+                $turnstileConfig = $c->get(TurnstileConfigDTO::class);
+                assert($turnstileConfig instanceof TurnstileConfigDTO);
+
+                return new \Maatify\AdminKernel\Infrastructure\Security\Abuse\TurnstileWidgetRenderer($turnstileConfig->siteKey ?? '');
             },
 
         ]);
