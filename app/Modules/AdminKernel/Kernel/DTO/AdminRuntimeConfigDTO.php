@@ -78,6 +78,12 @@ final class AdminRuntimeConfigDTO
     public ?string $turnstileSiteKey;
     public ?string $turnstileSecretKey;
 
+    /* ─────────────────────────────
+     * HCaptcha
+     * ───────────────────────────── */
+    public ?string $hCaptchaSiteKey;
+    public ?string $hCaptchaSecretKey;
+
     private function __construct() {}
 
     /**
@@ -141,6 +147,10 @@ final class AdminRuntimeConfigDTO
         // Turnstile
         $self->turnstileSiteKey = self::optString($data, 'TURNSTILE_SITE_KEY', '');
         $self->turnstileSecretKey = self::optString($data, 'TURNSTILE_SECRET_KEY', '');
+
+        // HCaptcha
+        $self->hCaptchaSiteKey = self::optString($data, 'HCAPTCHA_SITE_KEY', '');
+        $self->hCaptchaSecretKey = self::optString($data, 'HCAPTCHA_SECRET_KEY', '');
 
         return $self;
     }

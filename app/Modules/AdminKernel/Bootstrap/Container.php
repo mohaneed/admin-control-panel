@@ -164,6 +164,8 @@ use Maatify\AdminKernel\Infrastructure\Repository\Roles\PdoRoleCreateRepository;
 use Maatify\AdminKernel\Infrastructure\Repository\Roles\PdoRolePermissionsRepository;
 use Maatify\AdminKernel\Infrastructure\Repository\Roles\PdoRoleRepository;
 use Maatify\AdminKernel\Infrastructure\Security\Abuse\AbuseCookieService;
+use Maatify\AdminKernel\Infrastructure\Security\Abuse\HCaptchaChallengeProvider;
+use Maatify\AdminKernel\Infrastructure\Security\Abuse\HCaptchaConfigDTO;
 use Maatify\AdminKernel\Infrastructure\Security\Abuse\TurnstileChallengeProvider;
 use Maatify\AdminKernel\Infrastructure\Security\Abuse\TurnstileConfigDTO;
 use Maatify\AdminKernel\Infrastructure\Service\AdminTotpSecretStore;
@@ -277,6 +279,13 @@ class Container
             secretKey: $runtime->turnstileSecretKey
         );
 
+        // Currently bound to login flow only.
+        // Extendable when AbusePolicy supports multi-context challenges.
+        $hCaptchaConfigDTO = new HCaptchaConfigDto(
+            siteKey: $runtime->hCaptchaSiteKey,
+            secretKey: $runtime->hCaptchaSecretKey
+        );
+
         // Enforce Timezone
         // date_default_timezone_set($config->timezone); // Removed in Kernelization Step 1(B)
 
@@ -306,6 +315,9 @@ class Container
             },
             TurnstileConfigDTO::class => function () use ($turnstileConfigDTO) {
                 return $turnstileConfigDTO;
+            },
+            HCaptchaConfigDto::class => function () use ($hCaptchaConfigDTO) {
+                return $hCaptchaConfigDTO;
             },
             ValidatorInterface::class => function (ContainerInterface $c) {
                 return new RespectValidator();
@@ -1983,6 +1995,27 @@ class Container
                 }
 
                 return new TurnstileChallengeProvider($secret);
+
+                /*
+                 * Alternative provider: hCaptcha
+                 *
+                 * This block is intentionally disabled.
+                 * Enable ONLY when switching the active challenge provider
+                 * to hCaptcha instead of Turnstile.
+                 *
+                 * IMPORTANT:
+                 * - Exactly ONE challenge provider must be active at runtime.
+                 * - Do NOT enable multiple providers simultaneously.
+                 * - Widget renderer must be switched accordingly.
+                 */
+
+//                $hCaptchaConfig = $c->get(HCaptchaConfigDTO::class);
+//                assert($hCaptchaConfig instanceof HCaptchaConfigDTO);
+//                $secret = (string)($hCaptchaConfig->secretKey ?? '');
+//                if ($secret === '') {
+//                    throw new \RuntimeException('HCAPTCHA_SECRET_KEY is missing.');
+//                }
+//                return new HCaptchaChallengeProvider($secret);
             },
 
             \Maatify\AdminKernel\Domain\Contracts\Abuse\ChallengeWidgetRendererInterface::class => function (ContainerInterface $c) {
@@ -1990,6 +2023,19 @@ class Container
                 assert($turnstileConfig instanceof TurnstileConfigDTO);
 
                 return new \Maatify\AdminKernel\Infrastructure\Security\Abuse\TurnstileWidgetRenderer($turnstileConfig->siteKey ?? '');
+
+                /*
+                 * Alternative: hCaptcha widget renderer
+                 *
+                 * Enable only when switching the active challenge provider.
+                 * Must remain explicit to avoid multiple widgets rendering at once.
+                 */
+//                 $hCaptchaConfig = $c->get(HCaptchaConfigDTO::class);
+//                 assert($hCaptchaConfig instanceof HCaptchaConfigDTO);
+//
+//                 return new \Maatify\AdminKernel\Infrastructure\Security\Abuse\HCaptchaWidgetRenderer(
+//                     $hCaptchaConfig->siteKey ?? ''
+//                 );
             },
 
         ]);
