@@ -90,6 +90,11 @@ final class AdminRuntimeConfigDTO
     public ?string $recaptchaV2SiteKey;
     public ?string $recaptchaV2SecretKey;
 
+    /* ─────────────────────────────
+     * Abuse Challenge Provider Selector
+     * ───────────────────────────── */
+    public string $abuseChallengeProvider;
+
     private function __construct() {}
 
     /**
@@ -161,6 +166,9 @@ final class AdminRuntimeConfigDTO
         // RecaptchaV2
         $self->recaptchaV2SiteKey = self::optString($data, 'RECAPTCHA_V2_SITE_KEY', '');
         $self->recaptchaV2SecretKey = self::optString($data, 'RECAPTCHA_V2_SECRET_KEY', '');
+
+        // Abuse Challenge Provider Selector
+        $self->abuseChallengeProvider = self::optStringNotNull($data, 'ABUSE_CHALLENGE_PROVIDER', 'none');
 
         return $self;
     }

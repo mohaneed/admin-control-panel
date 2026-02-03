@@ -12,7 +12,7 @@ use Maatify\AbuseProtection\DTO\ChallengeResultDTO;
  * Safe default provider.
  * Always passes.
  */
-final class NullProvider implements ChallengeProviderInterface
+final class NullChallengeProvider implements ChallengeProviderInterface
 {
     public function supports(string $context): bool
     {

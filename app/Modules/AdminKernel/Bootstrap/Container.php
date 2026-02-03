@@ -11,6 +11,7 @@ use Maatify\AbuseProtection\Contracts\AbuseSignatureProviderInterface;
 use Maatify\AbuseProtection\Contracts\ChallengeProviderInterface;
 use Maatify\AbuseProtection\Middleware\AbuseProtectionMiddleware;
 use Maatify\AbuseProtection\Policy\LoginAbusePolicy;
+use Maatify\AbuseProtection\Providers\NullChallengeProvider;
 use Maatify\AdminKernel\Application\Admin\AdminProfileUpdateService;
 use Maatify\AdminKernel\Application\Auth\AdminLoginService;
 use Maatify\AdminKernel\Application\Auth\AdminLogoutService;
@@ -164,12 +165,17 @@ use Maatify\AdminKernel\Infrastructure\Repository\Roles\PdoRoleCreateRepository;
 use Maatify\AdminKernel\Infrastructure\Repository\Roles\PdoRolePermissionsRepository;
 use Maatify\AdminKernel\Infrastructure\Repository\Roles\PdoRoleRepository;
 use Maatify\AdminKernel\Infrastructure\Security\Abuse\AbuseCookieService;
+use Maatify\AdminKernel\Infrastructure\Security\Abuse\Enums\AbuseChallengeProviderEnum;
 use Maatify\AdminKernel\Infrastructure\Security\Abuse\HCaptchaChallengeProvider;
 use Maatify\AdminKernel\Infrastructure\Security\Abuse\HCaptchaConfigDTO;
+use Maatify\AdminKernel\Infrastructure\Security\Abuse\HCaptchaWidgetRenderer;
+use Maatify\AdminKernel\Infrastructure\Security\Abuse\NullChallengeWidgetRenderer;
 use Maatify\AdminKernel\Infrastructure\Security\Abuse\RecaptchaV2ChallengeProvider;
 use Maatify\AdminKernel\Infrastructure\Security\Abuse\RecaptchaV2ConfigDTO;
+use Maatify\AdminKernel\Infrastructure\Security\Abuse\RecaptchaV2WidgetRenderer;
 use Maatify\AdminKernel\Infrastructure\Security\Abuse\TurnstileChallengeProvider;
 use Maatify\AdminKernel\Infrastructure\Security\Abuse\TurnstileConfigDTO;
+use Maatify\AdminKernel\Infrastructure\Security\Abuse\TurnstileWidgetRenderer;
 use Maatify\AdminKernel\Infrastructure\Service\AdminTotpSecretStore;
 use Maatify\AdminKernel\Infrastructure\Service\Google2faTotpService;
 use Maatify\AdminKernel\Infrastructure\Updater\PDOPermissionsMetadataRepository;
@@ -206,6 +212,7 @@ use Maatify\Validation\Validator\RespectValidator;
 use PDO;
 use Psr\Container\ContainerInterface;
 use Psr\Log\LoggerInterface;
+use RuntimeException;
 use Slim\Views\Twig;
 
 class Container
@@ -274,6 +281,12 @@ class Container
             timeoutSeconds: $runtime->mailTimeoutSeconds,
             charset: $runtime->mailCharset,
             debugLevel: $runtime->mailDebugLevel
+        );
+
+        $abuseProvider = AbuseChallengeProviderEnum::tryFrom(
+            $runtime->abuseChallengeProvider ?? 'none'
+        ) ?? throw new RuntimeException(
+            'Invalid ABUSE_CHALLENGE_PROVIDER value'
         );
 
         $turnstileConfigDTO = new TurnstileConfigDTO(
@@ -1993,84 +2006,100 @@ class Container
                 );
             },
 
-            \Maatify\AbuseProtection\Contracts\ChallengeProviderInterface::class => function (ContainerInterface $c) {
-                $turnstileConfig = $c->get(TurnstileConfigDTO::class);
-                assert($turnstileConfig instanceof TurnstileConfigDTO);
-
-                $secret = (string)($turnstileConfig->secretKey ?? '');
-                if ($secret === '') {
-                    // لو مش متظبط env، اقفلها بشكل واضح بدل ما تسيبها weak
-                    // ممكن برضه ترجع NullProvider في dev فقط لو تحب
-                    throw new \RuntimeException('TURNSTILE_SECRET_KEY is missing.');
-                }
-
-                return new TurnstileChallengeProvider($secret);
+            \Maatify\AbuseProtection\Contracts\ChallengeProviderInterface::class
+            => function (ContainerInterface $c) use ($abuseProvider) {
 
                 /*
-                 * Alternative provider: hCaptcha
-                 *
-                 * This block is intentionally disabled.
-                 * Enable ONLY when switching the active challenge provider
-                 * to hCaptcha instead of Turnstile.
-                 *
                  * IMPORTANT:
-                 * - Exactly ONE challenge provider must be active at runtime.
-                 * - Do NOT enable multiple providers simultaneously.
-                 * - Widget renderer must be switched accordingly.
-                 */
-
-//                $hCaptchaConfig = $c->get(HCaptchaConfigDTO::class);
-//                assert($hCaptchaConfig instanceof HCaptchaConfigDTO);
-//                $secret = (string)($hCaptchaConfig->secretKey ?? '');
-//                if ($secret === '') {
-//                    throw new \RuntimeException('HCAPTCHA_SECRET_KEY is missing.');
-//                }
-//                return new HCaptchaChallengeProvider($secret);
-
-                /*
-                 * Alternative provider: Google reCAPTCHA v2
+                 * Exactly ONE challenge provider is allowed at runtime.
+                 * Provider selection is controlled exclusively by ABUSE_CHALLENGE_PROVIDER.
                  *
-                 * Enable ONLY when switching the active challenge provider.
-                 * Exactly one provider must be active.
+                 * Any missing or invalid configuration MUST fail fast.
                  */
 
-//                $recaptchaV2Config = $c->get(RecaptchaV2ConfigDTO::class);
-//                assert($recaptchaV2Config instanceof RecaptchaV2ConfigDTO);
-//                $secret = (string)($recaptchaV2Config->secretKey ?? '');
-//                if ($secret === '') {
-//                    throw new \RuntimeException('RECAPTCHA_V2_SECRET_KEY is missing.');
-//                }
-//                return new RecaptchaV2ChallengeProvider($secret);
+                return match ($abuseProvider) {
+
+                    AbuseChallengeProviderEnum::NONE =>
+                    new NullChallengeProvider(),
+
+                    AbuseChallengeProviderEnum::TURNSTILE => (function () use ($c) {
+                        $config = $c->get(TurnstileConfigDTO::class);
+                        assert($config instanceof TurnstileConfigDTO);
+
+                        $secret = (string) ($config->secretKey ?? '');
+                        if ($secret === '') {
+                            throw new \RuntimeException('TURNSTILE_SECRET_KEY is missing.');
+                        }
+
+                        return new TurnstileChallengeProvider($secret);
+                    })(),
+
+                    AbuseChallengeProviderEnum::HCAPTCHA => (function () use ($c) {
+                        $config = $c->get(HCaptchaConfigDTO::class);
+                        assert($config instanceof HCaptchaConfigDTO);
+
+                        $secret = (string) ($config->secretKey ?? '');
+                        if ($secret === '') {
+                            throw new \RuntimeException('HCAPTCHA_SECRET_KEY is missing.');
+                        }
+
+                        return new HCaptchaChallengeProvider($secret);
+                    })(),
+
+                    AbuseChallengeProviderEnum::RECAPTCHA_V2 => (function () use ($c) {
+                        $config = $c->get(RecaptchaV2ConfigDTO::class);
+                        assert($config instanceof RecaptchaV2ConfigDTO);
+
+                        $secret = (string) ($config->secretKey ?? '');
+                        if ($secret === '') {
+                            throw new \RuntimeException('RECAPTCHA_V2_SECRET_KEY is missing.');
+                        }
+
+                        return new RecaptchaV2ChallengeProvider($secret);
+                    })(),
+                };
             },
 
-            \Maatify\AdminKernel\Domain\Contracts\Abuse\ChallengeWidgetRendererInterface::class => function (ContainerInterface $c) {
-                $turnstileConfig = $c->get(TurnstileConfigDTO::class);
-                assert($turnstileConfig instanceof TurnstileConfigDTO);
-
-                return new \Maatify\AdminKernel\Infrastructure\Security\Abuse\TurnstileWidgetRenderer($turnstileConfig->siteKey ?? '');
+            \Maatify\AdminKernel\Domain\Contracts\Abuse\ChallengeWidgetRendererInterface::class
+            => function (ContainerInterface $c) use ($abuseProvider) {
 
                 /*
-                 * Alternative: hCaptcha widget renderer
-                 *
-                 * Enable only when switching the active challenge provider.
-                 * Must remain explicit to avoid multiple widgets rendering at once.
-                 */
-//                 $hCaptchaConfig = $c->get(HCaptchaConfigDTO::class);
-//                 assert($hCaptchaConfig instanceof HCaptchaConfigDTO);
-//
-//                 return new \Maatify\AdminKernel\Infrastructure\Security\Abuse\HCaptchaWidgetRenderer(
-//                     $hCaptchaConfig->siteKey ?? ''
-//                 );
-
-                /*
-                 * Alternative widget renderer: Google reCAPTCHA v2
-                 *
-                 * Must match the active challenge provider.
+                 * Widget renderer MUST match the active challenge provider.
+                 * No fallback, no multiple renderers, no implicit defaults.
                  */
 
-//                $recaptchaV2Config = $c->get(RecaptchaV2ConfigDTO::class);
-//                assert($recaptchaV2Config instanceof RecaptchaV2ConfigDTO);
-//                return new \Maatify\AdminKernel\Infrastructure\Security\Abuse\RecaptchaV2WidgetRenderer($recaptchaV2Config->siteKey ?? '');
+                return match ($abuseProvider) {
+
+                    AbuseChallengeProviderEnum::NONE =>
+                    new NullChallengeWidgetRenderer(),
+
+                    AbuseChallengeProviderEnum::TURNSTILE => (function () use ($c) {
+                        $config = $c->get(TurnstileConfigDTO::class);
+                        assert($config instanceof TurnstileConfigDTO);
+
+                        return new TurnstileWidgetRenderer(
+                            (string) ($config->siteKey ?? '')
+                        );
+                    })(),
+
+                    AbuseChallengeProviderEnum::HCAPTCHA => (function () use ($c) {
+                        $config = $c->get(HCaptchaConfigDTO::class);
+                        assert($config instanceof HCaptchaConfigDTO);
+
+                        return new HCaptchaWidgetRenderer(
+                            (string) ($config->siteKey ?? '')
+                        );
+                    })(),
+
+                    AbuseChallengeProviderEnum::RECAPTCHA_V2 => (function () use ($c) {
+                        $config = $c->get(RecaptchaV2ConfigDTO::class);
+                        assert($config instanceof RecaptchaV2ConfigDTO);
+
+                        return new RecaptchaV2WidgetRenderer(
+                            (string) ($config->siteKey ?? '')
+                        );
+                    })(),
+                };
             },
 
         ]);
