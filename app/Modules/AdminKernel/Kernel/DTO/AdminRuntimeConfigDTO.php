@@ -78,6 +78,23 @@ final class AdminRuntimeConfigDTO
     public ?string $turnstileSiteKey;
     public ?string $turnstileSecretKey;
 
+    /* ─────────────────────────────
+     * HCaptcha
+     * ───────────────────────────── */
+    public ?string $hCaptchaSiteKey;
+    public ?string $hCaptchaSecretKey;
+
+    /* ─────────────────────────────
+     * RecaptchaV2
+     * ───────────────────────────── */
+    public ?string $recaptchaV2SiteKey;
+    public ?string $recaptchaV2SecretKey;
+
+    /* ─────────────────────────────
+     * Abuse Challenge Provider Selector
+     * ───────────────────────────── */
+    public string $abuseChallengeProvider;
+
     private function __construct() {}
 
     /**
@@ -141,6 +158,17 @@ final class AdminRuntimeConfigDTO
         // Turnstile
         $self->turnstileSiteKey = self::optString($data, 'TURNSTILE_SITE_KEY', '');
         $self->turnstileSecretKey = self::optString($data, 'TURNSTILE_SECRET_KEY', '');
+
+        // HCaptcha
+        $self->hCaptchaSiteKey = self::optString($data, 'HCAPTCHA_SITE_KEY', '');
+        $self->hCaptchaSecretKey = self::optString($data, 'HCAPTCHA_SECRET_KEY', '');
+
+        // RecaptchaV2
+        $self->recaptchaV2SiteKey = self::optString($data, 'RECAPTCHA_V2_SITE_KEY', '');
+        $self->recaptchaV2SecretKey = self::optString($data, 'RECAPTCHA_V2_SECRET_KEY', '');
+
+        // Abuse Challenge Provider Selector
+        $self->abuseChallengeProvider = self::optStringNotNull($data, 'ABUSE_CHALLENGE_PROVIDER', 'none');
 
         return $self;
     }
