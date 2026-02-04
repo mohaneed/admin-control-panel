@@ -37,4 +37,10 @@ interface LanguageSettingsRepositoryInterface
     public function updateIcon(int $languageId, ?string $icon): void;
 
     public function updateSortOrder(int $languageId, int $sortOrder): void;
+
+    public function repositionSortOrder(
+        int $languageId,
+        int $currentSort,
+        int $targetSort
+    ): void;
 }

@@ -14,6 +14,7 @@ use Maatify\AdminKernel\Http\Controllers\Api\LanguagesQueryController;
 use Maatify\AdminKernel\Http\Controllers\Api\LanguagesSetActiveController;
 use Maatify\AdminKernel\Http\Controllers\Api\LanguagesSetFallbackController;
 use Maatify\AdminKernel\Http\Controllers\Api\LanguagesUpdateSettingsController;
+use Maatify\AdminKernel\Http\Controllers\Api\LanguagesUpdateSortOrderController;
 use Maatify\AdminKernel\Http\Controllers\AuthController;
 use Maatify\AdminKernel\Http\Controllers\NotificationQueryController;
 use Maatify\AdminKernel\Http\Controllers\Ui\LanguagesListController;
@@ -311,6 +312,9 @@ class AdminRoutes
 
                         $languages->post('/clear-fallback', [LanguagesClearFallbackController::class, '__invoke'])
                             ->setName('languages.clear.fallback.api');
+
+                        $languages->post('/update-sort', [LanguagesUpdateSortOrderController::class, '__invoke'])
+                            ->setName('languages.update.sort.api');
 
                     });
 

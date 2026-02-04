@@ -128,4 +128,32 @@ final readonly class LanguageManagementService
 
         $this->languageRepository->clearFallbackLanguage($languageId);
     }
+
+    public function updateLanguageSortOrder(
+        int $languageId,
+        int $newSortOrder
+    ): void {
+        $language = $this->settingsRepository->getByLanguageId($languageId);
+
+        if ($language === null) {
+            throw new RuntimeException('Language not found.');
+        }
+
+        $currentSort = $language->sortOrder;
+
+        if ($newSortOrder === $currentSort) {
+            return;
+        }
+
+        if ($newSortOrder < 1) {
+            $newSortOrder = 1;
+        }
+
+        $this->settingsRepository->repositionSortOrder(
+            languageId: $languageId,
+            currentSort: $currentSort,
+            targetSort: $newSortOrder
+        );
+    }
+
 }

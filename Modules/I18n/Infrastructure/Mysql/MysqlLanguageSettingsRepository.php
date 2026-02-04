@@ -150,4 +150,66 @@ final readonly class MysqlLanguageSettingsRepository implements LanguageSettings
             (int) $sortOrder
         );
     }
+
+    public function repositionSortOrder(
+        int $languageId,
+        int $currentSort,
+        int $targetSort
+    ): void {
+        $this->pdo->beginTransaction();
+
+        try {
+            if ($targetSort < $currentSort) {
+                // move up
+                $stmt = $this->pdo->prepare(
+                    '
+                UPDATE language_settings
+                SET sort_order = sort_order + 1
+                WHERE sort_order >= :target
+                  AND sort_order < :current
+                '
+                );
+
+                $stmt->execute([
+                    'target'  => $targetSort,
+                    'current' => $currentSort,
+                ]);
+            } elseif ($targetSort > $currentSort) {
+                // move down
+                $stmt = $this->pdo->prepare(
+                    '
+                UPDATE language_settings
+                SET sort_order = sort_order - 1
+                WHERE sort_order > :current
+                  AND sort_order <= :target
+                '
+                );
+
+                $stmt->execute([
+                    'current' => $currentSort,
+                    'target'  => $targetSort,
+                ]);
+            }
+
+            // place language at target position
+            $stmt = $this->pdo->prepare(
+                '
+            UPDATE language_settings
+            SET sort_order = :target
+            WHERE language_id = :language_id
+            '
+            );
+
+            $stmt->execute([
+                'target'      => $targetSort,
+                'language_id' => $languageId,
+            ]);
+
+            $this->pdo->commit();
+        } catch (\Throwable $e) {
+            $this->pdo->rollBack();
+            throw $e;
+        }
+    }
+
 }
