@@ -37,11 +37,6 @@ final class LanguageCreateSchema extends AbstractSchema
                 ValidationErrorCodeEnum::REQUIRED_FIELD
             ],
 
-            'sort_order' => [
-                v::intVal()->min(0),
-                ValidationErrorCodeEnum::REQUIRED_FIELD
-            ],
-
             'is_active' => [
                 v::optional(v::boolVal()),
                 ValidationErrorCodeEnum::REQUIRED_FIELD

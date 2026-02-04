@@ -34,11 +34,9 @@ final readonly class LanguageManagementService
         string $code,
         TextDirectionEnum $direction,
         ?string $icon,
-        int $sortOrder,
         bool $isActive = true,
         ?int $fallbackLanguageId = null
-    ): int
-    {
+    ): int {
         if ($this->languageRepository->getByCode($code) !== null) {
             throw new RuntimeException('Language code already exists.');
         }
@@ -48,6 +46,8 @@ final readonly class LanguageManagementService
                 throw new RuntimeException('Fallback language does not exist.');
             }
         }
+
+        $sortOrder = $this->languageRepository->getNextSortOrder();
 
         $languageId = $this->languageRepository->create(
             $name,

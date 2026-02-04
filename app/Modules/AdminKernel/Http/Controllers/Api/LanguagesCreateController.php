@@ -42,9 +42,8 @@ final readonly class LanguagesCreateController
         $name = $body['name'];
         $code = $body['code'];
         $directionRaw = $body['direction'];
-        $sortOrderRaw = $body['sort_order'];
 
-        if (!is_string($name) || !is_string($code) || !is_string($directionRaw) || !is_int($sortOrderRaw)) {
+        if (!is_string($name) || !is_string($code) || !is_string($directionRaw)) {
             // Defensive guard – should never happen after validation
             throw new \RuntimeException('Invalid validated payload.');
         }
@@ -79,7 +78,6 @@ final readonly class LanguagesCreateController
             code: $code,
             direction: TextDirectionEnum::from($directionRaw),
             icon: $icon,
-            sortOrder: $sortOrderRaw,
             isActive: $isActive,
             fallbackLanguageId: $fallbackLanguageId
         );

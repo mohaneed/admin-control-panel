@@ -39,4 +39,6 @@ interface LanguageRepositoryInterface
     public function updateName(int $id, string $name): void;
 
     public function updateCode(int $id, string $code): void;
+
+    public function getNextSortOrder(): int;
 }
