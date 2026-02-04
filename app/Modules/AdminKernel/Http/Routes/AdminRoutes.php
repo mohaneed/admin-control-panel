@@ -17,6 +17,7 @@ use Maatify\AdminKernel\Http\Controllers\Api\LanguagesUpdateCodeController;
 use Maatify\AdminKernel\Http\Controllers\Api\LanguagesUpdateNameController;
 use Maatify\AdminKernel\Http\Controllers\Api\LanguagesUpdateSettingsController;
 use Maatify\AdminKernel\Http\Controllers\Api\LanguagesUpdateSortOrderController;
+use Maatify\AdminKernel\Http\Controllers\Api\TranslationKeysQueryController;
 use Maatify\AdminKernel\Http\Controllers\AuthController;
 use Maatify\AdminKernel\Http\Controllers\NotificationQueryController;
 use Maatify\AdminKernel\Http\Controllers\Ui\LanguagesListController;
@@ -291,6 +292,16 @@ class AdminRoutes
 
                         $sessions->post('/revoke-bulk', [\Maatify\AdminKernel\Http\Controllers\Api\SessionBulkRevokeController::class, '__invoke'])
                             ->setName('sessions.revoke.bulk');
+                    });
+
+                    // ─────────────────────────────
+                    // i18n Keys Control
+                    // ─────────────────────────────
+                    $group->group('/i18n', function (RouteCollectorProxyInterface $i18n) {
+                        $i18n->group('/keys', function (RouteCollectorProxyInterface $keys) {
+                            $keys->post('/query', [TranslationKeysQueryController::class, '__invoke'])
+                                ->setName('i18n.keys.list.api');
+                        });
                     });
 
                     // ─────────────────────────────

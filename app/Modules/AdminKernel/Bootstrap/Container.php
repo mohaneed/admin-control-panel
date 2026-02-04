@@ -71,6 +71,7 @@ use Maatify\AdminKernel\Domain\DTO\AdminConfigDTO;
 use Maatify\AdminKernel\Domain\DTO\TotpEnrollmentConfig;
 use Maatify\AdminKernel\Domain\DTO\Ui\UiConfigDTO;
 use Maatify\AdminKernel\Domain\I18n\Reader\LanguageQueryReaderInterface;
+use Maatify\AdminKernel\Domain\I18n\Reader\TranslationKeyQueryReaderInterface;
 use Maatify\AdminKernel\Domain\Ownership\SystemOwnershipRepositoryInterface;
 use Maatify\AdminKernel\Domain\Security\Crypto\AdminCryptoContextProvider;
 use Maatify\AdminKernel\Domain\Security\Crypto\CryptoKeyRingConfig;
@@ -150,6 +151,7 @@ use Maatify\AdminKernel\Infrastructure\Notification\TelegramHandler;
 use Maatify\AdminKernel\Infrastructure\Query\ListFilterResolver;
 use Maatify\AdminKernel\Infrastructure\Reader\Admin\PdoAdminQueryReader;
 use Maatify\AdminKernel\Infrastructure\Reader\I18n\PdoLanguageQueryReader;
+use Maatify\AdminKernel\Infrastructure\Reader\I18n\PdoTranslationKeyQueryReader;
 use Maatify\AdminKernel\Infrastructure\Reader\PDOPermissionsReaderRepository;
 use Maatify\AdminKernel\Infrastructure\Reader\PDORolesReaderRepository;
 use Maatify\AdminKernel\Infrastructure\Reader\Session\PdoSessionListReader;
@@ -2260,6 +2262,13 @@ class Container
                     $languageService,
                     $validationGuard
                 );
+            },
+
+            TranslationKeyQueryReaderInterface::class => function (ContainerInterface $c) {
+                $pdo = $c->get(PDO::class);
+                assert($pdo instanceof PDO);
+
+                return new PdoTranslationKeyQueryReader($pdo);
             },
 
 
