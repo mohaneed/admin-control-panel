@@ -323,6 +323,9 @@ class AdminRoutes
                         $i18n->group('/translations', function (\Slim\Interfaces\RouteCollectorProxyInterface $translations) {
                             $translations->post('/query', [\Maatify\AdminKernel\Http\Controllers\Api\TranslationValuesQueryController::class, '__invoke'])
                                 ->setName('i18n.translations.list.api');
+
+                            $translations->post('/upsert', [\Maatify\AdminKernel\Http\Controllers\Api\TranslationValueUpsertController::class, '__invoke'])
+                                ->setName('i18n.translations.upsert.api');
                         });
                     });
 
