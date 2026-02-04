@@ -32,6 +32,10 @@ interface LanguageRepositoryInterface
 
     public function setFallbackLanguage(int $id, ?int $fallbackLanguageId): void;
 
+    public function clearFallbackLanguage(
+        int $languageId
+    ): void;
+
     public function updateName(int $id, string $name): void;
 
     public function updateCode(int $id, string $code): void;

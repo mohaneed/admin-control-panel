@@ -119,4 +119,13 @@ final readonly class LanguageManagementService
             $fallbackLanguageId
         );
     }
+
+    public function clearFallbackLanguage(int $languageId): void
+    {
+        if ($this->languageRepository->getById($languageId) === null) {
+            throw new RuntimeException('Language not found.');
+        }
+
+        $this->languageRepository->clearFallbackLanguage($languageId);
+    }
 }

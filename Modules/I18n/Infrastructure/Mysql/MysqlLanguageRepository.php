@@ -148,6 +148,21 @@ final readonly class MysqlLanguageRepository implements LanguageRepositoryInterf
         ]);
     }
 
+    public function clearFallbackLanguage(int $languageId): void
+    {
+        $stmt = $this->pdo->prepare(
+            '
+        UPDATE languages
+        SET fallback_language_id = NULL
+        WHERE id = :language_id
+        '
+        );
+
+        $stmt->execute([
+            'language_id' => $languageId,
+        ]);
+    }
+
     public function updateName(int $id, string $name): void
     {
         $sql = 'UPDATE languages SET name = :name WHERE id = :id';

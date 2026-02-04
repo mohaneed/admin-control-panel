@@ -40,7 +40,8 @@ final readonly class LanguagesListController
             'can_create' => $this->authorizationService->hasPermission($adminId, 'languages.create.api'),
             'can_update' => $this->authorizationService->hasPermission($adminId, 'languages.update.settings.api'),
             'can_active' => $this->authorizationService->hasPermission($adminId, 'languages.set.active.api'),
-            'can_fallback' => $this->authorizationService->hasPermission($adminId, 'languages.set.fallback.api'),
+            'can_set_fallback' => $this->authorizationService->hasPermission($adminId, 'languages.set.fallback.api'),
+            'can_fallback_clear' => $this->authorizationService->hasPermission($adminId, 'languages.clear.fallback.api'),
         ];
 
         return $this->twig->render(

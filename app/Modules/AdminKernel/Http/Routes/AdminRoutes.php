@@ -8,6 +8,7 @@ use Maatify\AdminKernel\Http\Controllers\AdminController;
 use Maatify\AdminKernel\Http\Controllers\AdminEmailVerificationController;
 use Maatify\AdminKernel\Http\Controllers\AdminNotificationPreferenceController;
 use Maatify\AdminKernel\Http\Controllers\Api\AdminQueryController;
+use Maatify\AdminKernel\Http\Controllers\Api\LanguagesClearFallbackController;
 use Maatify\AdminKernel\Http\Controllers\Api\LanguagesCreateController;
 use Maatify\AdminKernel\Http\Controllers\Api\LanguagesQueryController;
 use Maatify\AdminKernel\Http\Controllers\Api\LanguagesSetActiveController;
@@ -307,6 +308,9 @@ class AdminRoutes
 
                         $languages->post('/set-fallback', [LanguagesSetFallbackController::class, '__invoke'])
                             ->setName('languages.set.fallback.api');
+
+                        $languages->post('/clear-fallback', [LanguagesClearFallbackController::class, '__invoke'])
+                            ->setName('languages.clear.fallback.api');
 
                     });
 

@@ -99,6 +99,7 @@ use Maatify\AdminKernel\Http\Controllers\AdminNotificationHistoryController;
 use Maatify\AdminKernel\Http\Controllers\AdminNotificationPreferenceController;
 use Maatify\AdminKernel\Http\Controllers\AdminNotificationReadController;
 use Maatify\AdminKernel\Http\Controllers\Api\AdminQueryController;
+use Maatify\AdminKernel\Http\Controllers\Api\LanguagesClearFallbackController;
 use Maatify\AdminKernel\Http\Controllers\Api\LanguagesCreateController;
 use Maatify\AdminKernel\Http\Controllers\Api\LanguagesSetActiveController;
 use Maatify\AdminKernel\Http\Controllers\Api\LanguagesSetFallbackController;
@@ -2204,7 +2205,20 @@ class Container
                 assert($twig instanceof Twig);
                 assert($authorizationService instanceof AuthorizationService);
                 return new LanguagesListController($twig, $authorizationService);
-            }
+            },
+
+            LanguagesClearFallbackController::class => function (ContainerInterface $c) {
+                $languageService = $c->get(LanguageManagementService::class);
+                $validationGuard = $c->get(ValidationGuard::class);
+
+                assert($languageService instanceof LanguageManagementService);
+                assert($validationGuard instanceof ValidationGuard);
+
+                return new LanguagesClearFallbackController(
+                    $languageService,
+                    $validationGuard
+                );
+            },
 
 
         ]);
