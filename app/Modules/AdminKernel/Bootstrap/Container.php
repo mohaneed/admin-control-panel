@@ -119,6 +119,7 @@ use Maatify\AdminKernel\Http\Controllers\Api\SessionBulkRevokeController;
 use Maatify\AdminKernel\Http\Controllers\Api\SessionQueryController;
 use Maatify\AdminKernel\Http\Controllers\Api\SessionRevokeController;
 use Maatify\AdminKernel\Http\Controllers\Api\TranslationKeysCreateController;
+use Maatify\AdminKernel\Http\Controllers\Api\TranslationKeysUpdateNameController;
 use Maatify\AdminKernel\Http\Controllers\AuthController;
 use Maatify\AdminKernel\Http\Controllers\NotificationQueryController;
 use Maatify\AdminKernel\Http\Controllers\TelegramWebhookController;
@@ -2297,6 +2298,19 @@ class Container
                 assert($keyRepository instanceof TranslationKeyRepositoryInterface);
                 assert($translationRepository instanceof TranslationRepositoryInterface);
                 return new TranslationWriteService($languageRepository, $keyRepository, $translationRepository);
+            },
+
+            TranslationKeysUpdateNameController::class => function (ContainerInterface $c) {
+                $translationWriteService = $c->get(TranslationWriteService::class);
+                $validationGuard = $c->get(ValidationGuard::class);
+
+                assert($translationWriteService instanceof TranslationWriteService);
+                assert($validationGuard instanceof ValidationGuard);
+
+                return new TranslationKeysUpdateNameController(
+                    $translationWriteService,
+                    $validationGuard
+                );
             },
 
             TranslationKeysCreateController::class => function (ContainerInterface $c) {
