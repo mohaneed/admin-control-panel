@@ -58,6 +58,15 @@ final readonly class TranslationWriteService
         $this->keyRepository->renameKey($keyId, $newKey);
     }
 
+    public function updateKeyDescription(int $keyId, string $description): void
+    {
+        if ($this->keyRepository->getById($keyId) === null) {
+            throw new RuntimeException('Translation key not found.');
+        }
+
+        $this->keyRepository->updateDescription($keyId, $description);
+    }
+
     public function upsertTranslation(
         int $languageId,
         int $keyId,

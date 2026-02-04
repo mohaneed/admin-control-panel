@@ -19,6 +19,7 @@ use Maatify\AdminKernel\Http\Controllers\Api\LanguagesUpdateNameController;
 use Maatify\AdminKernel\Http\Controllers\Api\LanguagesUpdateSettingsController;
 use Maatify\AdminKernel\Http\Controllers\Api\LanguagesUpdateSortOrderController;
 use Maatify\AdminKernel\Http\Controllers\Api\TranslationKeysQueryController;
+use Maatify\AdminKernel\Http\Controllers\Api\TranslationKeysUpdateDescriptionController;
 use Maatify\AdminKernel\Http\Controllers\Api\TranslationKeysUpdateNameController;
 use Maatify\AdminKernel\Http\Controllers\AuthController;
 use Maatify\AdminKernel\Http\Controllers\NotificationQueryController;
@@ -309,6 +310,9 @@ class AdminRoutes
 
                             $keys->post('/update-name', [TranslationKeysUpdateNameController::class, '__invoke'])
                                 ->setName('i18n.keys.update.name.api');
+
+                            $keys->post('/update-description', [TranslationKeysUpdateDescriptionController::class, '__invoke'])
+                                ->setName('i18n.keys.update.description.api');
                         });
                     });
 
