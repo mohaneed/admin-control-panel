@@ -43,12 +43,10 @@ final readonly class LanguagesUpdateSettingsController
         // 2) Type narrowing (strict)
         $languageId = $body['language_id'];
         $directionRaw = $body['direction'];
-        $sortOrder = $body['sort_order'];
 
         if (
             ! is_int($languageId)
             || ! is_string($directionRaw)
-            || ! is_int($sortOrder)
         ) {
             throw new RuntimeException('Invalid validated payload.');
         }
@@ -66,7 +64,6 @@ final readonly class LanguagesUpdateSettingsController
             languageId: $languageId,
             direction : TextDirectionEnum::from($directionRaw),
             icon      : $icon,
-            sortOrder : $sortOrder
         );
 
         // 4) No Content

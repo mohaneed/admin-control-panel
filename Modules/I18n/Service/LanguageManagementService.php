@@ -83,7 +83,6 @@ final readonly class LanguageManagementService
         int $languageId,
         TextDirectionEnum $direction,
         ?string $icon,
-        int $sortOrder
     ): void
     {
         if ($this->languageRepository->getById($languageId) === null) {
@@ -94,7 +93,6 @@ final readonly class LanguageManagementService
             $languageId,
             $direction,
             $icon,
-            $sortOrder
         );
     }
 

@@ -29,7 +29,6 @@ interface LanguageSettingsRepositoryInterface
         int $languageId,
         TextDirectionEnum $direction,
         ?string $icon,
-        int $sortOrder
     ): void;
 
     public function updateDirection(int $languageId, TextDirectionEnum $direction): void;

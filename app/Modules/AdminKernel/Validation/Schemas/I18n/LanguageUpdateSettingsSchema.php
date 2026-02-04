@@ -27,11 +27,6 @@ final class LanguageUpdateSettingsSchema extends AbstractSchema
                 ValidationErrorCodeEnum::REQUIRED_FIELD
             ],
 
-            'sort_order' => [
-                v::intVal()->min(0),
-                ValidationErrorCodeEnum::REQUIRED_FIELD
-            ],
-
             'icon' => [
                 v::optional(v::stringType()->length(1, 255)),
                 ValidationErrorCodeEnum::REQUIRED_FIELD

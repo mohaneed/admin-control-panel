@@ -53,10 +53,9 @@ final readonly class MysqlLanguageSettingsRepository implements LanguageSettings
         int $languageId,
         TextDirectionEnum $direction,
         ?string $icon,
-        int $sortOrder
     ): void {
-        $sql = 'INSERT INTO language_settings (language_id, direction, icon, sort_order)
-                VALUES (:language_id, :direction, :icon, :sort_order)
+        $sql = 'INSERT INTO language_settings (language_id, direction, icon)
+                VALUES (:language_id, :direction, :icon)
                 ON DUPLICATE KEY UPDATE
                     direction = VALUES(direction),
                     icon = VALUES(icon),
@@ -71,7 +70,6 @@ final readonly class MysqlLanguageSettingsRepository implements LanguageSettings
             'language_id' => $languageId,
             'direction' => $direction->value,
             'icon' => $icon,
-            'sort_order' => $sortOrder,
         ]);
     }
 
