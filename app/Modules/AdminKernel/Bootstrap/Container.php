@@ -2345,6 +2345,13 @@ class Container
             },
 
 
+            \Maatify\AdminKernel\Domain\I18n\Reader\TranslationValueQueryReaderInterface::class => function (\Psr\Container\ContainerInterface $c) {
+                $pdo = $c->get(\PDO::class);
+                \assert($pdo instanceof \PDO);
+
+                return new \Maatify\AdminKernel\Infrastructure\Reader\I18n\PdoTranslationValueQueryReader($pdo);
+            },
+
         ]);
 
         // Extension Hook: Allow host projects to override/extend bindings

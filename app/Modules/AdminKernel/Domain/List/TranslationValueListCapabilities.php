@@ -1,0 +1,31 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Maatify\AdminKernel\Domain\List;
+
+final class TranslationValueListCapabilities
+{
+    public static function define(): ListCapabilities
+    {
+        return new ListCapabilities(
+            // 🔍 Global search (key_name OR value)
+            supportsGlobalSearch : true,
+            searchableColumns    : [
+                'key_name',
+                'value',
+            ],
+
+            // 🎯 Explicit column filters
+            supportsColumnFilters: true,
+            filterableColumns    : [
+                'key_name' => 'key_name',
+                'value' => 'value',
+            ],
+
+            supportsDateFilter   : false,
+            dateColumn           : null
+        );
+    }
+}
+

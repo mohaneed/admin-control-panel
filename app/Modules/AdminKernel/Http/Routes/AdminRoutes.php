@@ -319,6 +319,11 @@ class AdminRoutes
                             $keys->post('/update-description', [TranslationKeysUpdateDescriptionController::class, '__invoke'])
                                 ->setName('i18n.keys.update.description.api');
                         });
+
+                        $i18n->group('/translations', function (\Slim\Interfaces\RouteCollectorProxyInterface $translations) {
+                            $translations->post('/query', [\Maatify\AdminKernel\Http\Controllers\Api\TranslationValuesQueryController::class, '__invoke'])
+                                ->setName('i18n.translations.list.api');
+                        });
                     });
 
                     // ─────────────────────────────
