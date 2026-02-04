@@ -118,6 +118,46 @@ final readonly class MysqlLanguageRepository implements LanguageRepositoryInterf
         return new LanguageCollectionDTO($items);
     }
 
+    public function listActiveForSelect(): LanguageCollectionDTO
+    {
+        $sql = '
+            SELECT
+                l.id,
+                l.name,
+                l.code,
+                l.is_active,
+                l.fallback_language_id,
+                l.created_at,
+                l.updated_at
+            FROM languages l
+            INNER JOIN language_settings s
+                ON s.language_id = l.id
+            WHERE l.is_active = 1
+            ORDER BY s.sort_order ASC, l.id ASC
+        ';
+
+        $stmt = $this->pdo->query($sql);
+        if (!$stmt instanceof PDOStatement) {
+            return new LanguageCollectionDTO([]);
+        }
+
+        $items = [];
+
+        while (true) {
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!is_array($row)) {
+                break;
+            }
+
+            $dto = $this->mapRowToDTO($row);
+            if ($dto !== null) {
+                $items[] = $dto;
+            }
+        }
+
+        return new LanguageCollectionDTO($items);
+    }
+
     public function setActive(int $id, bool $isActive): void
     {
         $sql = 'UPDATE languages SET is_active = :is_active WHERE id = :id';

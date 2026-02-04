@@ -82,7 +82,7 @@ final class PermissionMapperV2 implements PermissionMapperV2Interface
          * - allowed from translations UI (upsert permission implies ability to select context)
          * - allowed from languages context
          */
-        'i18n.translations.select.api' => [
+        'i18n.languages.select.api' => [
             'anyOf' => [
                 'i18n.translations.upsert',
                 'i18n.languages.select',

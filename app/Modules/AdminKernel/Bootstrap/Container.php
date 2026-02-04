@@ -224,6 +224,7 @@ use Maatify\I18n\Contract\LanguageRepositoryInterface;
 use Maatify\I18n\Contract\LanguageSettingsRepositoryInterface;
 use Maatify\I18n\Contract\TranslationKeyRepositoryInterface;
 use Maatify\I18n\Contract\TranslationRepositoryInterface;
+use Maatify\I18n\Http\Controllers\Api\LanguageSelectController;
 use Maatify\I18n\Infrastructure\Mysql\MysqlLanguageRepository;
 use Maatify\I18n\Infrastructure\Mysql\MysqlLanguageSettingsRepository;
 use Maatify\I18n\Infrastructure\Mysql\MysqlTranslationKeyRepository;
@@ -2377,6 +2378,14 @@ class Container
                 assert($twig instanceof Twig);
                 assert($authorizationService instanceof AuthorizationService);
                 return new \Maatify\AdminKernel\Http\Controllers\Ui\I18n\TranslationsListUiController($twig, $authorizationService);
+            },
+
+            LanguageSelectController::class => function (\Psr\Container\ContainerInterface $c) {
+                $languageRepository = $c->get(LanguageRepositoryInterface::class);
+                $settingsRepository = $c->get(LanguageSettingsRepositoryInterface::class);
+                assert($languageRepository instanceof LanguageRepositoryInterface);
+                assert($settingsRepository instanceof LanguageSettingsRepositoryInterface);
+                return new LanguageSelectController($languageRepository, $settingsRepository);
             },
 
 

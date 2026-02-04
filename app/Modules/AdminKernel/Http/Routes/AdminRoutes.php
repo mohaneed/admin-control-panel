@@ -33,6 +33,7 @@ use Maatify\AdminKernel\Http\Middleware\RequestContextMiddleware;
 use Maatify\AdminKernel\Http\Middleware\RequestIdMiddleware;
 use Maatify\AdminKernel\Http\Middleware\SessionGuardMiddleware;
 use Maatify\AdminKernel\Http\Middleware\WebGuestGuardMiddleware;
+use Maatify\I18n\Http\Controllers\Api\LanguageSelectController;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\Interfaces\RouteCollectorProxyInterface;
@@ -339,6 +340,14 @@ class AdminRoutes
                     // languages Control
                     // ─────────────────────────────
                     $group->group('/languages', function (RouteCollectorProxyInterface $languages) {
+
+                        /**
+                         * UI context selector (dropdown)
+                         * Permission: i18n.languages.select.api
+                         */
+                        $languages->post('/select', LanguageSelectController::class)
+                            ->setName('i18n.languages.select.api');
+
                         $languages->post('/query', [LanguagesQueryController::class, '__invoke'])
                             ->setName('languages.list.api');
 
