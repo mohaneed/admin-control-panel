@@ -118,6 +118,7 @@ use Maatify\AdminKernel\Http\Controllers\Api\Roles\RoleToggleController;
 use Maatify\AdminKernel\Http\Controllers\Api\SessionBulkRevokeController;
 use Maatify\AdminKernel\Http\Controllers\Api\SessionQueryController;
 use Maatify\AdminKernel\Http\Controllers\Api\SessionRevokeController;
+use Maatify\AdminKernel\Http\Controllers\Api\TranslationKeysCreateController;
 use Maatify\AdminKernel\Http\Controllers\AuthController;
 use Maatify\AdminKernel\Http\Controllers\NotificationQueryController;
 use Maatify\AdminKernel\Http\Controllers\TelegramWebhookController;
@@ -217,9 +218,14 @@ use Maatify\EmailDelivery\Transport\EmailTransportInterface;
 use Maatify\EmailDelivery\Transport\SmtpEmailTransport;
 use Maatify\I18n\Contract\LanguageRepositoryInterface;
 use Maatify\I18n\Contract\LanguageSettingsRepositoryInterface;
+use Maatify\I18n\Contract\TranslationKeyRepositoryInterface;
+use Maatify\I18n\Contract\TranslationRepositoryInterface;
 use Maatify\I18n\Infrastructure\Mysql\MysqlLanguageRepository;
 use Maatify\I18n\Infrastructure\Mysql\MysqlLanguageSettingsRepository;
+use Maatify\I18n\Infrastructure\Mysql\MysqlTranslationKeyRepository;
+use Maatify\I18n\Infrastructure\Mysql\MysqlTranslationRepository;
 use Maatify\I18n\Service\LanguageManagementService;
+use Maatify\I18n\Service\TranslationWriteService;
 use Maatify\InputNormalization\Contracts\InputNormalizerInterface;
 use Maatify\InputNormalization\Middleware\InputNormalizationMiddleware;
 use Maatify\InputNormalization\Normalizer\InputNormalizer;
@@ -2270,6 +2276,36 @@ class Container
 
                 return new PdoTranslationKeyQueryReader($pdo);
             },
+
+                TranslationKeyRepositoryInterface::class => function (ContainerInterface $c) {
+                $pdo = $c->get(PDO::class);
+                assert($pdo instanceof PDO);
+                return new MysqlTranslationKeyRepository($pdo);
+            },
+
+            TranslationRepositoryInterface::class => function (ContainerInterface $c) {
+                $pdo = $c->get(PDO::class);
+                assert($pdo instanceof PDO);
+                return new MysqlTranslationRepository($pdo);
+            },
+
+            TranslationWriteService::class => function (ContainerInterface $c) {
+                $languageRepository = $c->get(LanguageRepositoryInterface::class);
+                $keyRepository = $c->get(TranslationKeyRepositoryInterface::class);
+                $translationRepository = $c->get(TranslationRepositoryInterface::class);
+                assert($languageRepository instanceof LanguageRepositoryInterface);
+                assert($keyRepository instanceof TranslationKeyRepositoryInterface);
+                assert($translationRepository instanceof TranslationRepositoryInterface);
+                return new TranslationWriteService($languageRepository, $keyRepository, $translationRepository);
+            },
+
+            TranslationKeysCreateController::class => function (ContainerInterface $c) {
+                $translationWriteService = $c->get(TranslationWriteService::class);
+                $validationGuard = $c->get(ValidationGuard::class);
+                assert($translationWriteService instanceof TranslationWriteService);
+                assert($validationGuard instanceof ValidationGuard);
+                return new TranslationKeysCreateController($translationWriteService, $validationGuard);
+            }
 
 
         ]);

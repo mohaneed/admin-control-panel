@@ -10,6 +10,7 @@ use Maatify\AdminKernel\Http\Controllers\AdminNotificationPreferenceController;
 use Maatify\AdminKernel\Http\Controllers\Api\AdminQueryController;
 use Maatify\AdminKernel\Http\Controllers\Api\LanguagesClearFallbackController;
 use Maatify\AdminKernel\Http\Controllers\Api\LanguagesCreateController;
+use Maatify\AdminKernel\Http\Controllers\Api\TranslationKeysCreateController;
 use Maatify\AdminKernel\Http\Controllers\Api\LanguagesQueryController;
 use Maatify\AdminKernel\Http\Controllers\Api\LanguagesSetActiveController;
 use Maatify\AdminKernel\Http\Controllers\Api\LanguagesSetFallbackController;
@@ -301,6 +302,9 @@ class AdminRoutes
                         $i18n->group('/keys', function (RouteCollectorProxyInterface $keys) {
                             $keys->post('/query', [TranslationKeysQueryController::class, '__invoke'])
                                 ->setName('i18n.keys.list.api');
+
+                            $keys->post('/create', [TranslationKeysCreateController::class, '__invoke'])
+                                ->setName('i18n.keys.create.api');
                         });
                     });
 
