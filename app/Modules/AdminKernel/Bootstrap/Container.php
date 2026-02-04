@@ -99,6 +99,7 @@ use Maatify\AdminKernel\Http\Controllers\AdminNotificationHistoryController;
 use Maatify\AdminKernel\Http\Controllers\AdminNotificationPreferenceController;
 use Maatify\AdminKernel\Http\Controllers\AdminNotificationReadController;
 use Maatify\AdminKernel\Http\Controllers\Api\AdminQueryController;
+use Maatify\AdminKernel\Http\Controllers\Api\LanguagesCreateController;
 use Maatify\AdminKernel\Http\Controllers\Api\PermissionMetadataUpdateController;
 use Maatify\AdminKernel\Http\Controllers\Api\PermissionsController;
 use Maatify\AdminKernel\Http\Controllers\Api\Roles\RoleCreateController;
@@ -204,6 +205,11 @@ use Maatify\EmailDelivery\Renderer\EmailRendererInterface;
 use Maatify\EmailDelivery\Renderer\TwigEmailRenderer;
 use Maatify\EmailDelivery\Transport\EmailTransportInterface;
 use Maatify\EmailDelivery\Transport\SmtpEmailTransport;
+use Maatify\I18n\Contract\LanguageRepositoryInterface;
+use Maatify\I18n\Contract\LanguageSettingsRepositoryInterface;
+use Maatify\I18n\Infrastructure\Mysql\MysqlLanguageRepository;
+use Maatify\I18n\Infrastructure\Mysql\MysqlLanguageSettingsRepository;
+use Maatify\I18n\Service\LanguageManagementService;
 use Maatify\InputNormalization\Contracts\InputNormalizerInterface;
 use Maatify\InputNormalization\Middleware\InputNormalizationMiddleware;
 use Maatify\InputNormalization\Normalizer\InputNormalizer;
@@ -2119,6 +2125,34 @@ class Container
                 assert($validationGuard instanceof ValidationGuard);
                 assert($filterResolver instanceof ListFilterResolver);
                 return new AdminQueryController($reader, $validationGuard, $filterResolver);
+            },
+
+            LanguageRepositoryInterface::class => function (ContainerInterface $c) {
+                $pdo = $c->get(PDO::class);
+                assert($pdo instanceof PDO);
+                return new MysqlLanguageRepository($pdo);
+            },
+
+            LanguageSettingsRepositoryInterface::class => function (ContainerInterface $c) {
+                $pdo = $c->get(PDO::class);
+                assert($pdo instanceof PDO);
+                return new MysqlLanguageSettingsRepository($pdo);
+            },
+
+            LanguageManagementService::class => function (ContainerInterface $c) {
+                $languageRepository = $c->get(LanguageRepositoryInterface::class);
+                $settingsRepository = $c->get(LanguageSettingsRepositoryInterface::class);
+                assert($languageRepository instanceof LanguageRepositoryInterface);
+                assert($settingsRepository instanceof LanguageSettingsRepositoryInterface);
+                return new LanguageManagementService($languageRepository, $settingsRepository);
+            },
+
+            LanguagesCreateController::class => function (ContainerInterface $c) {
+                $languageManagementService = $c->get(LanguageManagementService::class);
+                $validationGuard = $c->get(ValidationGuard::class);
+                assert($languageManagementService instanceof LanguageManagementService);
+                assert($validationGuard instanceof ValidationGuard);
+                return new LanguagesCreateController($languageManagementService, $validationGuard);
             }
 
         ]);

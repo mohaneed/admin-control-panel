@@ -8,6 +8,7 @@ use Maatify\AdminKernel\Http\Controllers\AdminController;
 use Maatify\AdminKernel\Http\Controllers\AdminEmailVerificationController;
 use Maatify\AdminKernel\Http\Controllers\AdminNotificationPreferenceController;
 use Maatify\AdminKernel\Http\Controllers\Api\AdminQueryController;
+use Maatify\AdminKernel\Http\Controllers\Api\LanguagesCreateController;
 use Maatify\AdminKernel\Http\Controllers\Api\LanguagesQueryController;
 use Maatify\AdminKernel\Http\Controllers\AuthController;
 use Maatify\AdminKernel\Http\Controllers\NotificationQueryController;
@@ -286,6 +287,9 @@ class AdminRoutes
                     $group->group('/languages', function (RouteCollectorProxyInterface $languages) {
                         $languages->post('/query', [LanguagesQueryController::class, '__invoke'])
                             ->setName('languages.list.api');
+
+                        $languages->post('/create', [LanguagesCreateController::class, '__invoke'])
+                            ->setName('languages.create.api');
                     });
 
                     // ─────────────────────────────
