@@ -28,7 +28,7 @@ if (typeof window !== 'undefined') {
         const API_BASE = '/api';
 
         const ALERT_TYPES = {
-            success: 'bg-green-100 border-green-400 text-green-700 z-9999',
+            success: 'bg-green-100 border-green-400 text-green-700',
             danger: 'bg-red-100 border-red-400 text-red-700',
             warning: 'bg-yellow-100 border-yellow-400 text-yellow-700',
             info: 'bg-blue-100 border-blue-400 text-blue-700'
@@ -65,6 +65,14 @@ if (typeof window !== 'undefined') {
             // Get raw response text
             const rawText = await response.text();
 
+            // 🔍 DIRECT LOGS (always visible - NO SEPARATORS!)
+            console.log(`📥 [${operation}] ======== RESPONSE ========`);
+            console.log(`📊 [${operation}] STATUS:`, response.status, response.statusText);
+            console.log(`📄 [${operation}] RAW BODY:`, rawText || '<EMPTY>');
+            if (rawText && rawText.length > 500) {
+                console.log(`📄 [${operation}] BODY (truncated):`, rawText.substring(0, 500) + '...');
+            }
+
             // Always log raw response
             console.group(`📄 [${operation}] Raw Response Body`);
             if (!rawText || rawText.trim() === '') {
@@ -97,6 +105,10 @@ if (typeof window !== 'undefined') {
             try {
                 if (rawText && rawText.trim()) {
                     data = JSON.parse(rawText);
+
+                    // 🔍 DIRECT LOGS (always visible)
+                    console.log(`✅ [${operation}] PARSED DATA:`, data);
+                    console.log(`✅ [${operation}] DATA (JSON):`, JSON.stringify(data, null, 2));
 
                     console.group(`✅ [${operation}] Parsed JSON`);
                     console.log('Data:', data);
@@ -259,6 +271,13 @@ if (typeof window !== 'undefined') {
             // ========================================================================
             // Request Logging (BEFORE sending)
             // ========================================================================
+
+            // 🔍 DIRECT LOGS (always visible - NO SEPARATORS!)
+            console.log(`📤 [${operation}] ======== REQUEST ========`);
+            console.log(`🌐 [${operation}] URL:`, `${API_BASE}/${endpoint.replace(/^\/+|\/+$/g, '').replace(/^api\//, '')}`);
+            console.log(`📦 [${operation}] PAYLOAD:`, payload);
+            console.log(`📋 [${operation}] PAYLOAD (formatted):`, JSON.stringify(payload, null, 2));
+
             console.group(`📤 [${operation}] Request Details`);
             console.log('Timestamp:', new Date().toISOString());
             console.log('Endpoint:', endpoint);

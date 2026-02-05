@@ -1,5 +1,10 @@
 # 🔥 500 Internal Server Error - Full HTML Display
 
+**Date:** February 5, 2026  
+**Status:** ✅ IMPLEMENTED & TESTED
+
+---
+
 ## 🎯 Problem
 
 When backend returns **500 Internal Server Error** with an **HTML error page**, you need to see the FULL HTML to debug the PHP/backend error.
@@ -9,15 +14,40 @@ When backend returns **500 Internal Server Error** with an **HTML error page**, 
 ## ✅ Solution
 
 The enhanced `ApiHandler` now:
-1. ✅ Logs the **full raw response** (even if HTML)
-2. ✅ Includes `rawBody` in error result
-3. ✅ Shows HTML error page in console
+1. ✅ Logs the **full raw response** (even if HTML) - **ALWAYS VISIBLE**
+2. ✅ Shows **status immediately** - **ALWAYS VISIBLE**
+3. ✅ Includes `rawBody` in error result
+4. ✅ Shows HTML error page in console (both direct log and in group)
+
+**Key Feature:** You can see the error HTML IMMEDIATELY without expanding any groups!
 
 ---
 
 ## 📊 Console Output for 500 Error
 
-### Step 1: Request Details
+### 🚨 ALWAYS VISIBLE (What You See Immediately):
+
+```javascript
+📤 [Query Languages] ======== REQUEST ========
+🌐 [Query Languages] URL: /api/languages/query
+📦 [Query Languages] PAYLOAD: {page: 1, per_page: 25}
+
+📥 [Query Languages] ======== RESPONSE ========
+📊 [Query Languages] STATUS: 500 Internal Server Error
+📄 [Query Languages] RAW BODY: <!DOCTYPE html><html><head><title>500 Internal Server Error</title></head><body><h1>Whoops, looks like something went wrong.</h1><h2>Fatal error: Uncaught TypeError: Call to undefined method App\Services\LanguageService::getAll() in /var/www/html/app/Controllers/LanguageController.php:45</h2><pre>Stack trace:#0 /var/www/html/vendor/slim/slim/...
+📄 [Query Languages] BODY (truncated): <!DOCTYPE html><html><head><title>500 Internal Server Error</title></head><body><h1>Whoops, looks like something went wrong.</h1><h2>Fatal error: Uncaught TypeError: Call to undefined method...
+```
+
+**Important:** The HTML is visible IMMEDIATELY! You can:
+1. See the error without expanding anything
+2. Right-click → Copy string contents
+3. Save to `.html` file and open in browser
+
+---
+
+### Detailed View (Collapsible Groups):
+
+#### Step 1: Request Details
 ```
 📤 [Query Languages] Request Details
   Timestamp: 2025-02-04T12:34:56.789Z
@@ -30,7 +60,7 @@ The enhanced `ApiHandler` now:
 
 ---
 
-### Step 2: Response Headers
+#### Step 2: Response Headers
 ```
 📡 [Query Languages] Response Details
   Status: 500 Internal Server Error
@@ -53,7 +83,7 @@ The enhanced `ApiHandler` now:
 
 ---
 
-### Step 3: Raw HTML Body
+#### Step 3: Raw HTML Body (Full Details in Group)
 ```
 📄 [Query Languages] Raw Response Body
   Body: <!DOCTYPE html>
@@ -101,7 +131,7 @@ The enhanced `ApiHandler` now:
 
 ---
 
-### Step 4: JSON Parse Failed
+#### Step 4: JSON Parse Failed
 ```
 ❌ [Query Languages] JSON Parse Failed
   Parse Error: Unexpected token '<' at position 0
@@ -118,7 +148,7 @@ The enhanced `ApiHandler` now:
 
 ---
 
-### Step 5: HTTP Error Summary
+#### Step 5: HTTP Error Summary
 ```
 ❌ [Query Languages] HTTP Error 500
   Status: 500 Internal Server Error
@@ -144,7 +174,7 @@ The enhanced `ApiHandler` now:
 
 ---
 
-### Step 6: Final Result
+#### Step 6: Final Result
 ```
 📊 [Query Languages] Final Result
   Success: false
