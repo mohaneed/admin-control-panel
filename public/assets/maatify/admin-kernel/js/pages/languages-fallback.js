@@ -101,7 +101,7 @@
                         </label>
                         
                         <div id="fallback-target-language" class="w-full relative">
-                            <div class="js-select-box relative flex items-center justify-between px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg cursor-pointer hover:border-gray-400 dark:hover:border-gray-500 transition-colors bg-white dark:bg-gray-800">
+                            <div class="js-select-box relative flex items-center justify-between px-4 py-2 border border-gray-300 dark:border-gray-700 dark:text-gray-200 rounded-lg cursor-pointer hover:border-gray-400 dark:hover:border-gray-500 transition-colors bg-white dark:bg-gray-800">
                                 <input type="text" 
                                        class="js-select-input pointer-events-none bg-transparent flex-1 outline-none text-gray-700 dark:text-gray-200" 
                                        placeholder="-- Select Fallback Language --" 
@@ -113,13 +113,13 @@
                                 </span>
                             </div>
                             
-                            <div class="js-dropdown hidden absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg shadow-lg max-h-64">
+                            <div class="js-dropdown hidden absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg shadow-lg max-h-64 dark:text-gray-200">
                                 <div class="p-2 border-b border-gray-200 dark:border-gray-700">
                                     <input type="text" 
                                            class="js-search-input w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm dark:text-gray-100" 
                                            placeholder="🔍 Search languages...">
                                 </div>
-                                <ul class="js-select-list max-h-48 overflow-y-auto"></ul>
+                                <ul class="js-select-list max-h-48 overflow-y-auto dark:text-gray-200"></ul>
                             </div>
                         </div>
                         
@@ -128,7 +128,7 @@
                         </p>
                     </div>
 
-                    <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                    <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 dark:text-gray-200">
                         <p class="text-sm text-blue-800 dark:text-blue-300">
                             <strong>Note:</strong> Only ONE language can be the system fallback. Setting a new fallback automatically unsets the previous one.
                         </p>

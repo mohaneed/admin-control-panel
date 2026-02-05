@@ -339,6 +339,7 @@
         const resetButton = document.getElementById('languages-reset-filters');
         if (resetButton) {
             resetButton.addEventListener('click', () => {
+                console.log('Reset filters');
                 filterForm.reset();
                 currentPage = 1;
                 loadLanguages();
