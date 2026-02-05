@@ -51,6 +51,12 @@ final readonly class TranslationKeysUpdateNameController
             newKey: $keyName
         );
 
-        return $response->withStatus(200);
+        $response->getBody()->write(
+            json_encode(['status' => 'ok'], JSON_THROW_ON_ERROR)
+        );
+
+        return $response
+            ->withHeader('Content-Type', 'application/json')
+            ->withStatus(200);
     }
 }

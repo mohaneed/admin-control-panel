@@ -80,7 +80,9 @@ final readonly class TranslationValuesQueryController
         // 7) Return JSON
         $response->getBody()->write(\json_encode($result, JSON_THROW_ON_ERROR));
 
-        return $response->withHeader('Content-Type', 'application/json');
+        return $response
+            ->withHeader('Content-Type', 'application/json')
+            ->withStatus(200);
     }
 }
 

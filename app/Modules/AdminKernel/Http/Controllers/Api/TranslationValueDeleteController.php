@@ -53,7 +53,13 @@ final readonly class TranslationValueDeleteController
             keyId     : $keyId
         );
 
-        // 4) No Content
-        return $response->withStatus(204);
+        // 4) Response
+        $response->getBody()->write(
+            json_encode(['status' => 'ok'], JSON_THROW_ON_ERROR)
+        );
+
+        return $response
+            ->withHeader('Content-Type', 'application/json')
+            ->withStatus(200);
     }
 }

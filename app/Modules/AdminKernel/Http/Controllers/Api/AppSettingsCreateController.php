@@ -59,7 +59,13 @@ final readonly class AppSettingsCreateController
         // 3) Delegate to domain service
         $this->service->create($dto);
 
-        // 4) Empty success response (same as languages create)
-        return $response->withStatus(204);
+        // 4) Response
+        $response->getBody()->write(
+            json_encode(['status' => 'ok'], JSON_THROW_ON_ERROR)
+        );
+
+        return $response
+            ->withHeader('Content-Type', 'application/json')
+            ->withStatus(200);
     }
 }
