@@ -5,7 +5,7 @@
  * @Library     maatify/admin-control-panel
  * @Project     maatify:admin-control-panel
  * @author      Mohamed Abdulalim (megyptm) <mohamed@maatify.dev>
- * @since       2026-01-09 20:58
+ * @since       2026-02-04 20:52
  * @see         https://www.maatify.dev Maatify.dev
  * @link        https://github.com/Maatify/admin-control-panel view Project on GitHub
  * @note        Distributed in the hope that it will be useful - WITHOUT WARRANTY.
@@ -13,19 +13,16 @@
 
 declare(strict_types=1);
 
-namespace Maatify\AdminKernel\Domain\DTO\Email;
+namespace Maatify\AppSettings\Exception;
+
+use RuntimeException;
 
 /**
- * Marker interface for all email payload DTOs.
+ * Class: AppSettingNotFoundException
  *
- * Ensures a unified contract for rendering and queue layers.
+ * Thrown when a requested setting does not exist
+ * or is inactive.
  */
-interface EmailPayloadInterface
+final class AppSettingNotFoundException extends RuntimeException
 {
-    /**
-     * Return payload as a render-ready array.
-     *
-     * @return array<string, mixed>
-     */
-    public function toArray(): array;
 }

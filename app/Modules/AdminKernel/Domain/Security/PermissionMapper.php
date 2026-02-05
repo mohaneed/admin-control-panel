@@ -41,6 +41,19 @@ final class PermissionMapper implements PermissionMapperInterface
 
         'sessions.revoke.id'   => 'sessions.revoke',
         'sessions.revoke.bulk' => 'sessions.revoke',
+
+        'languages.list.ui'   => 'languages.list',
+        'languages.list.api' => 'languages.list',
+
+        'languages.clear.fallback.api' => 'languages.set.fallback',
+
+        'i18n.keys.list.ui'   => 'i18n.keys.list',
+        'i18n.keys.list.api'  => 'i18n.keys.list',
+
+        'i18n.translations.list.ui' => 'i18n.translations.list',
+        'i18n.translations.list.api' => 'i18n.translations.list',
+
+        'i18n.translations.select.api' => 'i18n.translations.upsert.api',
     ];
 
     public function map(string $routeName): string

@@ -8,8 +8,23 @@ use Maatify\AdminKernel\Http\Controllers\AdminController;
 use Maatify\AdminKernel\Http\Controllers\AdminEmailVerificationController;
 use Maatify\AdminKernel\Http\Controllers\AdminNotificationPreferenceController;
 use Maatify\AdminKernel\Http\Controllers\Api\AdminQueryController;
+use Maatify\AdminKernel\Http\Controllers\Api\LanguagesClearFallbackController;
+use Maatify\AdminKernel\Http\Controllers\Api\LanguagesCreateController;
+use Maatify\AdminKernel\Http\Controllers\Api\TranslationKeysCreateController;
+use Maatify\AdminKernel\Http\Controllers\Api\LanguagesQueryController;
+use Maatify\AdminKernel\Http\Controllers\Api\LanguagesSetActiveController;
+use Maatify\AdminKernel\Http\Controllers\Api\LanguagesSetFallbackController;
+use Maatify\AdminKernel\Http\Controllers\Api\LanguagesUpdateCodeController;
+use Maatify\AdminKernel\Http\Controllers\Api\LanguagesUpdateNameController;
+use Maatify\AdminKernel\Http\Controllers\Api\LanguagesUpdateSettingsController;
+use Maatify\AdminKernel\Http\Controllers\Api\LanguagesUpdateSortOrderController;
+use Maatify\AdminKernel\Http\Controllers\Api\TranslationKeysQueryController;
+use Maatify\AdminKernel\Http\Controllers\Api\TranslationKeysUpdateDescriptionController;
+use Maatify\AdminKernel\Http\Controllers\Api\TranslationKeysUpdateNameController;
 use Maatify\AdminKernel\Http\Controllers\AuthController;
 use Maatify\AdminKernel\Http\Controllers\NotificationQueryController;
+use Maatify\AdminKernel\Http\Controllers\Ui\LanguagesListController;
+use Maatify\AdminKernel\Http\Controllers\Ui\TranslationKeysListController;
 use Maatify\AdminKernel\Http\DTO\AdminMiddlewareOptionsDTO;
 use Maatify\AdminKernel\Http\Middleware\ApiGuestGuardMiddleware;
 use Maatify\AdminKernel\Http\Middleware\AuthorizationGuardMiddleware;
@@ -18,6 +33,7 @@ use Maatify\AdminKernel\Http\Middleware\RequestContextMiddleware;
 use Maatify\AdminKernel\Http\Middleware\RequestIdMiddleware;
 use Maatify\AdminKernel\Http\Middleware\SessionGuardMiddleware;
 use Maatify\AdminKernel\Http\Middleware\WebGuestGuardMiddleware;
+use Maatify\I18n\Http\Controllers\Api\LanguageSelectController;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\Interfaces\RouteCollectorProxyInterface;
@@ -206,6 +222,25 @@ class AdminRoutes
                         ->setName('permissions.query.ui')
                         ->add(AuthorizationGuardMiddleware::class);
 
+                    $protectedGroup->get('/languages', [LanguagesListController::class, '__invoke'])
+                        ->setName('languages.list.ui')
+                        ->add(AuthorizationGuardMiddleware::class);
+
+                    $protectedGroup->get('/i18n/keys', [TranslationKeysListController::class, '__invoke'])
+                        ->setName('i18n.keys.list.ui')
+                        ->add(AuthorizationGuardMiddleware::class);
+
+                    $protectedGroup->get('/i18n/translations', [\Maatify\AdminKernel\Http\Controllers\Ui\I18n\TranslationsListUiController::class, '__invoke'])
+                        ->setName('i18n.translations.list.ui');
+
+                    $protectedGroup->get(
+                        '/app-settings',
+                        [
+                            \Maatify\AdminKernel\Http\Controllers\Ui\AppSettings\AppSettingsListUiController::class,
+                            '__invoke'
+                        ]
+                    )->setName('app_settings.list.ui');
+
                     $protectedGroup->get('/settings', [\Maatify\AdminKernel\Http\Controllers\Ui\UiSettingsController::class, 'index']);
 
                     // UI sandbox for Twig/layout experimentation (non-canonical page)
@@ -277,6 +312,124 @@ class AdminRoutes
 
                         $sessions->post('/revoke-bulk', [\Maatify\AdminKernel\Http\Controllers\Api\SessionBulkRevokeController::class, '__invoke'])
                             ->setName('sessions.revoke.bulk');
+                    });
+
+                    // ─────────────────────────────
+                    // i18n Keys Control
+                    // ─────────────────────────────
+                    $group->group('/i18n', function (RouteCollectorProxyInterface $i18n) {
+                        $i18n->group('/keys', function (RouteCollectorProxyInterface $keys) {
+                            $keys->post('/query', [TranslationKeysQueryController::class, '__invoke'])
+                                ->setName('i18n.keys.list.api');
+
+                            $keys->post('/create', [TranslationKeysCreateController::class, '__invoke'])
+                                ->setName('i18n.keys.create.api');
+
+                            $keys->post('/update-name', [TranslationKeysUpdateNameController::class, '__invoke'])
+                                ->setName('i18n.keys.update.name.api');
+
+                            $keys->post('/update-description', [TranslationKeysUpdateDescriptionController::class, '__invoke'])
+                                ->setName('i18n.keys.update.description.api');
+                        });
+
+                        $i18n->group('/translations', function (\Slim\Interfaces\RouteCollectorProxyInterface $translations) {
+                            $translations->post('/query', [\Maatify\AdminKernel\Http\Controllers\Api\TranslationValuesQueryController::class, '__invoke'])
+                                ->setName('i18n.translations.list.api');
+
+                            $translations->post('/upsert', [\Maatify\AdminKernel\Http\Controllers\Api\TranslationValueUpsertController::class, '__invoke'])
+                                ->setName('i18n.translations.upsert.api');
+
+                            $translations->post('/delete', [\Maatify\AdminKernel\Http\Controllers\Api\TranslationValueDeleteController::class, '__invoke'])
+                                ->setName('i18n.translations.delete.api');
+                        });
+                    });
+
+                    // ─────────────────────────────
+                    // App Settings Control
+                    // ─────────────────────────────
+                    $group->group('/app-settings', function (RouteCollectorProxyInterface $appSettings) {
+                            $appSettings->post(
+                                '/query',
+                                [
+                                    \Maatify\AdminKernel\Http\Controllers\Api\AppSettingsQueryController::class,
+                                    '__invoke'
+                                ]
+                            )
+                                ->setName('app_settings.list.api');
+
+                        $appSettings->post(
+                            '/create',
+                            [
+                                \Maatify\AdminKernel\Http\Controllers\Api\AppSettingsCreateController::class,
+                                '__invoke'
+                            ]
+                        )->setName('app_settings.create.api');
+
+                        $appSettings->post(
+                            '/metadata',
+                            [
+                                \Maatify\AdminKernel\Http\Controllers\Api\AppSettingsMetadataController::class,
+                                '__invoke'
+                            ]
+                        )->setName('app_settings.metadata.api');
+
+                        $appSettings->post(
+                            '/update',
+                            [
+                                \Maatify\AdminKernel\Http\Controllers\Api\AppSettingsUpdateController::class,
+                                '__invoke'
+                            ]
+                        )->setName('app_settings.update.api');
+
+                        $appSettings->post(
+                            '/set-active',
+                            [
+                                \Maatify\AdminKernel\Http\Controllers\Api\AppSettingsSetActiveController::class,
+                                '__invoke'
+                            ]
+                        )->setName('app_settings.set_active.api');
+
+                    });
+
+                    // ─────────────────────────────
+                    // languages Control
+                    // ─────────────────────────────
+                    $group->group('/languages', function (RouteCollectorProxyInterface $languages) {
+
+                        /**
+                         * UI context selector (dropdown)
+                         * Permission: i18n.languages.select.api
+                         */
+                        $languages->post('/select', LanguageSelectController::class)
+                            ->setName('i18n.languages.select.api');
+
+                        $languages->post('/query', [LanguagesQueryController::class, '__invoke'])
+                            ->setName('languages.list.api');
+
+                        $languages->post('/create', [LanguagesCreateController::class, '__invoke'])
+                            ->setName('languages.create.api');
+
+                        $languages->post('/update-settings', [LanguagesUpdateSettingsController::class, '__invoke'])
+                            ->setName('languages.update.settings.api');
+
+                        $languages->post('/set-active', [LanguagesSetActiveController::class, '__invoke'])
+                            ->setName('languages.set.active.api');
+
+                        $languages->post('/set-fallback', [LanguagesSetFallbackController::class, '__invoke'])
+                            ->setName('languages.set.fallback.api');
+
+                        $languages->post('/clear-fallback', [LanguagesClearFallbackController::class, '__invoke'])
+                            ->setName('languages.clear.fallback.api');
+
+                        $languages->post('/update-sort', [LanguagesUpdateSortOrderController::class, '__invoke'])
+                            ->setName('languages.update.sort.api');
+
+                        $languages->post('/update-name', [LanguagesUpdateNameController::class, '__invoke'])
+                            ->setName('languages.update.name.api');
+
+                        $languages->post('/update-code', [LanguagesUpdateCodeController::class, '__invoke'])
+                            ->setName('languages.update.code.api');
+
                     });
 
                     // ─────────────────────────────

@@ -38,6 +38,13 @@ DROP TABLE IF EXISTS diagnostics_telemetry;
 DROP TABLE IF EXISTS delivery_operations;
 DROP TABLE IF EXISTS log_processing_checkpoints;
 
+DROP TABLE IF EXISTS languages;
+DROP TABLE IF EXISTS language_settings;
+DROP TABLE IF EXISTS i18n_keys;
+DROP TABLE IF EXISTS i18n_translations;
+
+DROP TABLE IF EXISTS app_settings;
+
 SET FOREIGN_KEY_CHECKS=1;
 
 /* ===========================
@@ -865,3 +872,262 @@ CREATE TABLE log_processing_checkpoints (
                                             INDEX idx_log_processing_checkpoints_updated_at (updated_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     COMMENT='RESERVED: Generic checkpoints for future log processors (materializers/archivers/exporters). Cursor order: occurred_at ASC, id ASC. NOT USED in current baseline.';
+
+/* ==========================================================
+ * I18N / LANGUAGES (CANONICAL BASELINE)
+ * ----------------------------------------------------------
+ * Purpose:
+ * - Provide a clean, kernel-grade internationalization schema
+ * - Separate language identity from UI concerns and translations
+ * - Support API, Admin UI, Redis caching, and future library extraction
+ *
+ * Design Principles:
+ * - Language identity is stable and minimal
+ * - Translations are key-based (NO column-per-language)
+ * - No filesystem coupling
+ * - No JSON translations
+ * - Additive only (no ALTER TABLE per language)
+ * ========================================================== */
+
+
+/* ==========================================================
+ * 1) Languages (IDENTITY ONLY)
+ * ----------------------------------------------------------
+ * Represents a language as a stable identity.
+ * MUST NOT contain UI, filesystem, or translation data.
+ *
+ * Examples:
+ * - en
+ * - en-US
+ * - ar
+ * - ar-EG
+ * ========================================================== */
+
+CREATE TABLE languages (
+                           id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+
+    -- Human-readable display name (UI-level, not used in logic)
+                           name VARCHAR(64) NOT NULL,
+
+    -- Canonical language code (BCP 47 / ISO-compatible)
+    -- Examples: en, en-US, ar, ar-EG
+                           code VARCHAR(16) NOT NULL,
+
+    -- Activation flag (used by application layer)
+                           is_active TINYINT(1) NOT NULL DEFAULT 1,
+
+                           created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                           updated_at DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
+
+    -- Enforce one canonical row per language code
+                           UNIQUE KEY uq_languages_code (code)
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci
+    COMMENT='Language identity table. Stable, minimal, kernel-grade. No UI or translation concerns.';
+
+
+/* ==========================================================
+ * 2) Language Settings (UI / PRESENTATION ONLY)
+ * ----------------------------------------------------------
+ * Optional table for UI concerns:
+ * - text direction
+ * - display order
+ * - icon / flag
+ *
+ * MUST NOT be used in authorization, logic, or kernel decisions.
+ * ========================================================== */
+
+CREATE TABLE language_settings (
+                                   language_id INT UNSIGNED PRIMARY KEY,
+
+    -- Text direction for UI rendering
+                                   direction ENUM('ltr','rtl') NOT NULL DEFAULT 'ltr',
+
+    -- Optional icon / flag path or URL
+                                   icon VARCHAR(255) NULL,
+
+    -- UI sort order (lower = earlier)
+                                   sort_order INT NOT NULL DEFAULT 0,
+
+                                   CONSTRAINT fk_language_settings_language
+                                       FOREIGN KEY (language_id)
+                                           REFERENCES languages(id)
+                                           ON DELETE CASCADE
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci
+    COMMENT='UI-only language settings (direction, icon, ordering). Not part of kernel logic.';
+
+
+/* ==========================================================
+ * 3) Translation Keys (CANONICAL KEYS)
+ * ----------------------------------------------------------
+ * Defines the universe of translation keys.
+ * Keys are language-agnostic and stable.
+ *
+ * Examples:
+ * - auth.login.title
+ * - admin.sessions.empty
+ * - errors.permission_denied
+ * ========================================================== */
+
+CREATE TABLE i18n_keys (
+                           id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+
+    -- Canonical translation key (dot-notation recommended)
+                           translation_key VARCHAR(191) NOT NULL,
+
+    -- Optional description for admins / developers
+                           description VARCHAR(255) NULL,
+
+                           created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    -- Enforce unique canonical keys
+                           UNIQUE KEY uq_i18n_keys_key (translation_key)
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci
+    COMMENT='Canonical translation keys. Language-agnostic. Backbone of the i18n system.';
+
+
+/* ==========================================================
+ * 4) Translations (LANGUAGE + KEY → VALUE)
+ * ----------------------------------------------------------
+ * Stores the actual translated text.
+ *
+ * Rules:
+ * - One row per (language_id + key_id)
+ * - No NULL values
+ * - Cascades cleanly on language or key deletion
+ * ========================================================== */
+
+CREATE TABLE i18n_translations (
+                                   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+
+    -- Reference to canonical key
+                                   key_id BIGINT UNSIGNED NOT NULL,
+
+    -- Reference to language
+                                   language_id INT UNSIGNED NOT NULL,
+
+    -- Translated value (any length)
+                                   value TEXT NOT NULL,
+
+                                   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                   updated_at DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
+
+    -- Ensure single translation per language/key
+                                   UNIQUE KEY uq_i18n_translation_unique (key_id, language_id),
+
+                                   CONSTRAINT fk_i18n_translation_key
+                                       FOREIGN KEY (key_id)
+                                           REFERENCES i18n_keys(id)
+                                           ON DELETE CASCADE,
+
+                                   CONSTRAINT fk_i18n_translation_language
+                                       FOREIGN KEY (language_id)
+                                           REFERENCES languages(id)
+                                           ON DELETE CASCADE
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci
+    COMMENT='Translated values mapped by (language + key). Additive, cache-friendly, API-ready.';
+
+
+/* ==========================================================
+ * OPTIONAL: Language Fallback (REGIONAL OVERRIDES)
+ * ----------------------------------------------------------
+ * Allows regional languages to fallback to a base language.
+ *
+ * Examples:
+ * - ar-EG → ar
+ * - en-GB → en
+ *
+ * NOT required for baseline usage.
+ * ========================================================== */
+
+ALTER TABLE languages
+    ADD COLUMN fallback_language_id INT UNSIGNED NULL,
+    ADD CONSTRAINT fk_languages_fallback
+        FOREIGN KEY (fallback_language_id)
+            REFERENCES languages(id)
+            ON DELETE SET NULL;
+
+-- ============================================================
+-- Table: app_settings
+-- ------------------------------------------------------------
+-- Purpose:
+--   Centralized application configuration store (Key-Value).
+--
+-- Design Goals:
+--   - Avoid schema changes when adding new settings
+--   - Support future expansion (apps, social, legal, meta, etc.)
+--   - Single source of truth for app-wide configuration
+--   - Safe alternative to hard delete using soft disable (is_active)
+--
+-- Usage Pattern:
+--   Each setting is identified by:
+--     (setting_group + setting_key) => setting_value
+--
+-- Example:
+--   group: 'social' , key: 'facebook'
+--   group: 'apps'   , key: 'android'
+--   group: 'legal'  , key: 'privacy_policy'
+--
+-- This table is intended to replace hardcoded config tables
+-- like: app_social, app_meta, app_links, etc.
+--
+-- IMPORTANT:
+--   - This table is NOT user-generated content
+--   - Writes should be restricted to admin/system only
+--   - Validation, normalization, and protection rules
+--     MUST be enforced at the application layer
+--   - Physical DELETE is forbidden; use is_active instead
+--
+-- ============================================================
+
+CREATE TABLE app_settings (
+    -- Auto-increment primary key
+    -- Used internally only (no business meaning)
+                              id INT NOT NULL AUTO_INCREMENT,
+
+    -- Logical grouping of settings
+    -- Examples:
+    --   social, apps, legal, meta, system, feature_flags
+                              setting_group VARCHAR(64) NOT NULL,
+
+    -- Unique key inside the group
+    -- Examples:
+    --   facebook, instagram, android, ios, privacy_policy
+                              setting_key VARCHAR(64) NOT NULL,
+
+    -- Actual value of the setting
+    -- Stored as TEXT to allow:
+    --   - URLs
+    --   - Long text
+    --   - JSON (if needed in future)
+                              setting_value TEXT NOT NULL,
+
+    -- Soft activation flag
+    -- 1 = active (visible to consumers)
+    -- 0 = inactive (disabled, but preserved)
+    --
+    -- NOTE:
+    --   - Consumers (web/app) must read ACTIVE settings only
+    --   - Admin/system may toggle this flag
+    --   - Protected keys MUST NOT be deactivated
+                              is_active TINYINT(1) NOT NULL DEFAULT 1,
+
+    -- Primary key
+                              PRIMARY KEY (id),
+
+    -- Ensure no duplicate keys inside the same group
+    -- (group + key) must be unique
+                              UNIQUE KEY uniq_setting (setting_group, setting_key)
+
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_general_ci
+    COMMENT='Centralized application settings (grouped key-value store with soft activation)';
+
