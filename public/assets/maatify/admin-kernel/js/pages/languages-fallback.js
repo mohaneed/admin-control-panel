@@ -14,13 +14,15 @@
  * Features:
  * - ✅ Uses ApiHandler for all API calls
  * - ✅ Respects capabilities from server
- * - ✅ Modal for setting fallback
+ * - ✅ Modal for setting fallback with Select2 dropdown
+ * - ✅ Search functionality for easy language selection
  * - ✅ Inline action for clearing fallback
  * - ✅ Validation: language cannot be its own fallback
  * - ✅ Auto-reload table on success
  *
  * Dependencies:
  * - ApiHandler (api_handler.js)
+ * - Select2 (select2.js)
  * - LanguagesHelpers (languages-helpers.js)
  * - window.languagesCapabilities (injected by server)
  */
@@ -36,12 +38,23 @@
         return;
     }
 
+    if (typeof Select2 === 'undefined') {
+        console.error('❌ Select2 not found! Make sure select2.js is loaded first.');
+        return;
+    }
+
     if (typeof LanguagesHelpers === 'undefined') {
         console.error('❌ LanguagesHelpers not found! Make sure languages-helpers.js is loaded first.');
         return;
     }
 
-    console.log('✅ Dependencies loaded: ApiHandler, LanguagesHelpers');
+    console.log('✅ Dependencies loaded: ApiHandler, Select2, LanguagesHelpers');
+
+    // ========================================================================
+    // Select2 Instance Tracking
+    // ========================================================================
+
+    let fallbackSelect2Instance = null;
 
     // ========================================================================
     // Set Fallback Modal HTML
@@ -66,46 +79,55 @@
                 <form id="set-fallback-form" class="px-6 py-4 space-y-4">
                     <input type="hidden" id="fallback-language-id" name="language_id" />
 
-                    <!-- Current Language (Display Only) -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">
                             Language
                         </label>
                         <div id="fallback-current-language" class="px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700 font-medium">
-                            <!-- Populated dynamically -->
                         </div>
                     </div>
 
-                    <!-- Current Fallback Status (Display Only) -->
                     <div id="fallback-current-status-container">
                         <label class="block text-sm font-medium text-gray-700 mb-2">
                             Current Fallback
                         </label>
                         <div id="fallback-current-status" class="px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-600">
-                            <!-- Populated dynamically -->
                         </div>
                     </div>
 
-                    <!-- Select New Fallback -->
                     <div>
-                        <label for="fallback-target-language" class="block text-sm font-medium text-gray-700 mb-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
                             Set Fallback To <span class="text-red-500">*</span>
                         </label>
-                        <select
-                            id="fallback-target-language"
-                            name="fallback_language_id"
-                            required
-                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        >
-                            <option value="">-- Select Fallback Language --</option>
-                            <!-- Options populated dynamically -->
-                        </select>
+                        
+                        <div id="fallback-target-language" class="w-full relative">
+                            <div class="js-select-box relative flex items-center justify-between px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:border-gray-400 transition-colors bg-white">
+                                <input type="text" 
+                                       class="js-select-input pointer-events-none bg-transparent flex-1 outline-none text-gray-700" 
+                                       placeholder="-- Select Fallback Language --" 
+                                       readonly>
+                                <span class="js-arrow ml-2 transition-transform duration-200 text-gray-400">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                    </svg>
+                                </span>
+                            </div>
+                            
+                            <div class="js-dropdown hidden absolute z-50 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-64">
+                                <div class="p-2 border-b border-gray-200">
+                                    <input type="text" 
+                                           class="js-search-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" 
+                                           placeholder="🔍 Search languages...">
+                                </div>
+                                <ul class="js-select-list max-h-48 overflow-y-auto"></ul>
+                            </div>
+                        </div>
+                        
                         <p class="mt-1 text-xs text-gray-500">
                             💡 This language will be used when translations are missing
                         </p>
                     </div>
 
-                    <!-- Info Box -->
                     <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
                         <p class="text-sm text-blue-800">
                             <strong>Note:</strong> Only ONE language can be the system fallback. Setting a new fallback automatically unsets the previous one.
@@ -249,6 +271,7 @@
     /**
      * Load all available languages for fallback dropdown
      * Excludes the current language (can't be fallback to itself)
+     * Now uses Select2 for better UX with search
      */
     async function loadAvailableLanguagesForFallback(currentLanguageId) {
         console.log('📋 Loading available languages for fallback dropdown...');
@@ -267,22 +290,29 @@
         }
 
         const languages = result.data?.data || [];
-        const dropdown = document.getElementById('fallback-target-language');
 
-        // Clear existing options (except first "select" option)
-        dropdown.innerHTML = '<option value="">-- Select Fallback Language --</option>';
+        // Prepare Select2 data (exclude current language)
+        const select2Data = languages
+            .filter(lang => lang.id !== parseInt(currentLanguageId))
+            .map(lang => ({
+                value: lang.id,
+                label: `${lang.icon || '🌍'} ${lang.name} (${lang.code})`
+            }));
 
-        // Add languages (exclude current language)
-        languages.forEach(lang => {
-            if (lang.id !== parseInt(currentLanguageId)) {
-                const option = document.createElement('option');
-                option.value = lang.id;
-                option.textContent = `${lang.name} (${lang.code})`;
-                dropdown.appendChild(option);
-            }
+        console.log(`📊 Loaded ${select2Data.length} languages for Select2`);
+
+        // Destroy previous instance if exists
+        if (fallbackSelect2Instance) {
+            fallbackSelect2Instance.destroy();
+            fallbackSelect2Instance = null;
+        }
+
+        // Initialize Select2
+        fallbackSelect2Instance = Select2('#fallback-target-language', select2Data, {
+            defaultValue: null
         });
 
-        console.log(`✅ Loaded ${languages.length - 1} available languages for fallback`);
+        console.log('✅ Select2 initialized for fallback selection');
     }
 
     /**
@@ -300,7 +330,9 @@
             e.preventDefault();
 
             const languageId = parseInt(document.getElementById('fallback-language-id').value);
-            const fallbackLanguageId = parseInt(document.getElementById('fallback-target-language').value);
+
+            // Get value from Select2 instance
+            const fallbackLanguageId = fallbackSelect2Instance ? parseInt(fallbackSelect2Instance.getValue()) : null;
 
             // Validate
             if (!languageId || !fallbackLanguageId) {
