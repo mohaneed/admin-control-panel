@@ -14,7 +14,7 @@ use Respect\Validation\Validator as v;
  * NOTE: Authentication validates transport safety only.
  * Password policy applies exclusively to creation and mutation flows.
  */
-class AuthLoginSchema extends AbstractSchema
+class AuthLoginSchemaExample extends AbstractSchema
 {
     protected function rules(): array
     {

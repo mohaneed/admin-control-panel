@@ -30,7 +30,6 @@
 
   "autoload": {
     "psr-4": {
-      "App\\": "app/",
       "Maatify\\AdminKernel\\": "app/Modules/AdminKernel/",
       "Maatify\\DiagnosticsTelemetry\\": "Modules/DiagnosticsTelemetry/",
       "Maatify\\BehaviorTrace\\": "Modules/BehaviorTrace/",

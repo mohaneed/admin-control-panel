@@ -7,8 +7,8 @@ namespace Maatify\AdminKernel\Http\Controllers;
 use DateTimeImmutable;
 use Maatify\AdminKernel\Domain\Contracts\AdminNotificationHistoryReaderInterface;
 use Maatify\AdminKernel\Domain\DTO\Notification\History\AdminNotificationHistoryQueryDTO;
+use Maatify\AdminKernel\Validation\Schemas\Admin\AdminNotificationHistorySchema;
 use Maatify\Validation\Guard\ValidationGuard;
-use Maatify\Validation\Schemas\AdminNotificationHistorySchema;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Maatify\Validation\Schemas\Permissions;
+namespace Maatify\AdminKernel\Validation\Schemas\Permissions;
 
 use Maatify\Validation\Enum\ValidationErrorCodeEnum;
 use Maatify\Validation\Schemas\AbstractSchema;

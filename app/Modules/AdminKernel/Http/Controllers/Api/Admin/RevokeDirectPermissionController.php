@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Maatify\AdminKernel\Http\Controllers\Api\Admin;
 
 use Maatify\AdminKernel\Domain\Contracts\Permissions\DirectPermissionsWriterRepositoryInterface;
+use Maatify\AdminKernel\Validation\Schemas\Permissions\DirectPermissionRevokeSchema;
 use Maatify\Validation\Guard\ValidationGuard;
-use Maatify\Validation\Schemas\Permissions\DirectPermissionRevokeSchema;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 

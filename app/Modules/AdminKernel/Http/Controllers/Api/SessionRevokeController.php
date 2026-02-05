@@ -9,8 +9,8 @@ use Maatify\AdminKernel\Context\RequestContext;
 use Maatify\AdminKernel\Domain\Exception\IdentifierNotFoundException;
 use Maatify\AdminKernel\Domain\Service\AuthorizationService;
 use Maatify\AdminKernel\Domain\Service\SessionRevocationService;
+use Maatify\AdminKernel\Validation\Schemas\Session\SessionRevokeSchema;
 use Maatify\Validation\Guard\ValidationGuard;
-use Maatify\Validation\Schemas\SessionRevokeSchema;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 

@@ -13,7 +13,7 @@
 
 declare(strict_types=1);
 
-namespace Maatify\Validation\Schemas\Roles;
+namespace Maatify\AdminKernel\Validation\Schemas\Roles;
 
 use Maatify\Validation\Enum\ValidationErrorCodeEnum;
 use Maatify\Validation\Schemas\AbstractSchema;

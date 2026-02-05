@@ -16,8 +16,8 @@ declare(strict_types=1);
 namespace Maatify\AdminKernel\Http\Controllers\Api;
 
 use Maatify\AdminKernel\Domain\Contracts\PermissionsMetadataRepositoryInterface;
+use Maatify\AdminKernel\Validation\Schemas\Permissions\PermissionMetadataUpdateSchema;
 use Maatify\Validation\Guard\ValidationGuard;
-use Maatify\Validation\Schemas\PermissionMetadataUpdateSchema;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 

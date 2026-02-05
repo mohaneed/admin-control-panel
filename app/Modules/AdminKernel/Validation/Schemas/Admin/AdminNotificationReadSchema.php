@@ -2,21 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Maatify\Validation\Schemas\Roles;
+namespace Maatify\AdminKernel\Validation\Schemas\Admin;
 
 use Maatify\Validation\Enum\ValidationErrorCodeEnum;
 use Maatify\Validation\Schemas\AbstractSchema;
 use Respect\Validation\Validator as v;
 
-class RoleAdminAssignSchema extends AbstractSchema
+class AdminNotificationReadSchema extends AbstractSchema
 {
     protected function rules(): array
     {
         return [
-            'admin_id' => [
-                v::intType()->positive(),
-                ValidationErrorCodeEnum::INVALID_VALUE
-            ],
+            'id' => [v::intVal(), ValidationErrorCodeEnum::REQUIRED_FIELD],
         ];
     }
 }

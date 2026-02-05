@@ -6,8 +6,8 @@ namespace Maatify\AdminKernel\Http\Controllers;
 
 use DateTimeImmutable;
 use Maatify\AdminKernel\Domain\Contracts\NotificationReadRepositoryInterface;
+use Maatify\AdminKernel\Validation\Schemas\NotificationQuerySchema;
 use Maatify\Validation\Guard\ValidationGuard;
-use Maatify\Validation\Schemas\NotificationQuerySchema;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 

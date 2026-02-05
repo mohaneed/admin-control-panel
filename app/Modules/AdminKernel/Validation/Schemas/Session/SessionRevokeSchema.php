@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Maatify\Validation\Schemas;
+namespace Maatify\AdminKernel\Validation\Schemas\Session;
 
 use Maatify\Validation\Enum\ValidationErrorCodeEnum;
+use Maatify\Validation\Schemas\AbstractSchema;
 use Respect\Validation\Validator as v;
 
 class SessionRevokeSchema extends AbstractSchema
