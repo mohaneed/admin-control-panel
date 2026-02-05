@@ -372,6 +372,15 @@ class AdminRoutes
                                 '__invoke'
                             ]
                         )->setName('app_settings.update.api');
+
+                        $appSettings->post(
+                            '/set-active',
+                            [
+                                \Maatify\AdminKernel\Http\Controllers\Api\AppSettingsSetActiveController::class,
+                                '__invoke'
+                            ]
+                        )->setName('app_settings.set_active.api');
+
                     });
 
                     // ─────────────────────────────
