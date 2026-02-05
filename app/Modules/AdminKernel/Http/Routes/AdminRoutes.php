@@ -4,27 +4,27 @@ declare(strict_types=1);
 
 namespace Maatify\AdminKernel\Http\Routes;
 
-use Maatify\AdminKernel\Http\Controllers\AdminController;
-use Maatify\AdminKernel\Http\Controllers\AdminEmailVerificationController;
 use Maatify\AdminKernel\Http\Controllers\AdminNotificationPreferenceController;
-use Maatify\AdminKernel\Http\Controllers\Api\AdminQueryController;
-use Maatify\AdminKernel\Http\Controllers\Api\LanguagesClearFallbackController;
-use Maatify\AdminKernel\Http\Controllers\Api\LanguagesCreateController;
-use Maatify\AdminKernel\Http\Controllers\Api\TranslationKeysCreateController;
-use Maatify\AdminKernel\Http\Controllers\Api\LanguagesQueryController;
-use Maatify\AdminKernel\Http\Controllers\Api\LanguagesSetActiveController;
-use Maatify\AdminKernel\Http\Controllers\Api\LanguagesSetFallbackController;
-use Maatify\AdminKernel\Http\Controllers\Api\LanguagesUpdateCodeController;
-use Maatify\AdminKernel\Http\Controllers\Api\LanguagesUpdateNameController;
-use Maatify\AdminKernel\Http\Controllers\Api\LanguagesUpdateSettingsController;
-use Maatify\AdminKernel\Http\Controllers\Api\LanguagesUpdateSortOrderController;
-use Maatify\AdminKernel\Http\Controllers\Api\TranslationKeysQueryController;
-use Maatify\AdminKernel\Http\Controllers\Api\TranslationKeysUpdateDescriptionController;
-use Maatify\AdminKernel\Http\Controllers\Api\TranslationKeysUpdateNameController;
+use Maatify\AdminKernel\Http\Controllers\Api\Admin\AdminController;
+use Maatify\AdminKernel\Http\Controllers\Api\Admin\AdminEmailVerificationController;
+use Maatify\AdminKernel\Http\Controllers\Api\Admin\AdminQueryController;
+use Maatify\AdminKernel\Http\Controllers\Api\I18n\TranslationKeysCreateController;
+use Maatify\AdminKernel\Http\Controllers\Api\I18n\TranslationKeysQueryController;
+use Maatify\AdminKernel\Http\Controllers\Api\I18n\TranslationKeysUpdateDescriptionController;
+use Maatify\AdminKernel\Http\Controllers\Api\I18n\TranslationKeysUpdateNameController;
+use Maatify\AdminKernel\Http\Controllers\Api\Languages\LanguagesClearFallbackController;
+use Maatify\AdminKernel\Http\Controllers\Api\Languages\LanguagesCreateController;
+use Maatify\AdminKernel\Http\Controllers\Api\Languages\LanguagesQueryController;
+use Maatify\AdminKernel\Http\Controllers\Api\Languages\LanguagesSetActiveController;
+use Maatify\AdminKernel\Http\Controllers\Api\Languages\LanguagesSetFallbackController;
+use Maatify\AdminKernel\Http\Controllers\Api\Languages\LanguagesUpdateCodeController;
+use Maatify\AdminKernel\Http\Controllers\Api\Languages\LanguagesUpdateNameController;
+use Maatify\AdminKernel\Http\Controllers\Api\Languages\LanguagesUpdateSettingsController;
+use Maatify\AdminKernel\Http\Controllers\Api\Languages\LanguagesUpdateSortOrderController;
 use Maatify\AdminKernel\Http\Controllers\AuthController;
 use Maatify\AdminKernel\Http\Controllers\NotificationQueryController;
+use Maatify\AdminKernel\Http\Controllers\Ui\I18n\TranslationKeysListController;
 use Maatify\AdminKernel\Http\Controllers\Ui\LanguagesListController;
-use Maatify\AdminKernel\Http\Controllers\Ui\TranslationKeysListController;
 use Maatify\AdminKernel\Http\DTO\AdminMiddlewareOptionsDTO;
 use Maatify\AdminKernel\Http\Middleware\ApiGuestGuardMiddleware;
 use Maatify\AdminKernel\Http\Middleware\AuthorizationGuardMiddleware;
@@ -62,15 +62,15 @@ class AdminRoutes
             $app->group('', function (RouteCollectorProxyInterface $group) {
                 // Guest Routes
                 $group->group('', function (RouteCollectorProxyInterface $guestGroup) {
-                    $guestGroup->get('/login', [\Maatify\AdminKernel\Http\Controllers\Ui\UiLoginController::class, 'index']);
+                    $guestGroup->get('/login', [\Maatify\AdminKernel\Http\Controllers\Ui\Auth\UiLoginController::class, 'index']);
 
-                    $guestGroup->post('/login', [\Maatify\AdminKernel\Http\Controllers\Ui\UiLoginController::class, 'login'])
+                    $guestGroup->post('/login', [\Maatify\AdminKernel\Http\Controllers\Ui\Auth\UiLoginController::class, 'login'])
                         ->add(\Maatify\AbuseProtection\Middleware\AbuseProtectionMiddleware::class)
                         ->add(\Maatify\AdminKernel\Http\Middleware\AbuseCookieReaderMiddleware::class);
 
-                    $guestGroup->get('/verify-email', [\Maatify\AdminKernel\Http\Controllers\Ui\UiVerificationController::class, 'index']);
-                    $guestGroup->post('/verify-email', [\Maatify\AdminKernel\Http\Controllers\Ui\UiVerificationController::class, 'verify']);
-                    $guestGroup->post('/verify-email/resend', [\Maatify\AdminKernel\Http\Controllers\Ui\UiVerificationController::class, 'resend']);
+                    $guestGroup->get('/verify-email', [\Maatify\AdminKernel\Http\Controllers\Ui\Auth\UiVerificationController::class, 'index']);
+                    $guestGroup->post('/verify-email', [\Maatify\AdminKernel\Http\Controllers\Ui\Auth\UiVerificationController::class, 'verify']);
+                    $guestGroup->post('/verify-email/resend', [\Maatify\AdminKernel\Http\Controllers\Ui\Auth\UiVerificationController::class, 'resend']);
 
                     $guestGroup->get('/error', [\Maatify\AdminKernel\Http\Controllers\Ui\UiErrorController::class, 'index']);
 
@@ -88,8 +88,8 @@ class AdminRoutes
 
                 // Step-Up Verification (Session only, no Active check)
                 $group->group('', function (RouteCollectorProxyInterface $stepUpGroup) {
-                    $stepUpGroup->get('/2fa/verify', [\Maatify\AdminKernel\Http\Controllers\Ui\UiStepUpController::class, 'verify']);
-                    $stepUpGroup->post('/2fa/verify', [\Maatify\AdminKernel\Http\Controllers\Ui\UiStepUpController::class, 'doVerify']);
+                    $stepUpGroup->get('/2fa/verify', [\Maatify\AdminKernel\Http\Controllers\Ui\Auth\UiStepUpController::class, 'verify']);
+                    $stepUpGroup->post('/2fa/verify', [\Maatify\AdminKernel\Http\Controllers\Ui\Auth\UiStepUpController::class, 'doVerify']);
                 })
                 ->add(\Maatify\AdminKernel\Http\Middleware\AdminContextMiddleware::class)
                 ->add(SessionGuardMiddleware::class);
@@ -105,27 +105,27 @@ class AdminRoutes
 
                     $protectedGroup->get(
                         '/2fa/setup',
-                        [\Maatify\AdminKernel\Http\Controllers\Ui\UiTwoFactorSetupController::class, 'index']
+                        [\Maatify\AdminKernel\Http\Controllers\Ui\Auth\UiTwoFactorSetupController::class, 'index']
                     )
                         ->setName('2fa.setup');
 
                     $protectedGroup->post(
                         '/2fa/setup',
-                        [\Maatify\AdminKernel\Http\Controllers\Ui\UiTwoFactorSetupController::class, 'enable']
+                        [\Maatify\AdminKernel\Http\Controllers\Ui\Auth\UiTwoFactorSetupController::class, 'enable']
                     )
                         ->setName('2fa.enable');
 
 
                     $protectedGroup->get(
                         '/admins',
-                        [\Maatify\AdminKernel\Http\Controllers\Ui\UiAdminsController::class, 'index']
+                        [\Maatify\AdminKernel\Http\Controllers\Ui\Admin\UiAdminsController::class, 'index']
                     )
                         ->setName('admins.list.ui')
                         ->add(AuthorizationGuardMiddleware::class);
 
                     $protectedGroup->get(
                         '/admins/create',
-                        [\Maatify\AdminKernel\Http\Controllers\Ui\UiAdminCreateController::class, 'index']
+                        [\Maatify\AdminKernel\Http\Controllers\Ui\Admin\UiAdminCreateController::class, 'index']
                     )
                         ->setName('admin.create.ui')
                         ->add(AuthorizationGuardMiddleware::class);
@@ -135,7 +135,7 @@ class AdminRoutes
                     // ===============================
                     $protectedGroup->get(
                         '/admins/{id:[0-9]+}/profile',
-                        [\Maatify\AdminKernel\Http\Controllers\Ui\UiAdminsController::class, 'profile']
+                        [\Maatify\AdminKernel\Http\Controllers\Ui\Admin\UiAdminsController::class, 'profile']
                     )
                         ->setName('admins.profile.view')
                         ->add(AuthorizationGuardMiddleware::class);
@@ -145,7 +145,7 @@ class AdminRoutes
                     // ===============================
                     $protectedGroup->get(
                         '/admins/{id:[0-9]+}/profile/edit',
-                        [\Maatify\AdminKernel\Http\Controllers\Ui\UiAdminsController::class, 'editProfile']
+                        [\Maatify\AdminKernel\Http\Controllers\Ui\Admin\UiAdminsController::class, 'editProfile']
                     )
                         ->setName('admins.profile.edit.view')
                         ->add(AuthorizationGuardMiddleware::class);
@@ -156,7 +156,7 @@ class AdminRoutes
                     // ===============================
                     $protectedGroup->post(
                         '/admins/{id:[0-9]+}/profile/edit',
-                        [\Maatify\AdminKernel\Http\Controllers\Ui\UiAdminsController::class, 'updateProfile']
+                        [\Maatify\AdminKernel\Http\Controllers\Ui\Admin\UiAdminsController::class, 'updateProfile']
                     )
                         ->setName('admins.profile.edit')
                         ->add(AuthorizationGuardMiddleware::class);
@@ -166,7 +166,7 @@ class AdminRoutes
                     // ─────────────────────────────
                     $protectedGroup->get(
                         '/admins/{id:[0-9]+}/emails',
-                        [\Maatify\AdminKernel\Http\Controllers\Ui\UiAdminsController::class, 'emails']
+                        [\Maatify\AdminKernel\Http\Controllers\Ui\Admin\UiAdminsController::class, 'emails']
                     )
                         ->setName('admin.email.list.ui')
                         ->add(AuthorizationGuardMiddleware::class);
@@ -176,7 +176,7 @@ class AdminRoutes
                     // ─────────────────────────────
                     $protectedGroup->get(
                         '/admins/{id:[0-9]+}/sessions',
-                        [\Maatify\AdminKernel\Http\Controllers\Ui\UiAdminsController::class, 'sessions']
+                        [\Maatify\AdminKernel\Http\Controllers\Ui\Admin\UiAdminsController::class, 'sessions']
                     )
                         ->setName('admins.session.list')
                         ->add(AuthorizationGuardMiddleware::class);
@@ -186,7 +186,7 @@ class AdminRoutes
                     // ─────────────────────────────
                     $protectedGroup->get(
                         '/admins/{id:[0-9]+}/permissions',
-                        [\Maatify\AdminKernel\Http\Controllers\Ui\UiAdminsController::class, 'permissions']
+                        [\Maatify\AdminKernel\Http\Controllers\Ui\Admin\UiAdminsController::class, 'permissions']
                     )
                         ->setName('admins.permissions')
                         ->add(AuthorizationGuardMiddleware::class);
@@ -196,28 +196,28 @@ class AdminRoutes
                     // ─────────────────────────────
                     $protectedGroup->get(
                         '/permissions/{permission_id:[0-9]+}',
-                        [\Maatify\AdminKernel\Http\Controllers\Ui\UiAPermissionDetailsController::class, 'index']
+                        [\Maatify\AdminKernel\Http\Controllers\Ui\Permissions\UiAPermissionDetailsController::class, 'index']
                     )
                         ->setName('permission.details.ui')
                         ->add(AuthorizationGuardMiddleware::class);
 
                     $protectedGroup->get(
                         '/roles',
-                        [\Maatify\AdminKernel\Http\Controllers\Ui\UiRolesController::class, 'index']
+                        [\Maatify\AdminKernel\Http\Controllers\Ui\Roles\UiRolesController::class, 'index']
                     )
                         ->setName('roles.query.ui')
                         ->add(AuthorizationGuardMiddleware::class);
 
                     $protectedGroup->get(
                         '/roles/{id:[0-9]+}',
-                        [\Maatify\AdminKernel\Http\Controllers\Ui\UiRoleDetailsController::class, '__invoke']
+                        [\Maatify\AdminKernel\Http\Controllers\Ui\Roles\UiRoleDetailsController::class, '__invoke']
                     )
                         ->setName('roles.view.ui')
                         ->add(AuthorizationGuardMiddleware::class);
 
                     $protectedGroup->get(
                         '/permissions',
-                        [\Maatify\AdminKernel\Http\Controllers\Ui\UiPermissionsController::class, 'index']
+                        [\Maatify\AdminKernel\Http\Controllers\Ui\Permissions\UiPermissionsController::class, 'index']
                     )
                         ->setName('permissions.query.ui')
                         ->add(AuthorizationGuardMiddleware::class);
@@ -304,13 +304,13 @@ class AdminRoutes
                 $api->group('', function (RouteCollectorProxyInterface $group) {
                     // Phase 14.3: Sessions Query
                     $group->group('/sessions', function (RouteCollectorProxyInterface $sessions) {
-                        $sessions->post('/query', [\Maatify\AdminKernel\Http\Controllers\Api\SessionQueryController::class, '__invoke'])
+                        $sessions->post('/query', [\Maatify\AdminKernel\Http\Controllers\Api\Sessions\SessionQueryController::class, '__invoke'])
                             ->setName('sessions.list.api');
 
-                        $sessions->delete('/{session_id}', [\Maatify\AdminKernel\Http\Controllers\Api\SessionRevokeController::class, '__invoke'])
+                        $sessions->delete('/{session_id}', [\Maatify\AdminKernel\Http\Controllers\Api\Sessions\SessionRevokeController::class, '__invoke'])
                             ->setName('sessions.revoke.id');
 
-                        $sessions->post('/revoke-bulk', [\Maatify\AdminKernel\Http\Controllers\Api\SessionBulkRevokeController::class, '__invoke'])
+                        $sessions->post('/revoke-bulk', [\Maatify\AdminKernel\Http\Controllers\Api\Sessions\SessionBulkRevokeController::class, '__invoke'])
                             ->setName('sessions.revoke.bulk');
                     });
 
@@ -333,13 +333,13 @@ class AdminRoutes
                         });
 
                         $i18n->group('/translations', function (\Slim\Interfaces\RouteCollectorProxyInterface $translations) {
-                            $translations->post('/query', [\Maatify\AdminKernel\Http\Controllers\Api\TranslationValuesQueryController::class, '__invoke'])
+                            $translations->post('/query', [\Maatify\AdminKernel\Http\Controllers\Api\I18n\TranslationValuesQueryController::class, '__invoke'])
                                 ->setName('i18n.translations.list.api');
 
-                            $translations->post('/upsert', [\Maatify\AdminKernel\Http\Controllers\Api\TranslationValueUpsertController::class, '__invoke'])
+                            $translations->post('/upsert', [\Maatify\AdminKernel\Http\Controllers\Api\I18n\TranslationValueUpsertController::class, '__invoke'])
                                 ->setName('i18n.translations.upsert.api');
 
-                            $translations->post('/delete', [\Maatify\AdminKernel\Http\Controllers\Api\TranslationValueDeleteController::class, '__invoke'])
+                            $translations->post('/delete', [\Maatify\AdminKernel\Http\Controllers\Api\I18n\TranslationValueDeleteController::class, '__invoke'])
                                 ->setName('i18n.translations.delete.api');
                         });
                     });
@@ -351,7 +351,7 @@ class AdminRoutes
                             $appSettings->post(
                                 '/query',
                                 [
-                                    \Maatify\AdminKernel\Http\Controllers\Api\AppSettingsQueryController::class,
+                                    \Maatify\AdminKernel\Http\Controllers\Api\AppSettings\AppSettingsQueryController::class,
                                     '__invoke'
                                 ]
                             )
@@ -360,7 +360,7 @@ class AdminRoutes
                         $appSettings->post(
                             '/create',
                             [
-                                \Maatify\AdminKernel\Http\Controllers\Api\AppSettingsCreateController::class,
+                                \Maatify\AdminKernel\Http\Controllers\Api\AppSettings\AppSettingsCreateController::class,
                                 '__invoke'
                             ]
                         )->setName('app_settings.create.api');
@@ -368,7 +368,7 @@ class AdminRoutes
                         $appSettings->post(
                             '/metadata',
                             [
-                                \Maatify\AdminKernel\Http\Controllers\Api\AppSettingsMetadataController::class,
+                                \Maatify\AdminKernel\Http\Controllers\Api\AppSettings\AppSettingsMetadataController::class,
                                 '__invoke'
                             ]
                         )->setName('app_settings.metadata.api');
@@ -376,7 +376,7 @@ class AdminRoutes
                         $appSettings->post(
                             '/update',
                             [
-                                \Maatify\AdminKernel\Http\Controllers\Api\AppSettingsUpdateController::class,
+                                \Maatify\AdminKernel\Http\Controllers\Api\AppSettings\AppSettingsUpdateController::class,
                                 '__invoke'
                             ]
                         )->setName('app_settings.update.api');
@@ -384,7 +384,7 @@ class AdminRoutes
                         $appSettings->post(
                             '/set-active',
                             [
-                                \Maatify\AdminKernel\Http\Controllers\Api\AppSettingsSetActiveController::class,
+                                \Maatify\AdminKernel\Http\Controllers\Api\AppSettings\AppSettingsSetActiveController::class,
                                 '__invoke'
                             ]
                         )->setName('app_settings.set_active.api');
@@ -513,10 +513,10 @@ class AdminRoutes
                     // Permissions Control
                     // ─────────────────────────────
                     $group->group('/permissions', function (RouteCollectorProxyInterface $permissions) {
-                        $permissions->post('/query', [\Maatify\AdminKernel\Http\Controllers\Api\PermissionsController::class, '__invoke'])
+                        $permissions->post('/query', [\Maatify\AdminKernel\Http\Controllers\Api\Permissions\PermissionsController::class, '__invoke'])
                             ->setName('permissions.query.api');
 
-                        $permissions->post('/{id:[0-9]+}/metadata', [\Maatify\AdminKernel\Http\Controllers\Api\PermissionMetadataUpdateController::class, '__invoke'])
+                        $permissions->post('/{id:[0-9]+}/metadata', [\Maatify\AdminKernel\Http\Controllers\Api\Permissions\PermissionMetadataUpdateController::class, '__invoke'])
                             ->setName('permissions.metadata.update');
                     });
 

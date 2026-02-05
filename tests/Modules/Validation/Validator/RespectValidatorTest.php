@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Modules\Validation\Validator;
 
-use Maatify\Validation\Schemas\AdminCreateSchema;
+use Maatify\AdminKernel\Validation\Schemas\Admin\AdminCreateSchema;
 use Maatify\Validation\Validator\RespectValidator;
 use PHPUnit\Framework\TestCase;
 

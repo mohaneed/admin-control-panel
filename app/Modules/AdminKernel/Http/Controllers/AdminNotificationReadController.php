@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Maatify\AdminKernel\Http\Controllers;
 
 use Maatify\AdminKernel\Context\RequestContext;
-use Maatify\AdminKernel\Domain\Contracts\AdminNotificationReadMarkerInterface;
+use Maatify\AdminKernel\Domain\Contracts\Admin\AdminNotificationReadMarkerInterface;
 use Maatify\AdminKernel\Domain\DTO\Notification\History\MarkNotificationReadDTO;
+use Maatify\AdminKernel\Validation\Schemas\Admin\AdminNotificationReadSchema;
 use Maatify\Validation\Guard\ValidationGuard;
-use Maatify\Validation\Schemas\AdminNotificationReadSchema;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 

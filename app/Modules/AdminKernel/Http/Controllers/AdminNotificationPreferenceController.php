@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace Maatify\AdminKernel\Http\Controllers;
 
 use Maatify\AdminKernel\Context\RequestContext;
-use Maatify\AdminKernel\Domain\Contracts\AdminNotificationPreferenceReaderInterface;
-use Maatify\AdminKernel\Domain\Contracts\AdminNotificationPreferenceWriterInterface;
+use Maatify\AdminKernel\Domain\Contracts\Admin\AdminNotificationPreferenceReaderInterface;
+use Maatify\AdminKernel\Domain\Contracts\Admin\AdminNotificationPreferenceWriterInterface;
 use Maatify\AdminKernel\Domain\DTO\Notification\Preference\GetAdminPreferencesQueryDTO;
 use Maatify\AdminKernel\Domain\DTO\Notification\Preference\UpdateAdminNotificationPreferenceDTO;
 use Maatify\AdminKernel\Domain\Notification\NotificationChannelType;
+use Maatify\AdminKernel\Validation\Schemas\Admin\AdminPreferenceGetSchema;
+use Maatify\AdminKernel\Validation\Schemas\Admin\AdminPreferenceUpsertSchema;
 use Maatify\Validation\Guard\ValidationGuard;
-use Maatify\Validation\Schemas\AdminPreferenceGetSchema;
-use Maatify\Validation\Schemas\AdminPreferenceUpsertSchema;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
