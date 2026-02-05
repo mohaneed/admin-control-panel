@@ -81,8 +81,9 @@ final class PermissionMapperV2 implements PermissionMapperV2Interface
         'app_settings.list.api' => 'app_settings.list',
 
         'app_settings.create.api' => 'app_settings.create',
-
         'app_settings.metadata.api' => 'app_settings.create',
+
+        'app_settings.update.api' => 'app_settings.update',
 
         /**
          * Shared selector:
