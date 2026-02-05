@@ -116,7 +116,7 @@ function Select2(elementOrSelector, data = [], options = {}) {
 
         if (filtered.length === 0) {
             const li = document.createElement('li');
-            li.className = 'p-2 text-gray-400 cursor-default text-center text-sm';
+            li.className = 'p-2 text-gray-400 cursor-default text-center text-sm dark:text-gray-200';
             li.textContent = 'No results found';
             list.appendChild(li);
             return;
@@ -125,7 +125,7 @@ function Select2(elementOrSelector, data = [], options = {}) {
         filtered.forEach(item => {
             const li = document.createElement('li');
             // Base styles
-            li.className = 'p-2 cursor-pointer text-gray-700 hover:bg-gray-100 flex items-center justify-between transition-colors duration-150 rounded-sm';
+            li.className = 'p-2 cursor-pointer text-gray-700  dark:hover:bg-gray-600 flex items-center justify-between transition-colors duration-150 rounded-sm dark:text-gray-200';
             
             if (selected && selected.value === item.value) {
                 // Selected styles
