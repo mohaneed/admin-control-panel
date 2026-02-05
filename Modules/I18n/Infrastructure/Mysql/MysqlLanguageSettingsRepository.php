@@ -58,8 +58,7 @@ final readonly class MysqlLanguageSettingsRepository implements LanguageSettings
                 VALUES (:language_id, :direction, :icon)
                 ON DUPLICATE KEY UPDATE
                     direction = VALUES(direction),
-                    icon = VALUES(icon),
-                    sort_order = VALUES(sort_order)';
+                    icon = VALUES(icon)';
 
         $stmt = $this->pdo->prepare($sql);
         if (!$stmt instanceof PDOStatement) {
