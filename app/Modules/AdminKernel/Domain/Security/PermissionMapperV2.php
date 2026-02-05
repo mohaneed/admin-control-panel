@@ -79,6 +79,8 @@ final class PermissionMapperV2 implements PermissionMapperV2Interface
 
         // App Settings Control
         'app_settings.list.api' => 'app_settings.list',
+        // App Settings UI
+        'app_settings.list.ui' => 'app_settings.list',
 
         'app_settings.create.api' => 'app_settings.create',
         'app_settings.metadata.api' => 'app_settings.create',

@@ -233,6 +233,14 @@ class AdminRoutes
                     $protectedGroup->get('/i18n/translations', [\Maatify\AdminKernel\Http\Controllers\Ui\I18n\TranslationsListUiController::class, '__invoke'])
                         ->setName('i18n.translations.list.ui');
 
+                    $protectedGroup->get(
+                        '/app-settings',
+                        [
+                            \Maatify\AdminKernel\Http\Controllers\Ui\AppSettings\AppSettingsListUiController::class,
+                            '__invoke'
+                        ]
+                    )->setName('app_settings.list.ui');
+
                     $protectedGroup->get('/settings', [\Maatify\AdminKernel\Http\Controllers\Ui\UiSettingsController::class, 'index']);
 
                     // UI sandbox for Twig/layout experimentation (non-canonical page)

@@ -2403,6 +2403,14 @@ class Container
                 return new \Maatify\AdminKernel\Domain\AppSettings\Metadata\AppSettingsMetadataProvider();
             },
 
+            \Maatify\AdminKernel\Http\Controllers\Ui\AppSettings\AppSettingsListUiController::class => function (ContainerInterface $c) {
+                $twig = $c->get(Twig::class);
+                $authorizationService = $c->get(AuthorizationService::class);
+                assert($twig instanceof Twig);
+                assert($authorizationService instanceof AuthorizationService);
+            return new \Maatify\AdminKernel\Http\Controllers\Ui\AppSettings\AppSettingsListUiController($twig, $authorizationService);
+            },
+
         ]);
 
         // Extension Hook: Allow host projects to override/extend bindings

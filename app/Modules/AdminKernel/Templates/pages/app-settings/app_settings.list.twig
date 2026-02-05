@@ -1,0 +1,45 @@
+{% extends "layouts/base.twig" %}
+
+{% block title %}
+    App Settings
+{% endblock %}
+
+{% block content %}
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <h2 class="text-xl font-semibold text-gray-800">
+            Application Settings
+        </h2>
+    </div>
+
+    {# =========================================================
+       UI CONTRACT
+       ---------------------------------------------------------
+       - window.appSettingsCapabilities
+       - window.appSettingsApi
+       - JS owns all behavior
+       ========================================================= #}
+
+    <div id="app-settings-table-container"></div>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        window.appSettingsCapabilities = {{ capabilities|json_encode|raw }};
+
+        window.appSettingsApi = {
+            query: '{{ path("app_settings.list.api") }}',
+            create: '{{ path("app_settings.create.api") }}',
+            update: '{{ path("app_settings.update.api") }}',
+            setActive: '{{ path("app_settings.set_active.api") }}'
+        };
+    </script>
+
+    {# Shared JS utilities (same as translations UI) #}
+    <script src="/assets/maatify/admin-kernel/js/api_handler.js"></script>
+    <script src="/assets/maatify/admin-kernel/js/callback_handler.js"></script>
+    <script src="/assets/maatify/admin-kernel/js/input_checker.js"></script>
+    <script src="/assets/maatify/admin-kernel/js/data_table.js"></script>
+
+    {# Page-specific JS (to be implemented in next patch) #}
+    <script src="/assets/maatify/admin-kernel/js/pages/app_settings_list.js"></script>
+{% endblock %}
