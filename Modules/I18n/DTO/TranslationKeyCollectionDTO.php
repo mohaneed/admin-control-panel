@@ -23,6 +23,9 @@ final readonly class TranslationKeyCollectionDTO implements IteratorAggregate
         return $this->items === [];
     }
 
+    /**
+     * @return ArrayIterator<int, TranslationKeyDTO>
+     */
     public function getIterator(): ArrayIterator
     {
         return new ArrayIterator($this->items);
