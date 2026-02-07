@@ -2469,6 +2469,20 @@ class Container
                 return new \Maatify\I18n\Infrastructure\Mysql\MysqlDomainRepository($pdo);
             },
 
+            \Maatify\AdminKernel\Http\Controllers\Ui\I18n\ScopesListUiController::class
+            => function (ContainerInterface $c) {
+                $twig = $c->get(Twig::class);
+                $authorization = $c->get(AuthorizationService::class);
+
+                assert($twig instanceof Twig);
+                assert($authorization instanceof AuthorizationService);
+
+                return new \Maatify\AdminKernel\Http\Controllers\Ui\I18n\ScopesListUiController(
+                    $twig,
+                    $authorization
+                );
+            },
+
 
         ]);
 
