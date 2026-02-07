@@ -2,12 +2,12 @@
 
 /**
  * @copyright   ©2026 Maatify.dev
- * @Library     maatify/admin-control-panel
- * @Project     maatify:admin-control-panel
+ * @Library     maatify/i18n
+ * @Project     maatify:i18n
  * @author      Mohamed Abdulalim (megyptm) <mohamed@maatify.dev>
  * @since       2026-02-04 01:19
  * @see         https://www.maatify.dev Maatify.dev
- * @link        https://github.com/Maatify/admin-control-panel view Project on GitHub
+ * @link        https://github.com/Maatify/i18n view Project on GitHub
  * @note        Distributed in the hope that it will be useful - WITHOUT WARRANTY.
  */
 
@@ -158,37 +158,35 @@ final readonly class MysqlLanguageRepository implements LanguageRepositoryInterf
         return new LanguageCollectionDTO($items);
     }
 
-    public function setActive(int $id, bool $isActive): void
+    public function setActive(int $id, bool $isActive): bool
     {
         $sql = 'UPDATE languages SET is_active = :is_active WHERE id = :id';
 
         $stmt = $this->pdo->prepare($sql);
-        if (!$stmt instanceof PDOStatement) {
-            return;
-        }
 
-        $stmt->execute([
+        if (!$stmt instanceof PDOStatement) { return false; }
+
+        return $stmt->execute([
             'id' => $id,
             'is_active' => $isActive ? 1 : 0,
         ]);
     }
 
-    public function setFallbackLanguage(int $id, ?int $fallbackLanguageId): void
+    public function setFallbackLanguage(int $id, ?int $fallbackLanguageId): bool
     {
         $sql = 'UPDATE languages SET fallback_language_id = :fallback_language_id WHERE id = :id';
 
         $stmt = $this->pdo->prepare($sql);
-        if (!$stmt instanceof PDOStatement) {
-            return;
-        }
 
-        $stmt->execute([
+        if (!$stmt instanceof PDOStatement) { return false; }
+
+        return $stmt->execute([
             'id' => $id,
             'fallback_language_id' => $fallbackLanguageId,
         ]);
     }
 
-    public function clearFallbackLanguage(int $languageId): void
+    public function clearFallbackLanguage(int $languageId): bool
     {
         $stmt = $this->pdo->prepare(
             '
@@ -198,36 +196,36 @@ final readonly class MysqlLanguageRepository implements LanguageRepositoryInterf
         '
         );
 
-        $stmt->execute([
+        if (!$stmt instanceof PDOStatement) { return false; }
+
+        return $stmt->execute([
             'language_id' => $languageId,
         ]);
     }
 
-    public function updateName(int $id, string $name): void
+    public function updateName(int $id, string $name): bool
     {
         $sql = 'UPDATE languages SET name = :name WHERE id = :id';
 
         $stmt = $this->pdo->prepare($sql);
-        if (!$stmt instanceof PDOStatement) {
-            return;
-        }
 
-        $stmt->execute([
+        if (!$stmt instanceof PDOStatement) { return false; }
+
+        return $stmt->execute([
             'id' => $id,
             'name' => $name,
         ]);
     }
 
-    public function updateCode(int $id, string $code): void
+    public function updateCode(int $id, string $code): bool
     {
         $sql = 'UPDATE languages SET code = :code WHERE id = :id';
 
         $stmt = $this->pdo->prepare($sql);
-        if (!$stmt instanceof PDOStatement) {
-            return;
-        }
 
-        $stmt->execute([
+        if (!$stmt instanceof PDOStatement) { return false; }
+
+        return $stmt->execute([
             'id' => $id,
             'code' => $code,
         ]);
@@ -286,25 +284,6 @@ final readonly class MysqlLanguageRepository implements LanguageRepositoryInterf
             $createdAtStr,
             $updatedAtStr
         );
-    }
-
-    public function getNextSortOrder(): int
-    {
-        $stmt = $this->pdo->query(
-            'SELECT MAX(sort_order) FROM language_settings'
-        );
-
-        if ($stmt === false) {
-            throw new \RuntimeException('Failed to fetch next sort order.');
-        }
-
-        $result = $stmt->fetchColumn();
-
-        if ($result === false || $result === null) {
-            return 1;
-        }
-
-        return ((int) $result) + 1;
     }
 
 }

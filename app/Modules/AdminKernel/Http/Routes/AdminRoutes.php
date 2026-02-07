@@ -345,6 +345,36 @@ class AdminRoutes
                     });
 
                     // ─────────────────────────────
+                    // I18n Scopes Control
+                    // ─────────────────────────────
+                    $group->group('/i18n/scopes', function (RouteCollectorProxyInterface $i18nScopes) {
+                        $i18nScopes->post(
+                            '/query',
+                            [
+                                \Maatify\AdminKernel\Http\Controllers\Api\I18nScopesQueryController::class,
+                                '__invoke'
+                            ]
+                        )
+                            ->setName('i18n.scopes.list.api');
+
+                        $i18nScopes->post(
+                            '/create',
+                            [
+                                \Maatify\AdminKernel\Http\Controllers\Api\I18nScopeCreateController::class,
+                                '__invoke'
+                            ]
+                        )->setName('i18n.scopes.create.api');
+
+                        $i18nScopes->post(
+                            '/change-code',
+                            [
+                                \Maatify\AdminKernel\Http\Controllers\Api\I18nScopeChangeCodeController::class,
+                                '__invoke'
+                            ]
+                        )->setName('i18n.scopes.change_code.api');
+                    });
+
+                    // ─────────────────────────────
                     // App Settings Control
                     // ─────────────────────────────
                     $group->group('/app-settings', function (RouteCollectorProxyInterface $appSettings) {

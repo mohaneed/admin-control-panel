@@ -2,12 +2,12 @@
 
 /**
  * @copyright   ©2026 Maatify.dev
- * @Library     maatify/admin-control-panel
- * @Project     maatify:admin-control-panel
+ * @Library     maatify/i18n
+ * @Project     maatify:i18n
  * @author      Mohamed Abdulalim (megyptm) <mohamed@maatify.dev>
  * @since       2026-02-04 01:14
  * @see         https://www.maatify.dev Maatify.dev
- * @link        https://github.com/Maatify/admin-control-panel view Project on GitHub
+ * @link        https://github.com/Maatify/i18n view Project on GitHub
  * @note        Distributed in the hope that it will be useful - WITHOUT WARRANTY.
  */
 
@@ -28,19 +28,17 @@ interface LanguageRepositoryInterface
 
     public function listAll(): LanguageCollectionDTO;
 
-    public function setActive(int $id, bool $isActive): void;
+    public function setActive(int $id, bool $isActive): bool;
 
-    public function setFallbackLanguage(int $id, ?int $fallbackLanguageId): void;
+    public function setFallbackLanguage(int $id, ?int $fallbackLanguageId): bool;
 
     public function clearFallbackLanguage(
         int $languageId
-    ): void;
+    ): bool;
 
-    public function updateName(int $id, string $name): void;
+    public function updateName(int $id, string $name): bool;
 
-    public function updateCode(int $id, string $code): void;
-
-    public function getNextSortOrder(): int;
+    public function updateCode(int $id, string $code): bool;
 
     /**
      * Returns languages usable as UI context selectors.

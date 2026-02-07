@@ -2,12 +2,12 @@
 
 /**
  * @copyright   ©2026 Maatify.dev
- * @Library     maatify/admin-control-panel
- * @Project     maatify:admin-control-panel
+ * @Library     maatify/i18n
+ * @Project     maatify:i18n
  * @author      Mohamed Abdulalim (megyptm) <mohamed@maatify.dev>
  * @since       2026-02-04 01:20
  * @see         https://www.maatify.dev Maatify.dev
- * @link        https://github.com/Maatify/admin-control-panel view Project on GitHub
+ * @link        https://github.com/Maatify/i18n view Project on GitHub
  * @note        Distributed in the hope that it will be useful - WITHOUT WARRANTY.
  */
 
@@ -53,7 +53,7 @@ final readonly class MysqlLanguageSettingsRepository implements LanguageSettings
         int $languageId,
         TextDirectionEnum $direction,
         ?string $icon,
-    ): void {
+    ): bool {
         $sql = 'INSERT INTO language_settings (language_id, direction, icon)
                 VALUES (:language_id, :direction, :icon)
                 ON DUPLICATE KEY UPDATE
@@ -61,57 +61,53 @@ final readonly class MysqlLanguageSettingsRepository implements LanguageSettings
                     icon = VALUES(icon)';
 
         $stmt = $this->pdo->prepare($sql);
-        if (!$stmt instanceof PDOStatement) {
-            return;
-        }
 
-        $stmt->execute([
+        if (!$stmt instanceof PDOStatement) { return false; }
+
+        return $stmt->execute([
             'language_id' => $languageId,
             'direction' => $direction->value,
             'icon' => $icon,
         ]);
     }
 
-    public function updateDirection(int $languageId, TextDirectionEnum $direction): void
+    public function updateDirection(int $languageId, TextDirectionEnum $direction): bool
     {
         $sql = 'UPDATE language_settings SET direction = :direction WHERE language_id = :language_id';
 
         $stmt = $this->pdo->prepare($sql);
-        if (!$stmt instanceof PDOStatement) {
-            return;
-        }
 
-        $stmt->execute([
+        if (!$stmt instanceof PDOStatement) { return false; }
+
+        return $stmt->execute([
             'language_id' => $languageId,
             'direction' => $direction->value,
         ]);
     }
 
-    public function updateIcon(int $languageId, ?string $icon): void
+    public function updateIcon(int $languageId, ?string $icon): bool
     {
         $sql = 'UPDATE language_settings SET icon = :icon WHERE language_id = :language_id';
 
         $stmt = $this->pdo->prepare($sql);
-        if (!$stmt instanceof PDOStatement) {
-            return;
-        }
 
-        $stmt->execute([
+        if (!$stmt instanceof PDOStatement) { return false; }
+
+        return $stmt->execute([
             'language_id' => $languageId,
             'icon' => $icon,
         ]);
     }
 
-    public function updateSortOrder(int $languageId, int $sortOrder): void
+    public function updateSortOrder(int $languageId, int $sortOrder): bool
     {
         $sql = 'UPDATE language_settings SET sort_order = :sort_order WHERE language_id = :language_id';
 
         $stmt = $this->pdo->prepare($sql);
-        if (!$stmt instanceof PDOStatement) {
-            return;
-        }
 
-        $stmt->execute([
+        if (!$stmt instanceof PDOStatement) { return false; }
+
+        return $stmt->execute([
             'language_id' => $languageId,
             'sort_order' => $sortOrder,
         ]);
@@ -153,7 +149,11 @@ final readonly class MysqlLanguageSettingsRepository implements LanguageSettings
         int $currentSort,
         int $targetSort
     ): void {
-        $this->pdo->beginTransaction();
+        $ownsTransaction = !$this->pdo->inTransaction();
+
+        if ($ownsTransaction) {
+            $this->pdo->beginTransaction();
+        }
 
         try {
             if ($targetSort < $currentSort) {
@@ -167,10 +167,12 @@ final readonly class MysqlLanguageSettingsRepository implements LanguageSettings
                 '
                 );
 
-                $stmt->execute([
-                    'target'  => $targetSort,
-                    'current' => $currentSort,
-                ]);
+                if ($stmt instanceof \PDOStatement) {
+                    $stmt->execute([
+                        'target'  => $targetSort,
+                        'current' => $currentSort,
+                    ]);
+                }
             } elseif ($targetSort > $currentSort) {
                 // move down
                 $stmt = $this->pdo->prepare(
@@ -182,10 +184,12 @@ final readonly class MysqlLanguageSettingsRepository implements LanguageSettings
                 '
                 );
 
-                $stmt->execute([
-                    'current' => $currentSort,
-                    'target'  => $targetSort,
-                ]);
+                if ($stmt instanceof \PDOStatement) {
+                    $stmt->execute([
+                        'current' => $currentSort,
+                        'target'  => $targetSort,
+                    ]);
+                }
             }
 
             // place language at target position
@@ -197,16 +201,44 @@ final readonly class MysqlLanguageSettingsRepository implements LanguageSettings
             '
             );
 
-            $stmt->execute([
-                'target'      => $targetSort,
-                'language_id' => $languageId,
-            ]);
+            if ($stmt instanceof \PDOStatement) {
+                $stmt->execute([
+                    'target'      => $targetSort,
+                    'language_id' => $languageId,
+                ]);
+            }
 
-            $this->pdo->commit();
+            if ($ownsTransaction) {
+                $this->pdo->commit();
+            }
         } catch (\Throwable $e) {
-            $this->pdo->rollBack();
-            throw $e;
+            if ($ownsTransaction && $this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+
+            // fail-soft: do NOT rethrow
+            return;
         }
+    }
+
+    public function getNextSortOrder(): int
+    {
+        $stmt = $this->pdo->query(
+            'SELECT MAX(sort_order) FROM language_settings'
+        );
+
+        if ($stmt === false) {
+            // FAIL-SOFT: default first position
+            return 1;
+        }
+
+        $result = $stmt->fetchColumn();
+
+        if ($result === false || $result === null) {
+            return 1;
+        }
+
+        return ((int) $result) + 1;
     }
 
 }

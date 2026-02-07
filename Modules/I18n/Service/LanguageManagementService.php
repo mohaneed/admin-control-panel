@@ -2,12 +2,12 @@
 
 /**
  * @copyright   ©2026 Maatify.dev
- * @Library     maatify/admin-control-panel
- * @Project     maatify:admin-control-panel
+ * @Library     maatify/i18n
+ * @Project     maatify:i18n
  * @author      Mohamed Abdulalim (megyptm) <mohamed@maatify.dev>
  * @since       2026-02-04 01:34
  * @see         https://www.maatify.dev Maatify.dev
- * @link        https://github.com/Maatify/admin-control-panel view Project on GitHub
+ * @link        https://github.com/Maatify/i18n view Project on GitHub
  * @note        Distributed in the hope that it will be useful - WITHOUT WARRANTY.
  */
 
@@ -18,15 +18,18 @@ namespace Maatify\I18n\Service;
 use Maatify\I18n\Contract\LanguageRepositoryInterface;
 use Maatify\I18n\Contract\LanguageSettingsRepositoryInterface;
 use Maatify\I18n\Enum\TextDirectionEnum;
-use RuntimeException;
+use Maatify\I18n\Exception\LanguageAlreadyExistsException;
+use Maatify\I18n\Exception\LanguageCreateFailedException;
+use Maatify\I18n\Exception\LanguageInvalidFallbackException;
+use Maatify\I18n\Exception\LanguageNotFoundException;
+use Maatify\I18n\Exception\LanguageUpdateFailedException;
 
 final readonly class LanguageManagementService
 {
     public function __construct(
         private LanguageRepositoryInterface $languageRepository,
         private LanguageSettingsRepositoryInterface $settingsRepository
-    )
-    {
+    ) {
     }
 
     public function createLanguage(
@@ -38,16 +41,16 @@ final readonly class LanguageManagementService
         ?int $fallbackLanguageId = null
     ): int {
         if ($this->languageRepository->getByCode($code) !== null) {
-            throw new RuntimeException('Language code already exists.');
+            throw new LanguageAlreadyExistsException($code);
         }
 
         if ($fallbackLanguageId !== null) {
             if ($this->languageRepository->getById($fallbackLanguageId) === null) {
-                throw new RuntimeException('Fallback language does not exist.');
+                throw new LanguageNotFoundException($fallbackLanguageId);
             }
         }
 
-        $sortOrder = $this->languageRepository->getNextSortOrder();
+        $sortOrder = $this->settingsRepository->getNextSortOrder();
 
         $languageId = $this->languageRepository->create(
             $name,
@@ -57,13 +60,23 @@ final readonly class LanguageManagementService
         );
 
         if ($languageId <= 0) {
-            throw new RuntimeException('Failed to create language.');
+            throw new LanguageCreateFailedException();
         }
 
-        $this->settingsRepository->upsert(
+        if (
+            !$this->settingsRepository->upsert(
+                $languageId,
+                $direction,
+                $icon
+            )
+        ) {
+            throw new LanguageUpdateFailedException('settings');
+        }
+
+        // intentionally fail-soft
+        $this->settingsRepository->updateSortOrder(
             $languageId,
-            $direction,
-            $icon,
+            $sortOrder
         );
 
         return $languageId;
@@ -72,27 +85,34 @@ final readonly class LanguageManagementService
     public function setLanguageActive(int $languageId, bool $isActive): void
     {
         if ($this->languageRepository->getById($languageId) === null) {
-            throw new RuntimeException('Language not found.');
+            throw new LanguageNotFoundException($languageId);
         }
 
-        $this->languageRepository->setActive($languageId, $isActive);
+        $ok = $this->languageRepository->setActive($languageId, $isActive);
+
+        if (!$ok) {
+            throw new LanguageUpdateFailedException('is_active');
+        }
     }
 
     public function updateLanguageSettings(
         int $languageId,
         TextDirectionEnum $direction,
         ?string $icon,
-    ): void
-    {
+    ): void {
         if ($this->languageRepository->getById($languageId) === null) {
-            throw new RuntimeException('Language not found.');
+            throw new LanguageNotFoundException($languageId);
         }
 
-        $this->settingsRepository->upsert(
-            $languageId,
-            $direction,
-            $icon,
-        );
+        if (
+            !$this->settingsRepository->upsert(
+                $languageId,
+                $direction,
+                $icon
+            )
+        ) {
+            throw new LanguageUpdateFailedException('settings');
+        }
     }
 
     public function setFallbackLanguage(
@@ -100,43 +120,49 @@ final readonly class LanguageManagementService
         int $fallbackLanguageId
     ): void {
         if ($languageId === $fallbackLanguageId) {
-            throw new RuntimeException('Language cannot fallback to itself.');
+            throw new LanguageInvalidFallbackException($languageId);
         }
 
         if ($this->languageRepository->getById($languageId) === null) {
-            throw new RuntimeException('Language not found.');
+            throw new LanguageNotFoundException($languageId);
         }
 
         if ($this->languageRepository->getById($fallbackLanguageId) === null) {
-            throw new RuntimeException('Fallback language not found.');
+            throw new LanguageNotFoundException($fallbackLanguageId);
         }
 
-        $this->languageRepository->setFallbackLanguage(
-            $languageId,
-            $fallbackLanguageId
-        );
+        if (
+            !$this->languageRepository->setFallbackLanguage(
+                $languageId,
+                $fallbackLanguageId
+            )
+        ) {
+            throw new LanguageInvalidFallbackException($languageId);
+        }
     }
 
     public function clearFallbackLanguage(int $languageId): void
     {
         if ($this->languageRepository->getById($languageId) === null) {
-            throw new RuntimeException('Language not found.');
+            throw new LanguageNotFoundException($languageId);
         }
 
-        $this->languageRepository->clearFallbackLanguage($languageId);
+        if(!$this->languageRepository->clearFallbackLanguage($languageId)) {
+            throw new LanguageInvalidFallbackException($languageId);
+        }
     }
 
     public function updateLanguageSortOrder(
         int $languageId,
         int $newSortOrder
     ): void {
-        $language = $this->settingsRepository->getByLanguageId($languageId);
+        $settings = $this->settingsRepository->getByLanguageId($languageId);
 
-        if ($language === null) {
-            throw new RuntimeException('Language not found.');
+        if ($settings === null) {
+            throw new LanguageNotFoundException($languageId);
         }
 
-        $currentSort = $language->sortOrder;
+        $currentSort = $settings->sortOrder;
 
         if ($newSortOrder === $currentSort) {
             return;
@@ -157,49 +183,46 @@ final readonly class LanguageManagementService
         int $languageId,
         string $name
     ): void {
-        $language = $this->languageRepository->getById($languageId);
-
-        if ($language === null) {
-            throw new RuntimeException('Language not found.');
+        if ($this->languageRepository->getById($languageId) === null) {
+            throw new LanguageNotFoundException($languageId);
         }
 
         if (trim($name) === '') {
-            throw new RuntimeException('Language name cannot be empty.');
+            throw new LanguageUpdateFailedException('name');
         }
 
-        $this->languageRepository->updateName(
-            $languageId,
-            $name
-        );
+        if (!$this->languageRepository->updateName($languageId, $name)) {
+            throw new LanguageUpdateFailedException('name');
+        }
     }
 
     public function updateLanguageCode(
         int $languageId,
         string $code
     ): void {
-        $language = $this->languageRepository->getById($languageId);
-
-        if ($language === null) {
-            throw new RuntimeException('Language not found.');
+        if ($this->languageRepository->getById($languageId) === null) {
+            throw new LanguageNotFoundException($languageId);
         }
 
         $code = trim($code);
 
         if ($code === '') {
-            throw new RuntimeException('Language code cannot be empty.');
+            throw new LanguageUpdateFailedException('code');
         }
 
         $existing = $this->languageRepository->getByCode($code);
 
         if ($existing !== null && $existing->id !== $languageId) {
-            throw new RuntimeException('Language code already exists.');
+            throw new LanguageAlreadyExistsException($code);
         }
 
-        $this->languageRepository->updateCode(
-            $languageId,
-            $code
-        );
+        if (
+            !$this->languageRepository->updateCode(
+                $languageId,
+                $code
+            )
+        ) {
+            throw new LanguageUpdateFailedException('code');
+        }
     }
-
-
 }

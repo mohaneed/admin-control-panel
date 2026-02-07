@@ -1,3 +1,4 @@
+{% import "macros/navigation.twig" as nav %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -229,17 +230,8 @@
 		</div>
 	{% endblock %}
 
-	<ul class="space-y-2 px-4 mt-5">
-		{% for item in nav_items %}
-			<li>
-				<a href="{{ item.path }}"
-				   class="flex items-center justify-start gap-2 text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded-md hover:[>span]:text-blue-600 dark:hover:[>span]:text-blue-400">
-					{{ item.icon|raw }}
-					<span>{{ item.title }}</span>
-				</a>
-			</li>
-		{% endfor %}
-	</ul>
+	{{ nav.render(nav_items) }}
+
 	{% block sidebar_footer %}{% endblock %}
 </nav>
 
