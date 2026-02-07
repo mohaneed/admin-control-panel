@@ -47,7 +47,7 @@ final readonly class LanguageManagementService
             }
         }
 
-        $sortOrder = $this->languageRepository->getNextSortOrder();
+        $sortOrder = $this->settingsRepository->getNextSortOrder();
 
         $languageId = $this->languageRepository->create(
             $name,
@@ -65,6 +65,8 @@ final readonly class LanguageManagementService
             $direction,
             $icon,
         );
+
+        $this->settingsRepository->updateSortOrder($languageId, $sortOrder);
 
         return $languageId;
     }

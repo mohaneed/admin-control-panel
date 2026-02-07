@@ -40,8 +40,6 @@ interface LanguageRepositoryInterface
 
     public function updateCode(int $id, string $code): void;
 
-    public function getNextSortOrder(): int;
-
     /**
      * Returns languages usable as UI context selectors.
      * Active only. Ordered by sort_order.

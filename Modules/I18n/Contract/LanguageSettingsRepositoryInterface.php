@@ -42,4 +42,7 @@ interface LanguageSettingsRepositoryInterface
         int $currentSort,
         int $targetSort
     ): void;
+
+    public function getNextSortOrder(): int;
+
 }

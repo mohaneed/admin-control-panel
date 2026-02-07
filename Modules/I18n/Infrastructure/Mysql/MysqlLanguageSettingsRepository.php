@@ -209,4 +209,23 @@ final readonly class MysqlLanguageSettingsRepository implements LanguageSettings
         }
     }
 
+    public function getNextSortOrder(): int
+    {
+        $stmt = $this->pdo->query(
+            'SELECT MAX(sort_order) FROM language_settings'
+        );
+
+        if ($stmt === false) {
+            throw new \RuntimeException('Failed to fetch next sort order.');
+        }
+
+        $result = $stmt->fetchColumn();
+
+        if ($result === false || $result === null) {
+            return 1;
+        }
+
+        return ((int) $result) + 1;
+    }
+
 }
