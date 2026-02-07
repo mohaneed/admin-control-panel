@@ -28,17 +28,17 @@ interface LanguageRepositoryInterface
 
     public function listAll(): LanguageCollectionDTO;
 
-    public function setActive(int $id, bool $isActive): void;
+    public function setActive(int $id, bool $isActive): bool;
 
-    public function setFallbackLanguage(int $id, ?int $fallbackLanguageId): void;
+    public function setFallbackLanguage(int $id, ?int $fallbackLanguageId): bool;
 
     public function clearFallbackLanguage(
         int $languageId
-    ): void;
+    ): bool;
 
-    public function updateName(int $id, string $name): void;
+    public function updateName(int $id, string $name): bool;
 
-    public function updateCode(int $id, string $code): void;
+    public function updateCode(int $id, string $code): bool;
 
     /**
      * Returns languages usable as UI context selectors.

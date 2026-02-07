@@ -53,7 +53,7 @@ final readonly class MysqlLanguageSettingsRepository implements LanguageSettings
         int $languageId,
         TextDirectionEnum $direction,
         ?string $icon,
-    ): void {
+    ): bool {
         $sql = 'INSERT INTO language_settings (language_id, direction, icon)
                 VALUES (:language_id, :direction, :icon)
                 ON DUPLICATE KEY UPDATE
@@ -61,57 +61,53 @@ final readonly class MysqlLanguageSettingsRepository implements LanguageSettings
                     icon = VALUES(icon)';
 
         $stmt = $this->pdo->prepare($sql);
-        if (!$stmt instanceof PDOStatement) {
-            return;
-        }
 
-        $stmt->execute([
+        if (!$stmt instanceof PDOStatement) { return false; }
+
+        return $stmt->execute([
             'language_id' => $languageId,
             'direction' => $direction->value,
             'icon' => $icon,
         ]);
     }
 
-    public function updateDirection(int $languageId, TextDirectionEnum $direction): void
+    public function updateDirection(int $languageId, TextDirectionEnum $direction): bool
     {
         $sql = 'UPDATE language_settings SET direction = :direction WHERE language_id = :language_id';
 
         $stmt = $this->pdo->prepare($sql);
-        if (!$stmt instanceof PDOStatement) {
-            return;
-        }
 
-        $stmt->execute([
+        if (!$stmt instanceof PDOStatement) { return false; }
+
+        return $stmt->execute([
             'language_id' => $languageId,
             'direction' => $direction->value,
         ]);
     }
 
-    public function updateIcon(int $languageId, ?string $icon): void
+    public function updateIcon(int $languageId, ?string $icon): bool
     {
         $sql = 'UPDATE language_settings SET icon = :icon WHERE language_id = :language_id';
 
         $stmt = $this->pdo->prepare($sql);
-        if (!$stmt instanceof PDOStatement) {
-            return;
-        }
 
-        $stmt->execute([
+        if (!$stmt instanceof PDOStatement) { return false; }
+
+        return $stmt->execute([
             'language_id' => $languageId,
             'icon' => $icon,
         ]);
     }
 
-    public function updateSortOrder(int $languageId, int $sortOrder): void
+    public function updateSortOrder(int $languageId, int $sortOrder): bool
     {
         $sql = 'UPDATE language_settings SET sort_order = :sort_order WHERE language_id = :language_id';
 
         $stmt = $this->pdo->prepare($sql);
-        if (!$stmt instanceof PDOStatement) {
-            return;
-        }
 
-        $stmt->execute([
+        if (!$stmt instanceof PDOStatement) { return false; }
+
+        return $stmt->execute([
             'language_id' => $languageId,
             'sort_order' => $sortOrder,
         ]);

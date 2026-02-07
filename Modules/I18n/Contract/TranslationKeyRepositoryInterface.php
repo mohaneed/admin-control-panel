@@ -37,14 +37,14 @@ interface TranslationKeyRepositoryInterface
 
     public function listAll(): TranslationKeyCollectionDTO;
 
-    public function updateDescription(int $id, ?string $description): void;
+    public function updateDescription(int $id, ?string $description): bool;
 
     public function rename(
         int $id,
         string $scope,
         string $domain,
         string $key
-    ): void;
+    ): bool;
 
     /**
      * List all keys for a given (scope + domain).

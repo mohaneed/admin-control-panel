@@ -33,5 +33,5 @@ interface TranslationRepositoryInterface
 
     public function listByKey(int $keyId): TranslationCollectionDTO;
 
-    public function deleteByLanguageAndKey(int $languageId, int $keyId): void;
+    public function deleteByLanguageAndKey(int $languageId, int $keyId): bool;
 }

@@ -21,7 +21,9 @@ use Maatify\I18n\Contract\DomainScopeRepositoryInterface;
 use Maatify\I18n\DTO\DomainDTO;
 use Maatify\I18n\DTO\ScopeDTO;
 use Maatify\I18n\Enum\I18nPolicyModeEnum;
-use RuntimeException;
+use Maatify\I18n\Exception\ScopeNotAllowedException;
+use Maatify\I18n\Exception\DomainNotAllowedException;
+use Maatify\I18n\Exception\DomainScopeViolationException;
 
 final readonly class I18nGovernancePolicyService
 {
@@ -34,13 +36,14 @@ final readonly class I18nGovernancePolicyService
     }
 
     /**
-     * @throws RuntimeException
+     * STRICT: throws domain-specific policy exceptions
+     * PERMISSIVE: same rules but softer entry conditions
      */
     public function assertScopeAndDomainAllowed(
         string $scope,
         string $domain
     ): void {
-        $scopeDto = $this->scopeRepository->getByCode($scope);
+        $scopeDto  = $this->scopeRepository->getByCode($scope);
         $domainDto = $this->domainRepository->getByCode($domain);
 
         if ($this->mode === I18nPolicyModeEnum::STRICT) {
@@ -51,6 +54,9 @@ final readonly class I18nGovernancePolicyService
         $this->assertPermissive($scope, $domain, $scopeDto, $domainDto);
     }
 
+    /**
+     * FAIL-SOFT read helper
+     */
     public function isScopeAndDomainReadable(
         string $scope,
         string $domain
@@ -58,7 +64,11 @@ final readonly class I18nGovernancePolicyService
         try {
             $this->assertScopeAndDomainAllowed($scope, $domain);
             return true;
-        } catch (\RuntimeException) {
+        } catch (
+        ScopeNotAllowedException |
+        DomainNotAllowedException |
+        DomainScopeViolationException
+        ) {
             return false;
         }
     }
@@ -70,20 +80,18 @@ final readonly class I18nGovernancePolicyService
         ?DomainDTO $domainDto
     ): void {
         if ($scopeDto === null || !$scopeDto->isActive) {
-            throw new RuntimeException('Invalid or inactive scope.');
+            throw new ScopeNotAllowedException($scope);
         }
 
         if ($domainDto === null || !$domainDto->isActive) {
-            throw new RuntimeException('Invalid or inactive domain.');
+            throw new DomainNotAllowedException($domain);
         }
 
         if (
             !$this->domainScopeRepository
                 ->isDomainAllowedForScope($scope, $domain)
         ) {
-            throw new RuntimeException(
-                'Domain is not allowed for the given scope.'
-            );
+            throw new DomainScopeViolationException($scope, $domain);
         }
     }
 
@@ -94,11 +102,11 @@ final readonly class I18nGovernancePolicyService
         ?DomainDTO $domainDto
     ): void {
         if ($scopeDto !== null && !$scopeDto->isActive) {
-            throw new RuntimeException('Inactive scope.');
+            throw new ScopeNotAllowedException($scope);
         }
 
         if ($domainDto !== null && !$domainDto->isActive) {
-            throw new RuntimeException('Inactive domain.');
+            throw new DomainNotAllowedException($domain);
         }
 
         if ($scopeDto !== null && $domainDto !== null) {
@@ -106,9 +114,7 @@ final readonly class I18nGovernancePolicyService
                 !$this->domainScopeRepository
                     ->isDomainAllowedForScope($scope, $domain)
             ) {
-                throw new RuntimeException(
-                    'Domain is not allowed for the given scope.'
-                );
+                throw new DomainScopeViolationException($scope, $domain);
             }
         }
     }

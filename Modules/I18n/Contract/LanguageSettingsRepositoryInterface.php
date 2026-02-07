@@ -29,13 +29,13 @@ interface LanguageSettingsRepositoryInterface
         int $languageId,
         TextDirectionEnum $direction,
         ?string $icon,
-    ): void;
+    ): bool;
 
-    public function updateDirection(int $languageId, TextDirectionEnum $direction): void;
+    public function updateDirection(int $languageId, TextDirectionEnum $direction): bool;
 
-    public function updateIcon(int $languageId, ?string $icon): void;
+    public function updateIcon(int $languageId, ?string $icon): bool;
 
-    public function updateSortOrder(int $languageId, int $sortOrder): void;
+    public function updateSortOrder(int $languageId, int $sortOrder): bool;
 
     public function repositionSortOrder(
         int $languageId,

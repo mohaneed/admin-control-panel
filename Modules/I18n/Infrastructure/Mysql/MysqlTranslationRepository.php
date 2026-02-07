@@ -161,17 +161,16 @@ final readonly class MysqlTranslationRepository implements TranslationRepository
         return new TranslationCollectionDTO($items);
     }
 
-    public function deleteByLanguageAndKey(int $languageId, int $keyId): void
+    public function deleteByLanguageAndKey(int $languageId, int $keyId): bool
     {
         $sql = 'DELETE FROM i18n_translations
                 WHERE language_id = :language_id AND key_id = :key_id';
 
         $stmt = $this->pdo->prepare($sql);
-        if (!$stmt instanceof PDOStatement) {
-            return;
-        }
 
-        $stmt->execute([
+        if (!$stmt instanceof PDOStatement) { return false; }
+
+        return $stmt->execute([
             'language_id' => $languageId,
             'key_id' => $keyId,
         ]);

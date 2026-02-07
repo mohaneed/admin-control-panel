@@ -19,7 +19,6 @@ use Maatify\I18n\Contract\LanguageRepositoryInterface;
 use Maatify\I18n\Contract\TranslationKeyRepositoryInterface;
 use Maatify\I18n\Contract\TranslationRepositoryInterface;
 use Maatify\I18n\DTO\TranslationDomainValuesDTO;
-use RuntimeException;
 
 final readonly class TranslationDomainReadService
 {
@@ -38,8 +37,6 @@ final readonly class TranslationDomainReadService
      * - One DB round-trip
      * - Policy enforced
      * - Fallback supported (one level)
-     *
-     * @throws RuntimeException
      */
     public function getDomainValues(
         string $languageCode,

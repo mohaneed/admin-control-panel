@@ -124,17 +124,15 @@ final readonly class MysqlTranslationKeyRepository implements TranslationKeyRepo
         return new TranslationKeyCollectionDTO($items);
     }
 
-    public function updateDescription(int $id, ?string $description): void
+    public function updateDescription(int $id, ?string $description): bool
     {
         $stmt = $this->pdo->prepare(
             'UPDATE i18n_keys SET description = :description WHERE id = :id'
         );
 
-        if (!$stmt instanceof PDOStatement) {
-            return;
-        }
+        if (!$stmt instanceof PDOStatement) { return false; }
 
-        $stmt->execute([
+        return $stmt->execute([
             'id' => $id,
             'description' => $description,
         ]);
@@ -145,7 +143,8 @@ final readonly class MysqlTranslationKeyRepository implements TranslationKeyRepo
         string $scope,
         string $domain,
         string $key
-    ): void {
+    ): bool
+    {
         $stmt = $this->pdo->prepare(
             'UPDATE i18n_keys
              SET scope = :scope,
@@ -154,11 +153,9 @@ final readonly class MysqlTranslationKeyRepository implements TranslationKeyRepo
              WHERE id = :id'
         );
 
-        if (!$stmt instanceof PDOStatement) {
-            return;
-        }
+        if (!$stmt instanceof PDOStatement) { return false; }
 
-        $stmt->execute([
+        return $stmt->execute([
             'id' => $id,
             'scope' => $scope,
             'domain' => $domain,
