@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Maatify\AdminKernel\Infrastructure\Writer\I18n;
 
-use Maatify\AdminKernel\Domain\I18n\Scope\Writer\I18nScopeChangeCodeWriterInterface;
+use Maatify\AdminKernel\Domain\I18n\Scope\Writer\I18nScopeUpdaterInterface;
 use PDO;
 use RuntimeException;
 
-final readonly class PdoI18nScopeChangeCodeWriter implements I18nScopeChangeCodeWriterInterface
+final readonly class PdoI18nScopeUpdater implements I18nScopeUpdaterInterface
 {
     public function __construct(
         private PDO $pdo
@@ -19,9 +19,22 @@ final readonly class PdoI18nScopeChangeCodeWriter implements I18nScopeChangeCode
         $stmt = $this->pdo->prepare(
             'SELECT 1 FROM i18n_scopes WHERE id = :id LIMIT 1'
         );
+
         $stmt->execute(['id' => $id]);
 
         return $stmt->fetchColumn() !== false;
+    }
+
+    public function setActive(int $id, int $isActive): void
+    {
+        $stmt = $this->pdo->prepare(
+            'UPDATE i18n_scopes SET is_active = :is_active WHERE id = :id'
+        );
+
+        $stmt->execute([
+            'id' => $id,
+            'is_active' => $isActive,
+        ]);
     }
 
     public function existsByCode(string $code): bool

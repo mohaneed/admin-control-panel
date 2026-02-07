@@ -80,6 +80,7 @@ final class PermissionMapperV2 implements PermissionMapperV2Interface
         // I18n Scopes Control
         'i18n.scopes.list.api' => 'i18n.scopes.list',
         'i18n.scopes.create.api' => 'i18n.scopes.create',
+        'i18n.scopes.set_active.api' => 'i18n.scopes.update',
         'i18n.scopes.update.api' => 'i18n.scopes.update',
 
         // App Settings Control

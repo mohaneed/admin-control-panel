@@ -2398,6 +2398,12 @@ class Container
                 return new \Maatify\AdminKernel\Infrastructure\Reader\I18n\PdoI18nScopesQueryReader($pdo);
             },
 
+            \Maatify\AdminKernel\Domain\I18n\Scope\Writer\I18nScopeUpdaterInterface::class => function (ContainerInterface $c) {
+                $pdo = $c->get(PDO::class);
+                assert($pdo instanceof PDO);
+                return new \Maatify\AdminKernel\Infrastructure\Writer\I18n\PdoI18nScopeUpdater($pdo);
+            },
+
             \Maatify\AdminKernel\Domain\I18n\Scope\Writer\I18nScopeCreateWriterInterface::class => function (ContainerInterface $c) {
                 $pdo = $c->get(PDO::class);
                 assert($pdo instanceof PDO);
@@ -2461,13 +2467,6 @@ class Container
                 $pdo = $c->get(PDO::class);
                 assert($pdo instanceof PDO);
                 return new \Maatify\I18n\Infrastructure\Mysql\MysqlDomainRepository($pdo);
-            },
-
-            \Maatify\AdminKernel\Domain\I18n\Scope\Writer\I18nScopeChangeCodeWriterInterface::class
-            => function (ContainerInterface $c) {
-                $pdo = $c->get(PDO::class);
-                assert($pdo instanceof PDO);
-                return new \Maatify\AdminKernel\Infrastructure\Writer\I18n\PdoI18nScopeChangeCodeWriter($pdo);
             },
 
 
