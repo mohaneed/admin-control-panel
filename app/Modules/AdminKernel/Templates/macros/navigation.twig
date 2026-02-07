@@ -1,0 +1,42 @@
+{% macro render(items, level = 0) %}
+    <ul class="{{ level == 0 ? 'space-y-2 px-4 mt-5' : 'ml-6 mt-1 space-y-1' }}">
+        {% for item in items %}
+            <li>
+                {% if item.isLink %}
+                    <a href="{{ item.path }}"
+                       class="
+                           flex items-center gap-2
+                           {{ level == 0
+                       ? 'text-gray-900 dark:text-gray-100'
+                       : 'text-sm text-gray-700 dark:text-gray-300'
+                       }}
+                           hover:bg-gray-100 dark:hover:bg-gray-700
+                           p-2 rounded-md
+                       ">
+                        {{ item.icon|raw }}
+                        <span>{{ item.title }}</span>
+                    </a>
+
+                {% elseif item.isGroup %}
+                    <div
+                            class="
+                            flex items-center gap-2
+                            p-2 font-semibold
+                            {{ level == 0
+                            ? 'text-gray-700 dark:text-gray-200'
+                            : 'text-gray-600 dark:text-gray-300 text-sm'
+                            }}
+                            cursor-pointer
+                        "
+                    >
+                        {{ item.icon|raw }}
+                        <span>{{ item.title }}</span>
+                    </div>
+
+                    {# Recursive call #}
+                    {{ _self.render(item, level + 1) }}
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+{% endmacro %}
