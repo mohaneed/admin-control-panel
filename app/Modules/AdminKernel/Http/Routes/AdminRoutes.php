@@ -388,6 +388,14 @@ class AdminRoutes
                                 '__invoke'
                             ]
                         )->setName('i18n.scopes.update_sort.api');
+
+                        $i18nScopes->post(
+                            '/update-metadata',
+                            [
+                                \Maatify\AdminKernel\Http\Controllers\Api\I18nScopeUpdateMetadataController::class,
+                                '__invoke'
+                            ]
+                        )->setName('i18n.scopes.update_metadata.api');
                     });
 
                     // ─────────────────────────────

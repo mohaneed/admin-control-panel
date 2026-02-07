@@ -30,4 +30,10 @@ interface I18nScopeUpdaterInterface
     public function setActive(int $id, int $isActive): void;
 
     public function repositionSortOrder(int $id, int $newPosition): void;
+
+    public function updateMetadata(
+        int $id,
+        ?string $name,
+        ?string $description
+    ): void;
 }

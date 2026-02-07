@@ -213,4 +213,40 @@ final readonly class PdoI18nScopeUpdater implements I18nScopeUpdaterInterface
         }
     }
 
+    public function updateMetadata(
+        int $id,
+        ?string $name,
+        ?string $description
+    ): void {
+        $fields = [];
+        $params = ['id' => $id];
+
+        if ($name !== null) {
+            $fields[] = 'name = :name';
+            $params['name'] = $name;
+        }
+
+        if ($description !== null) {
+            $fields[] = 'description = :description';
+            $params['description'] = $description;
+        }
+
+        // Safety guard: controller guarantees at least one field,
+        // this is only a defensive fallback
+        // Guard: must update at least one field
+        if ($fields === []) {
+            return; // or throw — controller already guards this
+        }
+
+        $sql = sprintf(
+            'UPDATE i18n_scopes SET %s WHERE id = :id',
+            implode(', ', $fields)
+        );
+
+        $stmt = $this->pdo->prepare($sql);
+
+        if ($stmt instanceof \PDOStatement) {
+            $stmt->execute($params);
+        }
+    }
 }
