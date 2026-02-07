@@ -228,7 +228,8 @@ final readonly class MysqlLanguageSettingsRepository implements LanguageSettings
         );
 
         if ($stmt === false) {
-            throw new \RuntimeException('Failed to fetch next sort order.');
+            // FAIL-SOFT: default first position
+            return 1;
         }
 
         $result = $stmt->fetchColumn();
