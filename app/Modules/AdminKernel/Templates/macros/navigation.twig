@@ -17,7 +17,7 @@
                                   
                                ">
                                 {{ item.icon|raw }}
-                                <span class="flex-1">{{ item.title }}</span>
+                                <span class="flex-1">{{ item.title }}<span class="text-xs mx-3 text-gray-400 dark:text-gray-500">{{ item.children|length }}</span></span>
                             </a>
                             <button onclick="toggleNav(this)" 
                                     class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors">
@@ -26,7 +26,7 @@
                                      viewBox="0 0 24 24" 
                                      stroke-width="2" 
                                      stroke="currentColor" 
-                                     class="size-4 transition-transform duration-200 {{ level == 0 ? 'rotate-180' : '' }} arrow">
+                                     class="size-4 transition-transform duration-200 arrow">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
                                 </svg>
                             </button>
@@ -47,26 +47,26 @@
                             {% if item.icon %}
                                 {{ item.icon|raw }}
                             {% endif %}
-                            <span class="flex-1">{{ item.title }}</span>
+                            <span class="flex-1">{{ item.title }} <span class="text-xs text-gray-400 dark:text-gray-500">{{ item.children|length }}</span></span>
                             <svg xmlns="http://www.w3.org/2000/svg" 
                                  fill="none" 
                                  viewBox="0 0 24 24" 
                                  stroke-width="2" 
                                  stroke="currentColor" 
-                                  class="size-4 transition-transform duration-200 {{ level == 0 ? 'rotate-180' : '' }} arrow">
+                                  class="size-4 transition-transform duration-200 arrow">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
                             </svg>
                         </div>
                     {% endif %}
 
                     {# Recursive Children with Toggle #}
-                    <div class="nav-children overflow-hidden transition-all duration-300 rounded-md {{ level == 0 ? '' : 'hidden' }}" style="{{ level == 0 ? 'max-height: 1000px;' : 'max-height: 0;' }}">
+                    <div class="nav-children overflow-hidden transition-all duration-300 rounded-md hidden" style="max-height: 0;">
                         {{ _self.render(item.children, level + 1) }}
                     </div>
 
                 {% else %}
                     {# Leaf Link Item #}
-                                            <div class="">
+                    <div class="">
 
                     <a href="{{ item.path }}"
                        class="
@@ -77,6 +77,7 @@
                         {{ item.icon|raw }}
                         <span>{{ item.title }}</span>
                     </a>
+                    </div>
                 {% endif %}
             </li>
         {% endfor %}
