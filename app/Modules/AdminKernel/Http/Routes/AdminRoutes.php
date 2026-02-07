@@ -364,6 +364,14 @@ class AdminRoutes
                                 '__invoke'
                             ]
                         )->setName('i18n.scopes.create.api');
+
+                        $i18nScopes->post(
+                            '/change-code',
+                            [
+                                \Maatify\AdminKernel\Http\Controllers\Api\I18nScopeChangeCodeController::class,
+                                '__invoke'
+                            ]
+                        )->setName('i18n.scopes.change_code.api');
                     });
 
                     // ─────────────────────────────

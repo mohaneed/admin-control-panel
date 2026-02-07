@@ -2463,6 +2463,13 @@ class Container
                 return new \Maatify\I18n\Infrastructure\Mysql\MysqlDomainRepository($pdo);
             },
 
+            \Maatify\AdminKernel\Domain\I18n\Scope\Writer\I18nScopeChangeCodeWriterInterface::class
+            => function (ContainerInterface $c) {
+                $pdo = $c->get(PDO::class);
+                assert($pdo instanceof PDO);
+                return new \Maatify\AdminKernel\Infrastructure\Writer\I18n\PdoI18nScopeChangeCodeWriter($pdo);
+            },
+
 
         ]);
 
