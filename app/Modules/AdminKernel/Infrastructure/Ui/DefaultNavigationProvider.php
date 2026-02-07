@@ -48,11 +48,43 @@ class DefaultNavigationProvider implements NavigationProviderInterface
                     <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 21l5.25-11.25M10.5 21L6 9.75M10.5 21h3.75M6 9.75h12M9.75 3h4.5M12 3v6.75" />
                 </svg>'
             ),
-            // 🌐 Translation Keys (I18n)
+            // 🌐 Translations (I18n Group)
             new NavigationItemDTO(
-                'Translation Keys',
-                '/i18n/keys',
-                '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25l3 3m0 0l-3 3m3-3H9.75M4.5 18.75l3-3m0 0l-3-3m3 3h8.25" /></svg>'
+                'Translations',
+                null,
+                '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 21l5.25-11.25M10.5 21L6 9.75M10.5 21h3.75M6 9.75h12M9.75 3h4.5M12 3v6.75" />
+    </svg>',
+                [
+                    new NavigationItemDTO(
+                        'Scopes',
+                        '/i18n/scopes',
+                        '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 6.75h15M4.5 12h15M4.5 17.25h15" />
+            </svg>'
+                    ),
+                    new NavigationItemDTO(
+                        'Domains',
+                        '/i18n/domains',
+                        '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3h16.5v16.5H3.75z" />
+            </svg>'
+                    ),
+                    new NavigationItemDTO(
+                        'Keys',
+                        '/i18n/keys',
+                        '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25l3 3-3 3M9.75 5.25h8.25M4.5 18.75l3-3-3-3M7.5 15.75h8.25" />
+            </svg>'
+                    ),
+                    new NavigationItemDTO(
+                        'Values',
+                        '/i18n/values',
+                        '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m6-6H6" />
+            </svg>'
+                    ),
+                ]
             ),
             new NavigationItemDTO(
                 'Telemetry',

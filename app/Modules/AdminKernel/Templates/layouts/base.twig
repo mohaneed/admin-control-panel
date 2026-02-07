@@ -232,14 +232,35 @@
 	<ul class="space-y-2 px-4 mt-5">
 		{% for item in nav_items %}
 			<li>
-				<a href="{{ item.path }}"
-				   class="flex items-center justify-start gap-2 text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded-md hover:[>span]:text-blue-600 dark:hover:[>span]:text-blue-400">
-					{{ item.icon|raw }}
-					<span>{{ item.title }}</span>
-				</a>
+				{% if item.isLink %}
+					<a href="{{ item.path }}"
+					   class="flex items-center gap-2 text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded-md">
+						{{ item.icon|raw }}
+						<span>{{ item.title }}</span>
+					</a>
+
+				{% elseif item.isGroup %}
+					<div class="flex items-center gap-2 p-2 font-semibold text-gray-700 dark:text-gray-200 cursor-pointer">
+						{{ item.icon|raw }}
+						<span>{{ item.title }}</span>
+					</div>
+
+					<ul class="ml-6 mt-1 space-y-1">
+						{% for child in item %}
+							<li>
+								<a href="{{ child.path }}"
+								   class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded-md">
+									{{ child.icon|raw }}
+									<span>{{ child.title }}</span>
+								</a>
+							</li>
+						{% endfor %}
+					</ul>
+				{% endif %}
 			</li>
 		{% endfor %}
 	</ul>
+
 	{% block sidebar_footer %}{% endblock %}
 </nav>
 
