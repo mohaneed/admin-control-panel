@@ -400,6 +400,16 @@ class AdminRoutes
                                     '__invoke'
                                 ]
                             )->setName('i18n.domains.create.api');
+
+
+
+                            $i18nDomains->post(
+                                '/change-code',
+                                [
+                                    \Maatify\AdminKernel\Http\Controllers\Api\I18n\Domains\I18nDomainChangeCodeController::class,
+                                    '__invoke'
+                                ]
+                            )->setName('i18n.domains.change_code.api');
                         });
 
                         // ─────────────────────────────

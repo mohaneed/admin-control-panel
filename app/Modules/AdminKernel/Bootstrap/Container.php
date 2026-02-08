@@ -2495,7 +2495,13 @@ class Container
                 $pdo = $c->get(PDO::class);
                 assert($pdo instanceof PDO);
                 return new PdoI18nDomainCreate($pdo);
-            }
+            },
+
+            \Maatify\AdminKernel\Domain\I18n\Domain\I18nDomainUpdaterInterface::class => function (ContainerInterface $c) {
+                $pdo = $c->get(PDO::class);
+                assert($pdo instanceof PDO);
+                return new \Maatify\AdminKernel\Infrastructure\Repository\I18n\Domains\PdoI18nDomainUpdater($pdo);
+            },
 
 
         ]);
