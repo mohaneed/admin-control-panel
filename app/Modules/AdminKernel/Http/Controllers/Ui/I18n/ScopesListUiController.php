@@ -37,11 +37,12 @@ final readonly class ScopesListUiController
         $adminId = $context->adminId;
 
         $capabilities = [
-            'can_create'      => $this->authorizationService->hasPermission($adminId, 'i18n.scopes.create'),
-            'can_update'      => $this->authorizationService->hasPermission($adminId, 'i18n.scopes.update'),
-            'can_set_active'  => $this->authorizationService->hasPermission($adminId, 'i18n.scopes.set_active'),
-            'can_update_sort' => $this->authorizationService->hasPermission($adminId, 'i18n.scopes.update_sort'),
-            'can_update_meta' => $this->authorizationService->hasPermission($adminId, 'i18n.scopes.update_metadata'),
+            'can_create'        => $this->authorizationService->hasPermission($adminId, 'i18n.scopes.create'),
+            'can_update'        => $this->authorizationService->hasPermission($adminId, 'i18n.scopes.update'),
+            'can_change_code'   => $this->authorizationService->hasPermission($adminId, 'i18n.scopes.change_code'),
+            'can_set_active'    => $this->authorizationService->hasPermission($adminId, 'i18n.scopes.set_active'),
+            'can_update_sort'   => $this->authorizationService->hasPermission($adminId, 'i18n.scopes.update_sort'),
+            'can_update_meta'   => $this->authorizationService->hasPermission($adminId, 'i18n.scopes.update_metadata'),
         ];
 
         return $this->twig->render(

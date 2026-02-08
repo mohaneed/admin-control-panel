@@ -45,7 +45,7 @@ final readonly class I18nScopeCreateController
             ? $body['description']
             : '';
 
-        $isActive = isset($body['is_active']) && is_numeric($body['is_active'])
+        $isActive = isset($body['is_active']) && is_bool($body['is_active'])
             ? (int)$body['is_active']
             : 1;
 
