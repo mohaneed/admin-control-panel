@@ -85,6 +85,8 @@ final class PermissionMapperV2 implements PermissionMapperV2Interface
         'i18n.scopes.update_sort.api' => 'i18n.scopes.update_sort',
         'i18n.scopes.update_metadata.api' => 'i18n.scopes.update_metadata',
 
+        // I18n Domains Control
+        'i18n.domains.list.api' => 'i18n.domains.list',
 
         // App Settings Control
         'app_settings.list.api' => 'app_settings.list',

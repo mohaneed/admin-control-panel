@@ -381,6 +381,20 @@ class AdminRoutes
                         });
 
                         // ─────────────────────────────
+                        // i18n Domains Control
+                        // ─────────────────────────────
+                        $i18n->group('/domains', function (RouteCollectorProxyInterface $i18nDomains) {
+                            $i18nDomains->post(
+                                '/query',
+                                [
+                                    \Maatify\AdminKernel\Http\Controllers\Api\I18n\Domains\I18nDomainsQueryController::class,
+                                    '__invoke'
+                                ]
+                            )
+                                ->setName('i18n.domains.list.api');
+                        });
+
+                        // ─────────────────────────────
                         // i18n Keys Control
                         // ─────────────────────────────
                         $i18n->group('/keys', function (RouteCollectorProxyInterface $keys) {
