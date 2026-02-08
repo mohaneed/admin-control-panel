@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Maatify\AdminKernel\Http\Controllers\Api\Languages;
+namespace Maatify\AdminKernel\Http\Controllers\Api\I18n\Languages;
 
 use Maatify\AdminKernel\Validation\Schemas\I18n\LanguageUpdateNameSchema;
 use Maatify\I18n\Service\LanguageManagementService;

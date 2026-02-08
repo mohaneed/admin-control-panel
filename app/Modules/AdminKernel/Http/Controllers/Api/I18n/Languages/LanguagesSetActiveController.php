@@ -5,7 +5,7 @@
  * @Library     maatify/admin-control-panel
  * @Project     maatify:admin-control-panel
  * @author      Mohamed Abdulalim (megyptm) <mohamed@maatify.dev>
- * @since       2026-02-04 06:02
+ * @since       2026-02-04 03:14
  * @see         https://www.maatify.dev Maatify.dev
  * @link        https://github.com/Maatify/admin-control-panel view Project on GitHub
  * @note        Distributed in the hope that it will be useful - WITHOUT WARRANTY.
@@ -13,15 +13,16 @@
 
 declare(strict_types=1);
 
-namespace Maatify\AdminKernel\Http\Controllers\Api\Languages;
+namespace Maatify\AdminKernel\Http\Controllers\Api\I18n\Languages;
 
-use Maatify\AdminKernel\Validation\Schemas\I18n\LanguageUpdateSortOrderSchema;
+use Maatify\AdminKernel\Validation\Schemas\I18n\LanguageSetActiveSchema;
 use Maatify\I18n\Service\LanguageManagementService;
 use Maatify\Validation\Guard\ValidationGuard;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
+use RuntimeException;
 
-final readonly class LanguagesUpdateSortOrderController
+final readonly class LanguagesSetActiveController
 {
     public function __construct(
         private LanguageManagementService $languageService,
@@ -35,25 +36,27 @@ final readonly class LanguagesUpdateSortOrderController
         /** @var array<string, mixed> $body */
         $body = (array)$request->getParsedBody();
 
-        // 🔐 Schema validation (no nulls, correct types)
-        $this->validationGuard->check(
-            new LanguageUpdateSortOrderSchema(),
-            $body
-        );
+        // 1) Validate request
+        $this->validationGuard->check(new LanguageSetActiveSchema(), $body);
 
+        // 2) Type narrowing (phpstan-safe)
         $languageId = $body['language_id'];
-        $newSortOrder = $body['sort_order'];
+        $isActive = $body['is_active'];
 
-        // Defensive guard (should never happen after validation)
-        if (! is_int($languageId) || ! is_int($newSortOrder)) {
-            throw new \RuntimeException('Invalid validated payload.');
+        if (! is_int($languageId) || ! is_bool($isActive)) {
+            // Defensive – should never happen after validation
+            throw new RuntimeException('Invalid validated payload.');
         }
 
-        $this->languageService->updateLanguageSortOrder(
-            languageId  : $languageId,
-            newSortOrder: $newSortOrder
+        // 3) Execute service
+        $this->languageService->setLanguageActive(
+            languageId: $languageId,
+            isActive  : $isActive
         );
 
-        return $response->withStatus(200);
+        // 4) No Content
+        return $response
+            ->withHeader('Content-Type', 'application/json')
+            ->withStatus(200);
     }
 }
