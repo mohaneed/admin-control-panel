@@ -424,6 +424,14 @@ class AdminRoutes
                                     '__invoke'
                                 ]
                             )->setName('i18n.domains.update_sort.api');
+
+                            $i18nDomains->post(
+                                '/update-metadata',
+                                [
+                                    \Maatify\AdminKernel\Http\Controllers\Api\I18n\Domains\I18nDomainUpdateMetadataController::class,
+                                    '__invoke'
+                                ]
+                            )->setName('i18n.domains.update_metadata.api');
                         });
 
                         // ─────────────────────────────

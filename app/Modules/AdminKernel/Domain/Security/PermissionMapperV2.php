@@ -92,6 +92,7 @@ final class PermissionMapperV2 implements PermissionMapperV2Interface
         'i18n.domains.change_code.api' => 'i18n.domains.change_code',
         'i18n.domains.set_active.api' => 'i18n.domains.set_active',
         'i18n.domains.update_sort.api' => 'i18n.domains.update_sort',
+        'i18n.domains.update_metadata.api' => 'i18n.domains.update_metadata',
 
         // App Settings Control
         'app_settings.list.api' => 'app_settings.list',
