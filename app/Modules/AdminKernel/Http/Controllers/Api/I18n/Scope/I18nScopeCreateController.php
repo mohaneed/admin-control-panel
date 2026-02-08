@@ -49,10 +49,6 @@ final readonly class I18nScopeCreateController
             ? (int)$body['is_active']
             : 1;
 
-        $sortOrder = isset($body['sort_order']) && is_numeric($body['sort_order'])
-            ? (int)$body['sort_order']
-            : 0;
-
         if($this->writer->existsByCode($code)){
             throw new EntityAlreadyExistsException(
                 'I18nScope',
