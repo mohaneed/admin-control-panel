@@ -13,7 +13,7 @@
 
 declare(strict_types=1);
 
-namespace Maatify\AdminKernel\Http\Controllers\Api;
+namespace Maatify\AdminKernel\Http\Controllers\Api\I18n\Scope;
 
 use Maatify\AdminKernel\Domain\DTO\I18nScopes\I18nScopeCreateDTO;
 use Maatify\AdminKernel\Domain\Exception\EntityAlreadyExistsException;

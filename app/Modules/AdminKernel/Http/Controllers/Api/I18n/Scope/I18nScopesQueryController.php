@@ -13,7 +13,7 @@
 
 declare(strict_types=1);
 
-namespace Maatify\AdminKernel\Http\Controllers\Api;
+namespace Maatify\AdminKernel\Http\Controllers\Api\I18n\Scope;
 
 use Maatify\AdminKernel\Domain\I18n\Scope\Reader\I18nScopesQueryReaderInterface;
 use Maatify\AdminKernel\Domain\List\I18nScopesListCapabilities;

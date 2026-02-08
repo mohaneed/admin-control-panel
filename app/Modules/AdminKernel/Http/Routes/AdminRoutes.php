@@ -358,7 +358,7 @@ class AdminRoutes
                         $i18nScopes->post(
                             '/query',
                             [
-                                \Maatify\AdminKernel\Http\Controllers\Api\I18nScopesQueryController::class,
+                                \Maatify\AdminKernel\Http\Controllers\Api\I18n\Scope\I18nScopesQueryController::class,
                                 '__invoke'
                             ]
                         )
@@ -367,7 +367,7 @@ class AdminRoutes
                         $i18nScopes->post(
                             '/create',
                             [
-                                \Maatify\AdminKernel\Http\Controllers\Api\I18nScopeCreateController::class,
+                                \Maatify\AdminKernel\Http\Controllers\Api\I18n\Scope\I18nScopeCreateController::class,
                                 '__invoke'
                             ]
                         )->setName('i18n.scopes.create.api');
@@ -375,7 +375,7 @@ class AdminRoutes
                         $i18nScopes->post(
                             '/change-code',
                             [
-                                \Maatify\AdminKernel\Http\Controllers\Api\I18nScopeChangeCodeController::class,
+                                \Maatify\AdminKernel\Http\Controllers\Api\I18n\Scope\I18nScopeChangeCodeController::class,
                                 '__invoke'
                             ]
                         )->setName('i18n.scopes.change_code.api');
@@ -383,7 +383,7 @@ class AdminRoutes
                         $i18nScopes->post(
                             '/{id:[0-9]+}/set-active',
                             [
-                                \Maatify\AdminKernel\Http\Controllers\Api\I18nScopeSetActiveController::class,
+                                \Maatify\AdminKernel\Http\Controllers\Api\I18n\Scope\I18nScopeSetActiveController::class,
                                 '__invoke'
                             ]
                         )->setName('i18n.scopes.set_active.api');
@@ -391,7 +391,7 @@ class AdminRoutes
                         $i18nScopes->post(
                             '/update-sort',
                             [
-                                \Maatify\AdminKernel\Http\Controllers\Api\I18nScopeUpdateSortController::class,
+                                \Maatify\AdminKernel\Http\Controllers\Api\I18n\Scope\I18nScopeUpdateSortController::class,
                                 '__invoke'
                             ]
                         )->setName('i18n.scopes.update_sort.api');
@@ -399,7 +399,7 @@ class AdminRoutes
                         $i18nScopes->post(
                             '/update-metadata',
                             [
-                                \Maatify\AdminKernel\Http\Controllers\Api\I18nScopeUpdateMetadataController::class,
+                                \Maatify\AdminKernel\Http\Controllers\Api\I18n\Scope\I18nScopeUpdateMetadataController::class,
                                 '__invoke'
                             ]
                         )->setName('i18n.scopes.update_metadata.api');
